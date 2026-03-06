@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { Work_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
-const workSans = Work_Sans({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-work-sans",
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
   title: "StudyFlow Concurso",
-  description: "Sistema de gestão de estudos por ciclo para concursos públicos",
+  description: "Sistema de gestao de estudos por ciclo para concursos publicos",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icons/icon-192.svg",
@@ -25,10 +25,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${workSans.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>
   );
 }
-
