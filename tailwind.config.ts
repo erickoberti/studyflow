@@ -10,20 +10,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        base: "#f4f7fb",
-        ink: "#10253f",
-        brand: "#0f6ad9",
-        brandSoft: "#dbeafe",
-        accent: "#f59e0b",
+        backgroundLight: "#f6f5f8",
+        backgroundDark: "#151022",
+        panelDark: "#1b1530",
+        primary: "#895af6",
+        primarySoft: "#ae8aff",
       },
       borderRadius: {
         card: "1rem",
       },
       fontFamily: {
-        sans: ["var(--font-work-sans)", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        soft: "0 12px 30px rgba(15, 106, 217, 0.12)",
+        soft: "0 20px 40px rgba(137, 90, 246, 0.18)",
       },
     },
   },
@@ -31,4 +31,3 @@ const config: Config = {
 };
 
 export default config;
-

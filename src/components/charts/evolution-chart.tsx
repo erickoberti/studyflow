@@ -10,18 +10,17 @@ export function EvolutionChart({
   label: string;
 }) {
   return (
-    <div className="h-72 rounded-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-      <p className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</p>
+    <div className="h-80 rounded-2xl border border-primary/20 bg-[#161126] p-5">
+      <p className="mb-4 text-sm font-bold text-slate-300">{label}</p>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="4 4" stroke="#94a3b8" opacity={0.25} />
-          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-          <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
-          <Tooltip />
-          <Line type="monotone" dataKey="percentage" stroke="#0f6ad9" strokeWidth={3} dot={false} />
+          <CartesianGrid strokeDasharray="4 4" stroke="#4b3b7a" opacity={0.4} />
+          <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} />
+          <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "#94a3b8" }} />
+          <Tooltip contentStyle={{ background: "#120e20", border: "1px solid #533f87", color: "#f8fafc" }} />
+          <Line type="monotone" dataKey="percentage" stroke="#895af6" strokeWidth={3} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
 }
-

@@ -27,7 +27,7 @@ export function LoginForm() {
     setLoading(false);
 
     if (response?.error) {
-      setError("Credenciais inválidas");
+      setError("Credenciais invalidas");
       return;
     }
 
@@ -38,18 +38,28 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="mb-1 block text-sm font-medium">Email</label>
-        <input name="email" type="email" required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+        <label className="mb-1 block text-sm font-medium text-slate-300">Email</label>
+        <input
+          name="email"
+          type="email"
+          required
+          className="w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-3 text-white outline-none focus:border-primary"
+        />
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium">Senha</label>
-        <input name="password" type="password" required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+        <label className="mb-1 block text-sm font-medium text-slate-300">Senha</label>
+        <input
+          name="password"
+          type="password"
+          required
+          className="w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-3 text-white outline-none focus:border-primary"
+        />
       </div>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-red-300">{error}</p> : null}
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-brand px-4 py-2 font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-lg bg-primary px-4 py-3 font-bold text-white shadow-soft disabled:opacity-50"
       >
         {loading ? "Entrando..." : "Entrar"}
       </button>
