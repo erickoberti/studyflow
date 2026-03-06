@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String               @id @default(cuid())
+  name               String
+  email              String               @unique
+  passwordHash       String
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  disciplines        Discipline[]
+  subjects           Subject[]
+  cycleEntries       CycleEntry[]
+  sessions           StudySession[]
+  settings           UserSettings?
+  resetTokens        PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Discipline {
+  id        String      @id @default(cuid())
+  userId    String
+  name      String
+  category  String?
+  active    Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects  Subject[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Subject {
+  id            String       @id @default(cuid())
+  userId        String
+  disciplineId  String
+  name          String
+  weight        Int          @default(1)
+  notes         String?
+  tecReference  String?
+  groupName     String?
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discipline    Discipline   @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  cycleEntries  CycleEntry[]
+
+  @@index([userId])
+  @@index([disciplineId])
+  @@unique([userId, disciplineId, name])
+}
+
+model CycleEntry {
+  id         String         @id @default(cuid())
+  userId     String
+  subjectId  String
+  orderIndex Int
+  active     Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject    Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  sessions   StudySession[]
+
+  @@index([userId])
+  @@index([subjectId])
+  @@unique([userId, orderIndex])
+}
+
+model StudySession {
+  id           String    @id @default(cuid())
+  userId       String
+  cycleEntryId String
+  date         DateTime
+  questions    Int
+  correct      Int
+  wrong        Int
+  percentage   Float
+  estimatedMinutes Int @default(0)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycleEntry   CycleEntry @relation(fields: [cycleEntryId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([date])
+  @@index([cycleEntryId])
+}
+
+model UserSettings {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  targetPercentage    Float    @default(80)
+  dailyQuestionsGoal  Int      @default(30)
+  weeklyQuestionsGoal Int      @default(200)
+  weightPriorityBias  Float    @default(1.25)
+  theme               String   @default("system")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
