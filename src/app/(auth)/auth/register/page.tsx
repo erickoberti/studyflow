@@ -9,9 +9,10 @@ export default function RegisterPage() {
   const [isPending, startTransition] = useTransition();
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
+    <div className="relative flex min-h-screen items-center justify-center px-4">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(137,90,246,0.25),transparent_45%)]" />
       <form
-        className="rounded-card border border-slate-200 bg-white p-6 shadow-soft"
+        className="relative w-full max-w-md rounded-2xl border border-primary/20 bg-[#161126] p-7 shadow-soft"
         action={(formData) => {
           startTransition(async () => {
             const res = await registerUser(formData);
@@ -19,23 +20,34 @@ export default function RegisterPage() {
           });
         }}
       >
-        <h1 className="text-2xl font-black text-ink">Criar conta</h1>
+        <h1 className="text-3xl font-black text-white">Criar conta</h1>
         <div className="mt-4 space-y-3">
-          <input name="name" placeholder="Nome" required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-          <input name="email" type="email" placeholder="Email" required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+          <input
+            name="name"
+            placeholder="Nome"
+            required
+            className="w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-3 text-white outline-none focus:border-primary"
+          />
+          <input
+            name="email"
+            type="email"
+            placeholder="Email"
+            required
+            className="w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-3 text-white outline-none focus:border-primary"
+          />
           <input
             name="password"
             type="password"
-            placeholder="Senha (mínimo 6)"
+            placeholder="Senha (minimo 6)"
             required
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+            className="w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-3 text-white outline-none focus:border-primary"
           />
         </div>
-        {message ? <p className="mt-3 text-sm text-slate-600">{message}</p> : null}
-        <button type="submit" disabled={isPending} className="mt-4 w-full rounded-lg bg-brand py-2 font-semibold text-white">
+        {message ? <p className="mt-3 text-sm text-slate-300">{message}</p> : null}
+        <button type="submit" disabled={isPending} className="mt-4 w-full rounded-lg bg-primary py-3 font-bold text-white shadow-soft disabled:opacity-50">
           {isPending ? "Criando..." : "Criar conta"}
         </button>
-        <Link href="/auth/login" className="mt-3 block text-sm text-brand hover:underline">
+        <Link href="/auth/login" className="mt-3 block text-sm text-primarySoft hover:underline">
           Voltar para login
         </Link>
       </form>
