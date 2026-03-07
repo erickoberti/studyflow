@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type CycleOption = {
@@ -18,6 +18,19 @@ type CycleOption = {
   };
 };
 
+function formatClock(totalSeconds: number) {
+  const h = Math.floor(totalSeconds / 3600)
+    .toString()
+    .padStart(2, "0");
+  const m = Math.floor((totalSeconds % 3600) / 60)
+    .toString()
+    .padStart(2, "0");
+  const s = Math.floor(totalSeconds % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
 export function StudySessionForm({
   cycleEntries,
   suggestedId,
@@ -30,7 +43,17 @@ export function StudySessionForm({
   const [correct, setCorrect] = useState(14);
   const [notes, setNotes] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [estimatedMinutes, setEstimatedMinutes] = useState(30);
   const [loading, setLoading] = useState(false);
+
+  const [isRunning, setIsRunning] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!isRunning) return;
+    const id = setInterval(() => setElapsedSeconds((prev) => prev + 1), 1000);
+    return () => clearInterval(id);
+  }, [isRunning]);
 
   const selected = useMemo(
     () => cycleEntries.find((entry) => entry.id === cycleEntryId),
@@ -63,6 +86,7 @@ export function StudySessionForm({
         correct,
         wrong,
         notes,
+        estimatedMinutes,
       }),
     });
     setLoading(false);
@@ -148,6 +172,17 @@ export function StudySessionForm({
               />
             </label>
 
+            <label className="text-sm text-slate-300">
+              Tempo estudado (min)
+              <input
+                type="number"
+                min={0}
+                value={estimatedMinutes}
+                onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
+                className="mt-2 w-full rounded-lg border border-primary/30 bg-[#120e20] px-4 py-3 text-white"
+              />
+            </label>
+
             <label className="text-sm text-slate-300 md:col-span-2">
               Observacoes / pontos de atencao
               <textarea
@@ -184,6 +219,38 @@ export function StudySessionForm({
         </article>
 
         <article className="rounded-2xl border border-primary/20 bg-[#161126] p-6">
+          <h3 className="text-lg font-bold text-white">Cronometro de estudo</h3>
+          <p className="mt-2 text-4xl font-black text-primarySoft">{formatClock(elapsedSeconds)}</p>
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setIsRunning((prev) => !prev)}
+              className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white"
+            >
+              {isRunning ? "Pausar" : "Iniciar"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsRunning(false);
+                setElapsedSeconds(0);
+              }}
+              className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primarySoft"
+            >
+              Zerar
+            </button>
+            <button
+              type="button"
+              onClick={() => setEstimatedMinutes(Math.max(1, Math.round(elapsedSeconds / 60)))}
+              className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primarySoft"
+            >
+              Usar tempo
+            </button>
+          </div>
+          <p className="mt-3 text-xs text-slate-400">Clique em Usar tempo para preencher os minutos do registro automaticamente.</p>
+        </article>
+
+        <article className="rounded-2xl border border-primary/20 bg-[#161126] p-6">
           <h3 className="text-lg font-bold text-white">Estatisticas do assunto</h3>
           <div className="mt-4 space-y-3 text-sm text-slate-300">
             <div className="flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2">
@@ -213,3 +280,4 @@ export function StudySessionForm({
     </section>
   );
 }
+
