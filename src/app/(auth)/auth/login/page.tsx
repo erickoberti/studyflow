@@ -6,9 +6,8 @@ export default function LoginPage() {
     <div className="relative flex min-h-screen items-center justify-center px-4">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(137,90,246,0.25),transparent_45%)]" />
       <div className="relative w-full max-w-md rounded-2xl border border-primary/20 bg-[#161126] p-7 shadow-soft">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primarySoft">StudyFlow Concurso</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primarySoft">STUDYFLOW</p>
         <h1 className="mt-2 text-3xl font-black text-white">Entrar</h1>
-        <p className="mt-1 text-sm text-slate-400">Use: demo@studyflow.com / 123456</p>
 
         <div className="mt-5">
           <LoginForm />
