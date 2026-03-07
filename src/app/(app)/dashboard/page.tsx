@@ -1,4 +1,5 @@
 ﻿import Link from "next/link";
+import { format, parseISO, startOfDay, subDays } from "date-fns";
 import { Clock3, Flame, ListChecks, Percent, Target } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData, getNextCycleSuggestion } from "@/lib/analytics";
@@ -46,6 +47,24 @@ export default async function DashboardPage() {
 
   const todayQuestions = dashboard.byDay.at(-1)?.questions ?? 0;
   const estimatedMinutes = dashboard.totals.totalEstimatedMinutes;
+  const streakDays = Math.max(0, dashboard.totals.streakDays ?? 0);
+  const avgQuestionsPerDay = dashboard.totals.avgQuestionsPerDay ?? 0;
+
+  const studyDaySet = new Set(dashboard.byDay.map((d) => d.date));
+  const streakDaySet = new Set<string>();
+  for (let idx = dashboard.byDay.length - 1; idx >= 0; idx -= 1) {
+    const current = dashboard.byDay[idx];
+    const previous = dashboard.byDay[idx - 1];
+    streakDaySet.add(current.date);
+    if (!previous) break;
+    const currentDate = parseISO(current.date);
+    const previousDate = parseISO(previous.date);
+    const msDiff = currentDate.getTime() - previousDate.getTime();
+    if (msDiff !== 24 * 60 * 60 * 1000) break;
+  }
+
+  const today = startOfDay(new Date());
+  const calendarDays = Array.from({ length: 14 }).map((_, idx) => subDays(today, 13 - idx));
 
   return (
     <div className="space-y-6 pb-16 lg:pb-0">
@@ -78,6 +97,9 @@ export default async function DashboardPage() {
           <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">
             Sua meta de hoje é de <span className="font-bold text-primary">{dashboard.totals.targetPercentage.toFixed(0)}%</span>. Você fez {todayQuestions} questões.
           </p>
+          <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
+            Média de questões por dia: <span className="text-primary">{avgQuestionsPerDay.toFixed(1)}</span>
+          </p>
         </div>
         <Link
           href="/configuracoes"
@@ -96,10 +118,10 @@ export default async function DashboardPage() {
             <div className="rounded-xl bg-orange-500/20 p-2 text-orange-400">
               <Flame size={16} />
             </div>
-            <span className="text-xs font-bold text-orange-500 dark:text-orange-300">{Math.max(1, dashboard.byDay.length)} dias</span>
+            <span className="text-xs font-bold text-orange-500 dark:text-orange-300">{streakDays} dias</span>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">Ofensiva atual</p>
-          <p className="mt-1 text-4xl font-black text-slate-900 dark:text-white">{Math.max(1, dashboard.byDay.length)} dias</p>
+          <p className="mt-1 text-4xl font-black text-slate-900 dark:text-white">{streakDays} dias</p>
         </article>
       </section>
 
@@ -119,7 +141,7 @@ export default async function DashboardPage() {
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Ofensiva</h3>
               <span className="inline-flex items-center gap-1 text-sm font-bold text-orange-500 dark:text-orange-300">
-                <Flame size={14} /> {Math.max(1, dashboard.byDay.length)} dias
+                <Flame size={14} /> {streakDays} dias
               </span>
             </div>
             <div className="grid grid-cols-7 gap-2 text-center text-xs">
@@ -128,14 +150,27 @@ export default async function DashboardPage() {
                   {d}
                 </span>
               ))}
-              {Array.from({ length: 14 }).map((_, idx) => (
-                <span
-                  key={idx}
-                  className={`rounded-lg border py-2 ${idx < Math.max(1, dashboard.byDay.length) ? "border-primary/40 bg-primary/20 text-primary" : "border-slate-200 text-slate-500 dark:border-primary/10"}`}
-                >
-                  {10 + idx}
-                </span>
-              ))}
+              {calendarDays.map((day) => {
+                const dayKey = format(day, "yyyy-MM-dd");
+                const hasStudy = studyDaySet.has(dayKey);
+                const inStreak = streakDaySet.has(dayKey);
+
+                return (
+                  <span
+                    key={dayKey}
+                    className={`rounded-lg border py-2 ${
+                      inStreak
+                        ? "border-primary/50 bg-primary/30 text-primary"
+                        : hasStudy
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-slate-200 text-slate-500 dark:border-primary/10"
+                    }`}
+                    title={format(day, "dd/MM/yyyy")}
+                  >
+                    {format(day, "dd")}
+                  </span>
+                );
+              })}
             </div>
           </div>
 

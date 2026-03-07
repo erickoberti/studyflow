@@ -55,7 +55,7 @@ export default async function EstatisticasPage() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <section className="space-y-8 lg:col-span-2">
           <details className="rounded-xl border border-slate-200 bg-white p-6 dark:border-primary/20 dark:bg-primary/5">
-            <summary className="cursor-pointer text-xl font-bold text-slate-900 dark:text-white">Evolução de estudos (clique para abrir)</summary>
+            <summary className="cursor-pointer text-xl font-bold text-slate-900 dark:text-white">Evolução de estudos</summary>
             <div className="mt-6">
               <div className="relative flex h-56 items-end justify-between gap-2">
                 {weekly.map((day) => (
@@ -68,13 +68,22 @@ export default async function EstatisticasPage() {
             </div>
           </details>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-8 dark:border-primary/20 dark:bg-primary/5">
-            <h3 className="mb-6 text-xl font-bold text-slate-900 dark:text-white">Mapa de Atividade de Questões</h3>
-            <div className="flex flex-col gap-2 overflow-x-auto pb-4">
-              <div className="flex gap-1 min-w-max">
+          <details className="rounded-xl border border-slate-200 bg-white p-8 dark:border-primary/20 dark:bg-primary/5">
+            <summary className="cursor-pointer text-xl font-bold text-slate-900 dark:text-white">Mapa de Atividade de Questões</summary>
+            <div className="mt-6 flex flex-col gap-2 overflow-x-auto pb-4">
+              <div className="flex min-w-max gap-1">
                 {heatmap.map((day) => {
                   const ratio = day.questions / maxQuestions;
-                  const cls = ratio === 0 ? "bg-slate-200 dark:bg-slate-800" : ratio < 0.3 ? "bg-primary/20" : ratio < 0.6 ? "bg-primary/40" : ratio < 0.85 ? "bg-primary/60" : "bg-primary";
+                  const cls =
+                    ratio === 0
+                      ? "bg-slate-200 dark:bg-slate-800"
+                      : ratio < 0.3
+                        ? "bg-primary/20"
+                        : ratio < 0.6
+                          ? "bg-primary/40"
+                          : ratio < 0.85
+                            ? "bg-primary/60"
+                            : "bg-primary";
                   return <div key={day.date} className={`h-4 w-4 rounded-sm ${cls}`} title={`${day.date}: ${day.questions} questões`} />;
                 })}
               </div>
@@ -83,10 +92,43 @@ export default async function EstatisticasPage() {
                 <span>Mais atividade</span>
               </div>
             </div>
-          </div>
+          </details>
         </section>
 
         <section className="space-y-8">
+          <div className="overflow-hidden rounded-xl border border-red-300 bg-white dark:border-red-500/20 dark:bg-primary/5">
+            <div className="border-b border-red-200 bg-red-50 p-5 dark:border-red-500/20 dark:bg-red-500/5">
+              <h3 className="font-bold text-slate-900 dark:text-slate-100">Atenção Urgente (&lt;60%)</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 dark:bg-transparent">
+                  <tr>
+                    <th className="px-6 py-3">Tópico</th>
+                    <th className="px-6 py-3 text-center">Questões</th>
+                    <th className="px-6 py-3 text-right">Média</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-primary/5">
+                  {weakest.map((item) => (
+                    <tr key={`${item.discipline}-${item.subject}`} className="transition-colors hover:bg-red-500/5">
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-slate-900 dark:text-white">{item.subject}</span>
+                          <span className="text-xs text-slate-500">{item.discipline}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center text-sm text-slate-700 dark:text-slate-300">{item.questions}</td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="rounded bg-red-100 px-2 py-1 text-xs font-bold text-red-600 dark:bg-red-500/20 dark:text-red-400">{pct(item.percentage)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <div className="rounded-xl border border-slate-200 bg-white p-8 dark:border-primary/20 dark:bg-primary/5">
             <h3 className="mb-8 text-xl font-bold text-slate-900 dark:text-white">Performance por Matéria</h3>
             <div className="space-y-5">
@@ -105,39 +147,6 @@ export default async function EstatisticasPage() {
           </div>
         </section>
       </div>
-
-      <section className="overflow-hidden rounded-xl border border-red-300 bg-white dark:border-red-500/20 dark:bg-primary/5">
-        <div className="border-b border-red-200 bg-red-50 p-5 dark:border-red-500/20 dark:bg-red-500/5">
-          <h3 className="font-bold text-slate-900 dark:text-slate-100">Atenção Urgente (&lt;60%)</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 dark:bg-transparent">
-              <tr>
-                <th className="px-6 py-3">Tópico</th>
-                <th className="px-6 py-3 text-center">Questões</th>
-                <th className="px-6 py-3 text-right">Média</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-primary/5">
-              {weakest.map((item) => (
-                <tr key={`${item.discipline}-${item.subject}`} className="transition-colors hover:bg-red-500/5">
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-slate-900 dark:text-white">{item.subject}</span>
-                      <span className="text-xs text-slate-500">{item.discipline}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-center text-sm text-slate-700 dark:text-slate-300">{item.questions}</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="rounded bg-red-100 px-2 py-1 text-xs font-bold text-red-600 dark:bg-red-500/20 dark:text-red-400">{pct(item.percentage)}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </div>
   );
 }
