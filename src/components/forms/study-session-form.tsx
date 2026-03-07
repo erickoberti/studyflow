@@ -31,6 +31,31 @@ function formatClock(totalSeconds: number) {
   return `${h}:${m}:${s}`;
 }
 
+function semaforo(percentage: number) {
+  if (percentage >= 80) {
+    return {
+      label: "MANTER",
+      tone: "text-emerald-300",
+      badge: "bg-emerald-500/20 text-emerald-300",
+      bar: "bg-emerald-400",
+    };
+  }
+  if (percentage >= 70) {
+    return {
+      label: "AJUSTAR",
+      tone: "text-amber-300",
+      badge: "bg-amber-500/20 text-amber-300",
+      bar: "bg-amber-400",
+    };
+  }
+  return {
+    label: "URGENTE",
+    tone: "text-red-300",
+    badge: "bg-red-500/20 text-red-300",
+    bar: "bg-red-400",
+  };
+}
+
 export function StudySessionForm({
   cycleEntries,
   suggestedId,
@@ -62,7 +87,7 @@ export function StudySessionForm({
 
   const wrong = Math.max(0, questions - correct);
   const percentage = questions > 0 ? (correct / questions) * 100 : 0;
-  const scoreLabel = percentage >= 80 ? "MUITO BOM" : percentage >= 70 ? "BOM" : percentage >= 60 ? "ATENCAO" : "URGENTE";
+  const status = semaforo(percentage);
 
   async function submit() {
     if (!cycleEntryId) {
@@ -102,17 +127,17 @@ export function StudySessionForm({
   }
 
   return (
-    <section className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+    <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
-        <article className="rounded-2xl border border-primary/20 bg-[#161126] p-6">
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <article className="rounded-2xl border border-primary/20 bg-[#161126] p-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="text-sm text-slate-300">
               Data do estudo
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-primary/30 bg-[#120e20] px-4 py-3 text-white outline-none focus:border-primary"
+                className="mt-1.5 w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-2.5 text-white outline-none focus:border-primary"
               />
             </label>
 
@@ -121,7 +146,7 @@ export function StudySessionForm({
               <select
                 value={cycleEntryId}
                 onChange={(e) => setCycleEntryId(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-primary/30 bg-[#120e20] px-4 py-3 text-white outline-none focus:border-primary"
+                className="mt-1.5 w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-2.5 text-white outline-none focus:border-primary"
               >
                 {cycleEntries.map((entry) => (
                   <option key={entry.id} value={entry.id}>
@@ -136,7 +161,7 @@ export function StudySessionForm({
               <input
                 readOnly
                 value={selected?.subject.discipline.name ?? "-"}
-                className="mt-2 w-full rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 text-slate-300"
+                className="mt-1.5 w-full rounded-lg border border-primary/20 bg-primary/10 px-3 py-2.5 text-slate-300"
               />
             </label>
 
@@ -145,7 +170,7 @@ export function StudySessionForm({
               <input
                 readOnly
                 value={selected?.subject.weight ?? "-"}
-                className="mt-2 w-full rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 text-slate-300"
+                className="mt-1.5 w-full rounded-lg border border-primary/20 bg-primary/10 px-3 py-2.5 text-slate-300"
               />
             </label>
 
@@ -156,7 +181,7 @@ export function StudySessionForm({
                 min={1}
                 value={questions}
                 onChange={(e) => setQuestions(Number(e.target.value))}
-                className="mt-2 w-full rounded-lg border border-primary/30 bg-[#120e20] px-4 py-3 text-white"
+                className="mt-1.5 w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-2.5 text-white"
               />
             </label>
 
@@ -168,7 +193,7 @@ export function StudySessionForm({
                 max={questions}
                 value={correct}
                 onChange={(e) => setCorrect(Number(e.target.value))}
-                className="mt-2 w-full rounded-lg border border-primary/30 bg-[#120e20] px-4 py-3 text-white"
+                className="mt-1.5 w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-2.5 text-white"
               />
             </label>
 
@@ -179,7 +204,7 @@ export function StudySessionForm({
                 min={0}
                 value={estimatedMinutes}
                 onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
-                className="mt-2 w-full rounded-lg border border-primary/30 bg-[#120e20] px-4 py-3 text-white"
+                className="mt-1.5 w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-2.5 text-white"
               />
             </label>
 
@@ -189,7 +214,7 @@ export function StudySessionForm({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
-                className="mt-2 w-full resize-none rounded-lg border border-primary/30 bg-[#120e20] px-4 py-3 text-white"
+                className="mt-1.5 w-full resize-none rounded-lg border border-primary/30 bg-[#120e20] px-3 py-2.5 text-white"
                 placeholder="O que voce sentiu dificuldade nesta sessao?"
               />
             </label>
@@ -198,28 +223,28 @@ export function StudySessionForm({
           <button
             onClick={submit}
             disabled={loading}
-            className="mt-5 w-full rounded-xl bg-primary py-4 text-sm font-bold text-white shadow-soft disabled:opacity-50"
+            className="mt-4 w-full rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-soft disabled:opacity-50"
           >
             {loading ? "Salvando..." : "Salvar registro"}
           </button>
         </article>
       </div>
 
-      <div className="space-y-6">
-        <article className="rounded-2xl bg-gradient-to-br from-primary to-[#6d38e0] p-6 text-white shadow-soft">
+      <div className="space-y-5">
+        <article className="rounded-2xl bg-gradient-to-br from-primary to-[#6d38e0] p-5 text-white shadow-soft">
           <p className="text-sm text-white/80">Aproveitamento atual</p>
           <div className="mt-1 flex items-end gap-2">
-            <span className="text-5xl font-black">{percentage.toFixed(0)}%</span>
-            <span className="mb-2 rounded bg-white/20 px-2 py-1 text-xs font-bold">{scoreLabel}</span>
+            <span className={`text-5xl font-black ${status.tone}`}>{percentage.toFixed(0)}%</span>
+            <span className={`mb-2 rounded px-2 py-1 text-xs font-bold ${status.badge}`}>{status.label}</span>
           </div>
-          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/20">
-            <div className="h-full rounded-full bg-white" style={{ width: `${Math.min(100, percentage)}%` }} />
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/20">
+            <div className={`h-full rounded-full ${status.bar}`} style={{ width: `${Math.min(100, percentage)}%` }} />
           </div>
-          <p className="mt-3 text-xs text-white/80">Calculado com base em {correct} acertos de {questions} questoes.</p>
+          <p className="mt-2 text-xs text-white/90">Calculado com base em {correct} acertos de {questions} questoes.</p>
         </article>
 
-        <article className="rounded-2xl border border-primary/20 bg-[#161126] p-6">
-          <h3 className="text-lg font-bold text-white">Cronometro de estudo</h3>
+        <article className="rounded-2xl border border-primary/20 bg-[#161126] p-5">
+          <h3 className="text-base font-bold text-white">Cronometro de estudo</h3>
           <p className="mt-2 text-4xl font-black text-primarySoft">{formatClock(elapsedSeconds)}</p>
           <div className="mt-4 flex gap-2">
             <button
@@ -247,12 +272,11 @@ export function StudySessionForm({
               Usar tempo
             </button>
           </div>
-          <p className="mt-3 text-xs text-slate-400">Clique em Usar tempo para preencher os minutos do registro automaticamente.</p>
         </article>
 
-        <article className="rounded-2xl border border-primary/20 bg-[#161126] p-6">
-          <h3 className="text-lg font-bold text-white">Estatisticas do assunto</h3>
-          <div className="mt-4 space-y-3 text-sm text-slate-300">
+        <article className="rounded-2xl border border-primary/20 bg-[#161126] p-5">
+          <h3 className="text-base font-bold text-white">Estatisticas do assunto</h3>
+          <div className="mt-3 space-y-2 text-sm text-slate-300">
             <div className="flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2">
               <span>Disciplina</span>
               <span className="font-semibold">{selected?.subject.discipline.name ?? "-"}</span>
@@ -262,15 +286,19 @@ export function StudySessionForm({
               <span className="font-semibold">{selected?.subject.weight ?? "-"}</span>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2">
+              <span>Acertos</span>
+              <span className="font-semibold text-emerald-300">{correct}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2">
               <span>Erros</span>
               <span className="font-semibold text-red-300">{wrong}</span>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2">
               <span>Percentual do dia</span>
-              <span className="font-semibold">{percentage.toFixed(1)}%</span>
+              <span className={`font-semibold ${status.tone}`}>{percentage.toFixed(1)}%</span>
             </div>
           </div>
-          <div className="mt-5 border-t border-primary/20 pt-4 text-sm text-slate-400">
+          <div className="mt-4 border-t border-primary/20 pt-3 text-sm text-slate-400">
             <p className="font-semibold text-slate-300">Onde marcar no TEC</p>
             <p className="mt-1">{selected?.subject.tecReference ?? "Nao informado"}</p>
             <p className="mt-2 text-xs">{selected?.subject.notes ?? "Sem observacoes"}</p>
@@ -280,4 +308,3 @@ export function StudySessionForm({
     </section>
   );
 }
-
