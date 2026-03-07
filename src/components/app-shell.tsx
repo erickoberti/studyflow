@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   BarChart3,
+  Bell,
   BookOpen,
   BookOpenCheck,
   History,
@@ -24,86 +25,123 @@ const links = [
   { href: "/base", label: "Cadastro-base", icon: BookOpen },
   { href: "/estatisticas", label: "Desempenho", icon: BarChart3 },
   { href: "/revisao", label: "Revisao", icon: History },
+  { href: "/configuracoes", label: "Configuracoes", icon: Settings },
 ];
 
-const mobileLinks = [links[0], links[1], links[2], links[4], links[5]];
+const topLinks = [links[0], links[2], links[4], links[5]];
+const mobileLinks = [links[0], links[1], links[2], links[4], links[6]];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
 
   return (
-    <div className="min-h-screen bg-backgroundLight text-slate-900 dark:bg-backgroundDark dark:text-slate-100">
-      <div className="mx-auto grid min-h-screen max-w-[1700px] grid-cols-1 lg:grid-cols-[280px_1fr]">
+    <div className="min-h-screen bg-backgroundLight text-slate-800 dark:bg-backgroundDark dark:text-slate-100">
+      <div className="mx-auto grid min-h-screen max-w-[1720px] grid-cols-1 lg:grid-cols-[265px_1fr]">
         <aside className="hidden border-r border-primary/15 bg-[#100c1d] lg:flex lg:flex-col">
-          <div className="p-7">
-            <div className="mb-9 flex items-center gap-3">
-              <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={44} height={44} className="h-11 w-11 rounded-xl object-cover" priority />
+          <div className="flex h-full flex-col p-6">
+            <div className="mb-7 flex items-center gap-3">
+              <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={40} height={40} className="h-10 w-10 rounded-xl object-cover" priority />
               <div>
-                <h1 className="text-3xl leading-none font-extrabold tracking-tight text-white">STUDYFLOW</h1>
-                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.15em] text-primarySoft">Plataforma de Estudos</p>
+                <h1 className="text-2xl font-extrabold tracking-tight text-white">STUDYFLOW</h1>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primarySoft">Plataforma de estudos</p>
               </div>
             </div>
 
-            <nav className="space-y-2">
-              {links.map((item) => {
-                const active = pathname.startsWith(item.href);
+            <nav className="space-y-1.5">
+              {links.slice(0, 6).map((item) => {
                 const Icon = item.icon;
+                const active = pathname.startsWith(item.href);
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-colors",
+                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-semibold transition-colors",
                       active ? "bg-primary/20 text-primarySoft" : "text-slate-300 hover:bg-primary/10 hover:text-white",
                     )}
                   >
-                    <Icon size={18} />
+                    <Icon size={17} />
                     {item.label}
                   </Link>
                 );
               })}
             </nav>
-          </div>
 
-          <div className="mt-auto border-t border-primary/15 p-6">
-            <Link
-              href="/configuracoes"
-              className="mb-5 flex items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold text-slate-300 transition hover:bg-primary/10 hover:text-white"
-            >
-              <Settings size={18} /> Configuracoes
-            </Link>
-            <div className="flex items-center gap-3 px-3 py-2">
-              <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/30 text-primarySoft">
-                <UserCircle2 size={18} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">{session?.user?.name ?? "Usuario"}</p>
-                <p className="text-xs text-slate-400">{session?.user?.email ?? "-"}</p>
+            <div className="mt-6">
+              <Link
+                href="/configuracoes"
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-semibold transition-colors",
+                  pathname.startsWith("/configuracoes")
+                    ? "bg-primary/20 text-primarySoft"
+                    : "text-slate-300 hover:bg-primary/10 hover:text-white",
+                )}
+              >
+                <Settings size={17} />
+                Configuracoes
+              </Link>
+            </div>
+
+            <div className="mt-auto rounded-xl border border-primary/15 bg-[#161126] p-3">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/30 text-primarySoft">
+                  <UserCircle2 size={17} />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">{session?.user?.name ?? "Usuario"}</p>
+                  <p className="truncate text-xs text-slate-400">{session?.user?.email ?? "-"}</p>
+                </div>
               </div>
             </div>
           </div>
         </aside>
 
         <div className="flex min-h-screen flex-col">
-          <header className="sticky top-0 z-40 flex items-center justify-between border-b border-primary/15 bg-backgroundLight/90 px-4 py-3 backdrop-blur md:px-8 dark:bg-backgroundDark/80">
-            <div className="flex items-center gap-3 lg:hidden">
-              <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={36} height={36} className="h-9 w-9 rounded-lg object-cover" priority />
-              <div>
-                <p className="text-sm font-extrabold text-white">STUDYFLOW</p>
-                <p className="text-[10px] uppercase tracking-[0.15em] text-primary">Estudos</p>
+          <header className="sticky top-0 z-40 border-b border-primary/15 bg-backgroundLight/95 px-4 py-3 backdrop-blur md:px-8 dark:bg-backgroundDark/90">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 lg:hidden">
+                <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={34} height={34} className="h-8 w-8 rounded-lg object-cover" priority />
+                <p className="text-sm font-extrabold tracking-tight text-white">STUDYFLOW</p>
               </div>
-            </div>
-            <div className="ml-auto flex items-center gap-3">
-              <ThemeToggle />
-              <div className="hidden rounded-xl border border-primary/20 bg-[#1d1732] px-3 py-1.5 md:block">
-                <p className="text-xs font-semibold text-white">{session?.user?.name ?? "Usuario"}</p>
-                <p className="text-[10px] text-slate-400">{session?.user?.email ?? "-"}</p>
+
+              <nav className="hidden items-center gap-6 lg:flex">
+                {topLinks.map((item) => {
+                  const active = pathname.startsWith(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "border-b-2 pb-1 text-sm font-semibold transition-colors",
+                        active ? "border-primary text-primarySoft" : "border-transparent text-slate-400 hover:text-white",
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              <div className="ml-auto flex items-center gap-2">
+                <button className="hidden h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-[#1b1530] text-slate-300 md:flex">
+                  <Bell size={16} />
+                </button>
+                <ThemeToggle />
+                <Link
+                  href="/configuracoes"
+                  className="hidden h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-[#1b1530] text-slate-300 md:flex"
+                >
+                  <Settings size={16} />
+                </Link>
+                <div className="hidden rounded-xl border border-primary/20 bg-[#1d1732] px-3 py-1.5 md:block">
+                  <p className="max-w-[170px] truncate text-xs font-semibold text-white">{session?.user?.email ?? "Usuario"}</p>
+                </div>
               </div>
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-5 md:px-8 md:py-8">{children}</main>
+          <main className="flex-1 px-4 py-5 md:px-7 md:py-6">{children}</main>
         </div>
       </div>
 

@@ -1,5 +1,4 @@
 import { updateSettings } from "@/app/actions";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -7,73 +6,142 @@ export default async function ConfiguracoesPage() {
   const user = await requireUser();
   const settings = await prisma.userSettings.findUnique({ where: { userId: user.id } });
 
+  const dailyGoal = settings?.dailyQuestionsGoal ?? 30;
+  const weeklyGoal = settings?.weeklyQuestionsGoal ?? 200;
+  const target = settings?.targetPercentage ?? 80;
+
   return (
-    <div className="space-y-4">
-      <form action={updateSettings} className="rounded-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-lg font-black text-ink dark:text-white">Configurações e metas</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="text-sm">
-            Meta de percentual
-            <input
-              name="targetPercentage"
-              type="number"
-              defaultValue={settings?.targetPercentage ?? 80}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            />
-          </label>
-          <label className="text-sm">
-            Meta diária de questões
-            <input
-              name="dailyQuestionsGoal"
-              type="number"
-              defaultValue={settings?.dailyQuestionsGoal ?? 30}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            />
-          </label>
-          <label className="text-sm">
-            Meta semanal de questões
-            <input
-              name="weeklyQuestionsGoal"
-              type="number"
-              defaultValue={settings?.weeklyQuestionsGoal ?? 200}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            />
-          </label>
-          <label className="text-sm">
-            Viés de prioridade por peso
-            <input
-              name="weightPriorityBias"
-              type="number"
-              step="0.05"
-              defaultValue={settings?.weightPriorityBias ?? 1.25}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            />
-          </label>
-          <div className="text-sm sm:col-span-2">
-            Modo de tela
-            <div className="mt-1">
-              <ThemeToggle />
+    <div className="space-y-8 pb-16 lg:pb-0">
+      <form action={updateSettings} className="space-y-8">
+        <section>
+          <h2 className="mb-4 text-3xl font-black text-white">Perfil do Usuario</h2>
+          <div className="rounded-xl border border-primary/20 bg-[#161126] p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <div className="h-24 w-24 rounded-full border-4 border-primary/30 bg-primary/20" />
+              <div className="flex-1">
+                <p className="text-3xl font-bold text-white">{user.name ?? "Usuario"}</p>
+                <p className="text-sm text-slate-400">{user.email} � Plano Premium</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button type="button" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">Editar detalhes</button>
+                  <button type="button" className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-100">Alterar senha</button>
+                </div>
+              </div>
             </div>
           </div>
-          <input type="hidden" name="theme" value={settings?.theme ?? "system"} />
-        </div>
-        <button className="mt-4 rounded-lg bg-brand px-4 py-2 font-semibold text-white">Salvar configurações</button>
-      </form>
+        </section>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        <a href="/api/export/csv" className="rounded-card border border-slate-200 bg-white p-4 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
-          Exportar registros para CSV
-        </a>
-        <a href="/api/backup" className="rounded-card border border-slate-200 bg-white p-4 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
-          Backup completo JSON
-        </a>
-        <form action="/api/import/base" method="post" encType="multipart/form-data" className="rounded-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-sm font-semibold">Importar planilha (CSV)</p>
-          <p className="mt-1 text-xs text-slate-500">Formato: Data, Peso, Disciplina, Assunto, Questões, Acertos, Erros, % Dia, Meta %, Gap, Prioridade, Obs.</p>
-          <input type="file" name="file" accept=".csv" className="mt-2 text-xs" />
-          <button className="mt-2 rounded-lg border px-3 py-1 text-sm">Importar</button>
-        </form>
-      </section>
+        <section>
+          <h3 className="mb-4 text-2xl font-bold text-white">Metas de estudo</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <article className="rounded-xl border border-primary/20 bg-[#161126] p-5">
+              <div className="mb-3 flex items-center justify-between text-sm text-slate-300">
+                <span>Meta diaria (questoes)</span>
+                <span className="font-bold text-primarySoft">{dailyGoal}</span>
+              </div>
+              <input
+                name="dailyQuestionsGoal"
+                type="number"
+                min={1}
+                defaultValue={dailyGoal}
+                className="w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-2.5 text-sm text-white"
+              />
+            </article>
+            <article className="rounded-xl border border-primary/20 bg-[#161126] p-5">
+              <div className="mb-3 flex items-center justify-between text-sm text-slate-300">
+                <span>Meta semanal (questoes)</span>
+                <span className="font-bold text-primarySoft">{weeklyGoal}</span>
+              </div>
+              <input
+                name="weeklyQuestionsGoal"
+                type="number"
+                min={1}
+                defaultValue={weeklyGoal}
+                className="w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-2.5 text-sm text-white"
+              />
+            </article>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="mb-4 text-2xl font-bold text-white">Logica de prioridade</h3>
+          <div className="space-y-3">
+            <label className="flex items-start justify-between rounded-xl border border-primary/40 bg-[#1b1630] p-4">
+              <div>
+                <p className="font-bold text-white">Repeticao Espacada (SRS)</p>
+                <p className="text-sm text-slate-400">Otimiza a retencao revisando topicos em intervalos ideais.</p>
+              </div>
+              <input type="radio" checked readOnly className="mt-1" />
+            </label>
+            <label className="flex items-start justify-between rounded-xl border border-primary/20 bg-[#161126] p-4 opacity-80">
+              <div>
+                <p className="font-bold text-white">Focar em fraquezas</p>
+                <p className="text-sm text-slate-400">Prioriza automaticamente os topicos com menor taxa de acerto.</p>
+              </div>
+              <input type="radio" readOnly className="mt-1" />
+            </label>
+            <label className="flex items-start justify-between rounded-xl border border-primary/20 bg-[#161126] p-4 opacity-80">
+              <div>
+                <p className="font-bold text-white">Progressao linear</p>
+                <p className="text-sm text-slate-400">Segue a ordem cronologica sem pular etapas.</p>
+              </div>
+              <input type="radio" readOnly className="mt-1" />
+            </label>
+            <div className="rounded-xl border border-primary/20 bg-[#161126] p-4">
+              <p className="text-sm text-slate-300">Vies de prioridade por peso</p>
+              <input
+                name="weightPriorityBias"
+                type="number"
+                step="0.05"
+                defaultValue={settings?.weightPriorityBias ?? 1.25}
+                className="mt-2 w-full rounded-lg border border-primary/30 bg-[#120e20] px-3 py-2.5 text-sm text-white"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="mb-4 text-2xl font-bold text-white">Preferencias de interface</h3>
+          <div className="overflow-hidden rounded-xl border border-primary/20 bg-[#161126]">
+            <div className="flex items-center justify-between border-b border-primary/15 px-4 py-4">
+              <div>
+                <p className="font-medium text-white">Modo escuro</p>
+                <p className="text-xs text-slate-400">Ativar tema visual noturno</p>
+              </div>
+              <span className="rounded-full bg-primary/30 px-3 py-1 text-xs font-bold text-primarySoft">Ativo</span>
+            </div>
+            <div className="flex items-center justify-between border-b border-primary/15 px-4 py-4">
+              <div>
+                <p className="font-medium text-white">Idioma do sistema</p>
+                <p className="text-xs text-slate-400">Escolha sua lingua de preferencia</p>
+              </div>
+              <span className="rounded-lg bg-slate-700 px-3 py-1 text-sm text-slate-100">Portugues (BR)</span>
+            </div>
+            <div className="flex items-center justify-between px-4 py-4">
+              <div>
+                <p className="font-medium text-white">Notificacoes push</p>
+                <p className="text-xs text-slate-400">Alertas de revisao e metas</p>
+              </div>
+              <span className="rounded-full bg-primary/30 px-3 py-1 text-xs font-bold text-primarySoft">Ativo</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
+          <h3 className="text-xl font-bold text-red-400">Zona de perigo</h3>
+          <p className="mt-1 text-sm text-slate-300">Acoes irreversiveis que afetam permanentemente sua conta.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" className="rounded-lg border border-red-500 px-4 py-2 text-sm font-semibold text-red-300">Limpar historico de estudos</button>
+            <button type="button" className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white">Excluir conta permanentemente</button>
+          </div>
+        </section>
+
+        <section className="flex items-center justify-end gap-3 border-t border-primary/20 pt-5">
+          <input type="hidden" name="targetPercentage" value={target} />
+          <input type="hidden" name="theme" value={settings?.theme ?? "system"} />
+          <button type="button" className="px-5 py-2.5 text-sm font-semibold text-slate-400">Cancelar</button>
+          <button type="submit" className="rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-white shadow-soft">Salvar alteracoes</button>
+        </section>
+      </form>
     </div>
   );
 }
