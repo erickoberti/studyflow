@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef, useState } from "react";
 import { UploadCloud } from "lucide-react";
@@ -15,7 +15,7 @@ export function ImportDailyForm() {
 
     const file = fileRef.current?.files?.[0];
     if (!file) {
-      toast.error("Selecione um CSV de registro diario.");
+      toast.error("Selecione um CSV de registro diário.");
       return;
     }
 
@@ -31,13 +31,13 @@ export function ImportDailyForm() {
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const errorMessage = data?.message ?? "Erro ao importar registro diario.";
+      const errorMessage = data?.message ?? "Erro ao importar registro diário.";
       setMessage(errorMessage);
       toast.error(errorMessage);
       return;
     }
 
-    const successMessage = data?.message ?? "Registro diario importado com sucesso.";
+    const successMessage = data?.message ?? "Registro diário importado com sucesso.";
     setMessage(successMessage);
     toast.success(successMessage);
     setFileName("");
@@ -68,10 +68,11 @@ export function ImportDailyForm() {
         disabled={loading}
         className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-soft hover:bg-primary/90 disabled:opacity-60"
       >
-        {loading ? "Importando..." : "Importar registro diario"}
+        {loading ? "Importando..." : "Importar registro diário"}
       </button>
 
       {message ? <p className="text-xs font-semibold text-emerald-400">{message}</p> : null}
     </form>
   );
 }
+

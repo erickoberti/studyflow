@@ -1,4 +1,4 @@
-import { ImportDailyForm } from "@/components/forms/import-daily-form";
+﻿import { ImportDailyForm } from "@/components/forms/import-daily-form";
 import { StudySessionForm } from "@/components/forms/study-session-form";
 import { requireUser } from "@/lib/auth";
 import { getNextCycleSuggestion } from "@/lib/analytics";
@@ -25,22 +25,22 @@ export default async function RegistroPage() {
   return (
     <div className="space-y-5 pb-16 lg:pb-0">
       <header>
-        <h1 className="text-3xl font-black text-white">Registrar Estudo</h1>
-        <p className="mt-1 text-slate-400">Acompanhe seu progresso e mantenha a constancia no ciclo.</p>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white">Registrar Estudo</h1>
+        <p className="mt-1 text-slate-500 dark:text-slate-400">Acompanhe seu progresso e mantenha a constância no ciclo.</p>
       </header>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <article className="rounded-2xl border border-primary/20 bg-[#161126] p-5">
-          <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Sugestao automatica do ciclo</p>
-          <h2 className="mt-1 text-3xl font-black text-white">{suggestion.next?.subject.name ?? "Sem sugestao"}</h2>
-          <p className="text-sm text-slate-400">
-            Ultimo: {suggestion.last?.subject.name ?? "-"} | Proximo: #{suggestion.next?.orderIndex ?? "-"}
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-primary/20 dark:bg-[#161126]">
+          <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Sugestão automática do ciclo</p>
+          <h2 className="mt-1 text-3xl font-black text-slate-900 dark:text-white">{suggestion.next?.subject.name ?? "Sem sugestão"}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Último: {suggestion.last?.subject.name ?? "-"} | Próximo: #{suggestion.next?.orderIndex ?? "-"}
           </p>
         </article>
 
-        <article className="rounded-2xl border border-primary/20 bg-[#161126] p-5">
-          <h3 className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-400">Importar planilha de registro diario</h3>
-          <p className="mt-1 text-xs text-slate-500">Formato: Data, Peso, Disciplina, Assunto, Questoes, Acertos, Erros, % Dia, Meta %, Gap, Prioridade.</p>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-primary/20 dark:bg-[#161126]">
+          <h3 className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-500">Importar planilha de registro diário</h3>
+          <p className="mt-1 text-xs text-slate-500">Formato: Data, Peso, Disciplina, Assunto, Questões, Acertos, Erros, % Dia, Meta %, Gap, Prioridade.</p>
           <ImportDailyForm />
         </article>
       </section>

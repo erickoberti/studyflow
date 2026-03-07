@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useState, useTransition } from "react";
@@ -43,3 +43,5 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+

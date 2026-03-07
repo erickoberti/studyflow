@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 type CycleOption = {
@@ -56,6 +57,13 @@ function semaforo(percentage: number) {
   };
 }
 
+function nextCycleId(cycleEntries: CycleOption[], currentId: string) {
+  const ordered = [...cycleEntries].sort((a, b) => a.orderIndex - b.orderIndex);
+  const idx = ordered.findIndex((entry) => entry.id === currentId);
+  if (idx === -1) return currentId;
+  return ordered[(idx + 1) % ordered.length]?.id ?? currentId;
+}
+
 export function StudySessionForm({
   cycleEntries,
   suggestedId,
@@ -63,6 +71,7 @@ export function StudySessionForm({
   cycleEntries: CycleOption[];
   suggestedId?: string;
 }) {
+  const router = useRouter();
   const [cycleEntryId, setCycleEntryId] = useState(suggestedId ?? cycleEntries[0]?.id ?? "");
   const [questions, setQuestions] = useState(20);
   const [correct, setCorrect] = useState(14);
@@ -96,7 +105,7 @@ export function StudySessionForm({
     }
 
     if (correct > questions) {
-      toast.error("Acertos nao pode ser maior que questoes.");
+      toast.error("Acertos não podem ser maiores que questões.");
       return;
     }
 
@@ -124,6 +133,11 @@ export function StudySessionForm({
 
     toast.success("Registro salvo com sucesso.");
     setNotes("");
+    setQuestions(20);
+    setCorrect(14);
+    setEstimatedMinutes(30);
+    setCycleEntryId((prev) => nextCycleId(cycleEntries, prev));
+    router.refresh();
   }
 
   return (
@@ -175,7 +189,7 @@ export function StudySessionForm({
             </label>
 
             <label className="text-sm text-slate-300">
-              Quantidade de questoes
+              Quantidade de questões
               <input
                 type="number"
                 min={1}
@@ -209,13 +223,13 @@ export function StudySessionForm({
             </label>
 
             <label className="text-sm text-slate-300 md:col-span-2">
-              Observacoes / pontos de atencao
+              Observações / pontos de atenção
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
                 className="mt-1.5 w-full resize-none rounded-lg border border-primary/30 bg-[#120e20] px-3 py-2.5 text-white"
-                placeholder="O que voce sentiu dificuldade nesta sessao?"
+                placeholder="O que você sentiu dificuldade nesta sessão?"
               />
             </label>
           </div>
@@ -240,11 +254,11 @@ export function StudySessionForm({
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/20">
             <div className={`h-full rounded-full ${status.bar}`} style={{ width: `${Math.min(100, percentage)}%` }} />
           </div>
-          <p className="mt-2 text-xs text-white/90">Calculado com base em {correct} acertos de {questions} questoes.</p>
+          <p className="mt-2 text-xs text-white/90">Calculado com base em {correct} acertos de {questions} questões.</p>
         </article>
 
         <article className="rounded-2xl border border-primary/20 bg-[#161126] p-5">
-          <h3 className="text-base font-bold text-white">Cronometro de estudo</h3>
+          <h3 className="text-base font-bold text-white">Cronômetro de estudo</h3>
           <p className="mt-2 text-4xl font-black text-primarySoft">{formatClock(elapsedSeconds)}</p>
           <div className="mt-4 flex gap-2">
             <button
@@ -275,7 +289,7 @@ export function StudySessionForm({
         </article>
 
         <article className="rounded-2xl border border-primary/20 bg-[#161126] p-5">
-          <h3 className="text-base font-bold text-white">Estatisticas do assunto</h3>
+          <h3 className="text-base font-bold text-white">Estatísticas do assunto</h3>
           <div className="mt-3 space-y-2 text-sm text-slate-300">
             <div className="flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2">
               <span>Disciplina</span>
@@ -300,8 +314,8 @@ export function StudySessionForm({
           </div>
           <div className="mt-4 border-t border-primary/20 pt-3 text-sm text-slate-400">
             <p className="font-semibold text-slate-300">Onde marcar no TEC</p>
-            <p className="mt-1">{selected?.subject.tecReference ?? "Nao informado"}</p>
-            <p className="mt-2 text-xs">{selected?.subject.notes ?? "Sem observacoes"}</p>
+            <p className="mt-1">{selected?.subject.tecReference ?? "Não informado"}</p>
+            <p className="mt-2 text-xs">{selected?.subject.notes ?? "Sem observações"}</p>
           </div>
         </article>
       </div>

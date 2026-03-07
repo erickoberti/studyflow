@@ -1,4 +1,4 @@
-import { formatDistanceToNow } from "date-fns";
+﻿import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { requireUser } from "@/lib/auth";
 import { getReviewSuggestions } from "@/lib/analytics";
@@ -18,119 +18,92 @@ export default async function RevisaoPage() {
     : 0;
 
   return (
-    <div className="grid gap-6 pb-16 xl:grid-cols-[1fr_320px] lg:pb-0">
-      <div className="space-y-6">
-        <header className="rounded-2xl border border-primary/20 bg-[#161126] p-6">
-          <h1 className="text-4xl font-black text-white">Central de revisao</h1>
-          <p className="mt-1 text-slate-400">Otimize sua retencao com base na curva do esquecimento.</p>
+    <div className="space-y-8 pb-16 lg:pb-0">
+      <header>
+        <h1 className="text-4xl font-black text-slate-900 dark:text-white">Painel de Revisão</h1>
+        <p className="mt-1 text-slate-500 dark:text-slate-400">Otimize seu aprendizado focando nos tópicos mais críticos.</p>
+      </header>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <article className="rounded-xl border border-primary/20 bg-[#120e20] p-4">
-              <p className="text-sm text-slate-400">Cards p/ hoje</p>
-              <p className="mt-1 text-3xl font-black text-white">{cardsToday}</p>
-            </article>
-            <article className="rounded-xl border border-primary/20 bg-[#120e20] p-4">
-              <p className="text-sm text-slate-400">Taxa de acerto</p>
-              <p className={`mt-1 text-3xl font-black ${avgWeak >= 80 ? "text-emerald-300" : avgWeak >= 70 ? "text-amber-300" : "text-red-300"}`}>{avgWeak.toFixed(1)}%</p>
-            </article>
-            <article className="rounded-xl border border-primary/20 bg-[#120e20] p-4">
-              <p className="text-sm text-slate-400">Tempo estimado</p>
-              <p className="mt-1 text-3xl font-black text-white">15 min</p>
-            </article>
-          </div>
-        </header>
-
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white">Foco imediato: erros recentes</h3>
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {data.weak.slice(0, 4).map((item) => (
-              <article key={item.id} className="rounded-xl border border-primary/20 bg-[#161126] p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="rounded bg-orange-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-orange-300">Altas falhas</span>
-                    <h4 className="mt-2 text-lg font-bold text-white">{item.discipline}</h4>
-                    <p className="text-sm text-slate-400">{item.subject}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-3xl font-black text-orange-300">{item.percentage.toFixed(0)}%</span>
-                    <p className="text-[10px] text-slate-500">Taxa de acerto</p>
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
+        <div className="space-y-6">
+          <article className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-primary/20 dark:bg-[#161126]">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">Sugestão de prioridade</p>
+            {data.weak[0] ? (
+              <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
+                <div className="rounded-xl bg-gradient-to-br from-primary to-[#6d38e0] p-4 text-white">
+                  <p className="text-xs font-bold uppercase">Alta urgência</p>
+                  <p className="mt-6 text-4xl font-black">Σ</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-primary">{data.weak[0].discipline}</p>
+                  <h2 className="mt-1 text-3xl font-black text-slate-900 dark:text-white">{data.weak[0].subject}</h2>
+                  <p className="mt-2 text-slate-600 dark:text-slate-400">Você está com baixo desempenho e sem revisão recente nesse tópico.</p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <p className="text-sm text-slate-500">Último estudo: {when(data.weak[0].lastStudy)}</p>
+                    <button className="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white">Iniciar agora</button>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Ultimo estudo: {when(item.lastStudy)}</span>
-                  <button className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white">Revisar agora</button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+              </div>
+            ) : (
+              <p className="mt-2 text-slate-500">Sem dados de revisão ainda.</p>
+            )}
+          </article>
 
-        <section>
-          <h3 className="mb-3 text-xl font-bold text-white">Curva de esquecimento</h3>
-          <div className="overflow-hidden rounded-xl border border-primary/20 bg-[#161126]">
-            <div className="divide-y divide-primary/10">
-              {data.stale.slice(0, 8).map((item) => (
-                <div key={item.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between hover:bg-primary/5">
-                  <div>
-                    <p className="font-semibold text-white">{item.discipline}</p>
-                    <p className="text-sm text-slate-400">{item.subject}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <p className="text-xs text-slate-500">Ultimo: {when(item.lastStudy)}</p>
-                    <button className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primarySoft">Revisar</button>
-                  </div>
-                </div>
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Matérias pendentes</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {data.stale.slice(0, 4).map((item) => (
+                <article key={item.id} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-primary/20 dark:bg-[#161126]">
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">{item.discipline}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{item.subject}</p>
+                  <p className="mt-2 text-xs text-slate-500">Último estudo: {when(item.lastStudy)}</p>
+                </article>
               ))}
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white">Vistos recentemente</h3>
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {data.recent.slice(0, 6).map((item) => (
-              <article key={item.id} className="rounded-xl border border-primary/20 bg-[#161126] p-4">
-                <div className="flex items-center gap-2 text-[10px]">
-                  <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-bold text-emerald-300">CONCLUIDO</span>
-                  <span className="text-slate-500">{when(item.lastStudy)}</span>
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <article className="rounded-xl border border-slate-200 bg-white p-4 dark:border-primary/20 dark:bg-[#161126]">
+              <p className="text-xs uppercase tracking-wider text-slate-500">Média semanal</p>
+              <p className="mt-1 text-4xl font-black text-slate-900 dark:text-white">{avgWeak.toFixed(0)}%</p>
+            </article>
+            <article className="rounded-xl border border-slate-200 bg-white p-4 dark:border-primary/20 dark:bg-[#161126]">
+              <p className="text-xs uppercase tracking-wider text-slate-500">Horas estudadas</p>
+              <p className="mt-1 text-4xl font-black text-slate-900 dark:text-white">28.5h</p>
+            </article>
+            <article className="rounded-xl border border-slate-200 bg-white p-4 dark:border-primary/20 dark:bg-[#161126]">
+              <p className="text-xs uppercase tracking-wider text-slate-500">Cards de revisão</p>
+              <p className="mt-1 text-4xl font-black text-slate-900 dark:text-white">{cardsToday}</p>
+            </article>
+            <article className="rounded-xl border border-slate-200 bg-white p-4 dark:border-primary/20 dark:bg-[#161126]">
+              <p className="text-xs uppercase tracking-wider text-slate-500">Ofensiva</p>
+              <p className="mt-1 text-4xl font-black text-slate-900 dark:text-white">12 dias</p>
+            </article>
+          </section>
+        </div>
+
+        <aside className="rounded-2xl border border-red-300 bg-red-50 p-6 dark:border-red-500/20 dark:bg-[#0d1a33]">
+          <h3 className="text-3xl font-black text-red-600 dark:text-red-400">Zonas de alerta</h3>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">Tópicos com desempenho abaixo de 60% recentemente.</p>
+          <div className="mt-5 space-y-4">
+            {data.weak.slice(0, 5).map((item) => (
+              <div key={item.id}>
+                <div className="mb-1 flex justify-between text-sm">
+                  <span className="text-slate-800 dark:text-slate-200">{item.discipline}: {item.subject}</span>
+                  <span className="font-bold text-red-600 dark:text-red-400">{item.percentage.toFixed(0)}% acerto</span>
                 </div>
-                <h4 className="mt-3 font-bold text-white">{item.discipline}</h4>
-                <p className="text-sm text-slate-400">{item.subject}</p>
-                <p className="mt-3 text-xs font-bold text-slate-300">{item.percentage.toFixed(1)}% acerto</p>
-              </article>
+                <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800">
+                  <div className={`h-2 rounded-full ${item.percentage < 50 ? "bg-red-500" : "bg-amber-500"}`} style={{ width: `${Math.max(8, item.percentage)}%` }} />
+                </div>
+              </div>
             ))}
           </div>
-        </section>
-      </div>
-
-      <aside className="hidden xl:flex xl:flex-col xl:gap-4">
-        <div className="rounded-2xl bg-gradient-to-br from-primary to-violet-600 p-6 text-white shadow-soft">
-          <p className="inline-block rounded bg-white/20 px-2 py-1 text-[10px] font-bold uppercase">Turbo revisao</p>
-          <h3 className="mt-4 text-2xl font-black">Maratona de questoes</h3>
-          <p className="mt-2 text-sm text-white/85">Baseado nos seus erros recentes.</p>
-          <button className="mt-5 w-full rounded-xl bg-white py-3 text-sm font-bold text-primary">Iniciar agora</button>
-        </div>
-
-        <div className="rounded-2xl border border-primary/20 bg-[#161126] p-5">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">Seu progresso</h4>
-          <div className="mt-3">
-            <p className="text-sm text-slate-300">Meta semanal</p>
-            <div className="mt-2 h-2 w-full rounded-full bg-primary/15">
-              <div className="h-full w-3/4 rounded-full bg-primary" />
-            </div>
-          </div>
-          <p className="mt-3 text-xs text-slate-400">Faltam alguns cards para bater a meta de hoje.</p>
-        </div>
-
-        <div className="rounded-2xl border border-primary/20 bg-[#161126] p-4">
-          <p className="text-sm font-semibold text-white">{user.name ?? "Aluno"}</p>
-          <p className="text-xs text-slate-500">Mestre dos cards</p>
-        </div>
-      </aside>
+          <button className="mt-6 w-full rounded-xl border border-primary/40 bg-primary/10 py-3 text-sm font-bold text-primary">Reforçar tópicos críticos</button>
+          <p className="mt-4 text-xs text-slate-500">Usuário: {user.name ?? "Aluno"}</p>
+        </aside>
+      </section>
     </div>
   );
 }
