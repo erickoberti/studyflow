@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -10,15 +10,12 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "StudyFlow Concurso",
-  description: "Sistema de gestao de estudos por ciclo para concursos publicos",
+  description: "Sistema de gestão de estudos por ciclo para concursos públicos",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [
-      { url: "/brand/studyflow-logo-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/brand/studyflow-logo-192.png", sizes: "192x192", type: "image/png" },
-    ],
-    apple: [{ url: "/brand/studyflow-logo-192.png", sizes: "180x180", type: "image/png" }],
-    shortcut: "/brand/studyflow-logo-32.png",
+    icon: [{ url: "/brand/studyflow-logo.png", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/brand/studyflow-logo.png", sizes: "512x512", type: "image/png" }],
+    shortcut: "/brand/studyflow-logo.png",
   },
 };
 

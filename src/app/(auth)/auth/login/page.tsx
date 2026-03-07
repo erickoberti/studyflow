@@ -1,4 +1,4 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import Link from "next/link";
 import { LoginForm } from "@/components/forms/login-form";
 
@@ -29,3 +29,6 @@ export default function LoginPage() {
     </div>
   );
 }
+
+
+
