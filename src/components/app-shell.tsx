@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -11,7 +12,6 @@ import {
   LayoutDashboard,
   RefreshCcw,
   Settings,
-  Sparkles,
   UserCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -26,13 +26,7 @@ const links = [
   { href: "/revisao", label: "Revisao", icon: History },
 ];
 
-const mobileLinks = [
-  links[0],
-  links[1],
-  links[2],
-  links[4],
-  links[5],
-];
+const mobileLinks = [links[0], links[1], links[2], links[4], links[5]];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -43,12 +37,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto grid min-h-screen max-w-[1700px] grid-cols-1 lg:grid-cols-[280px_1fr]">
         <aside className="hidden border-r border-primary/15 bg-[#100c1d] lg:flex lg:flex-col">
           <div className="p-7">
-            <div className="mb-9 flex items-start gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-white shadow-soft">
-                <Sparkles size={20} />
-              </div>
+            <div className="mb-9 flex items-center gap-3">
+              <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={44} height={44} className="h-11 w-11 rounded-xl object-cover" priority />
               <div>
-                <h1 className="text-3xl leading-none font-extrabold tracking-tight text-white">StudyFlow</h1>
+                <h1 className="text-3xl leading-none font-extrabold tracking-tight text-white">STUDYFLOW</h1>
                 <p className="mt-1 text-xs font-semibold uppercase tracking-[0.15em] text-primarySoft">Plataforma de Estudos</p>
               </div>
             </div>
@@ -63,9 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     href={item.href}
                     className={cn(
                       "flex items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-colors",
-                      active
-                        ? "bg-primary/20 text-primarySoft"
-                        : "text-slate-300 hover:bg-primary/10 hover:text-white",
+                      active ? "bg-primary/20 text-primarySoft" : "text-slate-300 hover:bg-primary/10 hover:text-white",
                     )}
                   >
                     <Icon size={18} />
@@ -98,11 +88,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-screen flex-col">
           <header className="sticky top-0 z-40 flex items-center justify-between border-b border-primary/15 bg-backgroundLight/90 px-4 py-3 backdrop-blur md:px-8 dark:bg-backgroundDark/80">
             <div className="flex items-center gap-3 lg:hidden">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-white">
-                <Sparkles size={18} />
-              </div>
+              <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={36} height={36} className="h-9 w-9 rounded-lg object-cover" priority />
               <div>
-                <p className="text-sm font-extrabold">StudyFlow</p>
+                <p className="text-sm font-extrabold text-white">STUDYFLOW</p>
                 <p className="text-[10px] uppercase tracking-[0.15em] text-primary">Estudos</p>
               </div>
             </div>

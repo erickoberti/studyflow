@@ -13,8 +13,12 @@ export const metadata: Metadata = {
   description: "Sistema de gestao de estudos por ciclo para concursos publicos",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/icons/icon-192.svg",
-    apple: "/icons/icon-192.svg",
+    icon: [
+      { url: "/brand/studyflow-logo-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/studyflow-logo-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/brand/studyflow-logo-192.png", sizes: "180x180", type: "image/png" }],
+    shortcut: "/brand/studyflow-logo-32.png",
   },
 };
 
