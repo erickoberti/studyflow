@@ -98,6 +98,11 @@ export function StudySessionForm({
   const percentage = questions > 0 ? (correct / questions) * 100 : 0;
   const status = semaforo(percentage);
 
+  const dailyTimeTarget = 240;
+  const dailyQuestionsTarget = 20;
+  const timeProgress = Math.min(100, (estimatedMinutes / dailyTimeTarget) * 100);
+  const questionProgress = Math.min(100, (questions / dailyQuestionsTarget) * 100);
+
   async function submit() {
     if (!cycleEntryId) {
       toast.error("Selecione um assunto do ciclo.");
@@ -255,6 +260,36 @@ export function StudySessionForm({
             <div className={`h-full rounded-full ${status.bar}`} style={{ width: `${Math.min(100, percentage)}%` }} />
           </div>
           <p className="mt-2 text-xs text-white/90">Calculado com base em {correct} acertos de {questions} questões.</p>
+        </article>
+
+        <article className="rounded-2xl border border-primary/20 bg-[#161126] p-5">
+          <h3 className="text-base font-bold text-white">Metas diárias</h3>
+          <div className="mt-4 space-y-3 text-sm text-slate-200">
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <span>Tempo de estudo</span>
+                <span className="font-semibold">{Math.round(estimatedMinutes / 60)}h / {Math.round(dailyTimeTarget / 60)}h</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-700">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${timeProgress}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <span>Questões</span>
+                <span className="font-semibold">{questions} / {dailyQuestionsTarget}</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-700">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${questionProgress}%` }} />
+              </div>
+            </div>
+          </div>
+          <a
+            href="/configuracoes"
+            className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-bold text-primarySoft"
+          >
+            Ajustar metas
+          </a>
         </article>
 
         <article className="rounded-2xl border border-primary/20 bg-[#161126] p-5">

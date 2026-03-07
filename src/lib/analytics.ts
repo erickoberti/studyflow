@@ -1,4 +1,4 @@
-import { format, startOfWeek } from "date-fns";
+﻿import { differenceInCalendarDays, format, parseISO, startOfWeek } from "date-fns";
 import { prisma } from "@/lib/prisma";
 
 export type PriorityLevel = "urgente" | "atencao" | "bom" | "forte";
@@ -147,6 +147,25 @@ export async function getDashboardData(userId: string) {
 
   subjectStats.sort((a, b) => a.priorityScore - b.priorityScore);
   const overallSignal = metaSignal(overallPercentage, targetPercentage);
+  const byDayList = Array.from(byDay.values());
+
+  let streakDays = 0;
+  if (byDayList.length > 0) {
+    streakDays = 1;
+    for (let idx = byDayList.length - 1; idx > 0; idx -= 1) {
+      const current = parseISO(byDayList[idx].date);
+      const previous = parseISO(byDayList[idx - 1].date);
+      const diff = differenceInCalendarDays(current, previous);
+      if (diff === 1) {
+        streakDays += 1;
+      } else {
+        break;
+      }
+    }
+  }
+
+  const activeDays = byDayList.length;
+  const avgQuestionsPerDay = activeDays > 0 ? totalQuestions / activeDays : 0;
 
   return {
     totals: {
@@ -159,8 +178,11 @@ export async function getDashboardData(userId: string) {
       gapToTarget: overallSignal.gap,
       metaLevel: overallSignal.level,
       metaLabel: overallSignal.label,
+      activeDays,
+      avgQuestionsPerDay,
+      streakDays,
     },
-    byDay: Array.from(byDay.values()),
+    byDay: byDayList,
     byWeek: Array.from(byWeek.values()),
     disciplineStats,
     subjectStats,
