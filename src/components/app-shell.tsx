@@ -1,26 +1,29 @@
 ﻿"use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 import {
   BarChart3,
   Bell,
   BookOpen,
   BookOpenCheck,
   History,
+  ListChecks,
   LayoutDashboard,
+  LogOut,
   RefreshCcw,
   Settings,
   UserCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandLogo } from "@/components/brand-logo";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/registro", label: "Registrar Estudo", icon: BookOpenCheck },
+  { href: "/registros", label: "Sessões", icon: ListChecks },
   { href: "/ciclo", label: "Ciclo de Estudos", icon: RefreshCcw },
   { href: "/base", label: "Cadastro", icon: BookOpen },
   { href: "/estatisticas", label: "Desempenho", icon: BarChart3 },
@@ -28,12 +31,22 @@ const links = [
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
-const topLinks = [links[0], links[2], links[4], links[5]];
-const mobileLinks = [links[0], links[1], links[2], links[4], links[6]];
+const topLinks = [links[0], links[3], links[5], links[6]];
+const mobileLinks = [links[0], links[1], links[2], links[3], links[5]];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
+
+  async function handleSignOut() {
+    try {
+      await signOut({ redirect: false });
+    } finally {
+      router.replace("/auth/login?mode=web");
+      router.refresh();
+    }
+  }
 
   return (
     <div className="min-h-screen bg-backgroundLight text-slate-900 dark:bg-backgroundDark dark:text-slate-100">
@@ -41,7 +54,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <aside className="hidden border-r border-slate-200 bg-white lg:flex lg:flex-col dark:border-primary/15 dark:bg-[#100c1d]">
           <div className="flex h-full flex-col p-6">
             <div className="mb-7 flex items-center gap-3">
-              <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={40} height={40} className="h-10 w-10 rounded-xl object-cover" priority />
+              <BrandLogo className="h-10 w-10 rounded-xl object-cover" />
               <div>
                 <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">STUDYFLOW</h1>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Plataforma de estudos</p>
@@ -49,7 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <nav className="space-y-1.5">
-              {links.slice(0, 6).map((item) => {
+              {links.slice(0, 7).map((item) => {
                 const Icon = item.icon;
                 const active = pathname.startsWith(item.href);
                 return (
@@ -95,6 +108,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <p className="truncate text-xs text-slate-500 dark:text-slate-400">{session?.user?.email ?? "-"}</p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20"
+              >
+                <LogOut size={14} /> Sair
+              </button>
             </div>
           </div>
         </aside>
@@ -103,7 +123,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-40 border-b border-slate-200 bg-backgroundLight/95 px-4 py-3 backdrop-blur md:px-8 dark:border-primary/15 dark:bg-backgroundDark/90">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 lg:hidden">
-                <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={34} height={34} className="h-8 w-8 rounded-lg object-cover" priority />
+                <BrandLogo className="h-8 w-8 rounded-lg object-cover" />
                 <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">STUDYFLOW</p>
               </div>
 
@@ -136,6 +156,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   <Settings size={16} />
                 </Link>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="hidden h-9 items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-bold text-primary md:inline-flex"
+                >
+                  <LogOut size={14} /> Sair
+                </button>
                 <div className="hidden rounded-xl border border-slate-200 bg-white px-3 py-1.5 md:block dark:border-primary/20 dark:bg-[#1d1732]">
                   <p className="max-w-[170px] truncate text-xs font-semibold text-slate-800 dark:text-white">{session?.user?.email ?? "Usuário"}</p>
                 </div>
@@ -169,4 +196,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
