@@ -15,14 +15,14 @@ export default async function ConfiguracoesPage() {
   return (
     <div className="space-y-8 pb-12">
       <header>
-        <h1 className="text-5xl font-black tracking-tight text-slate-900 dark:text-white">Settings</h1>
+        <h1 className="text-5xl font-black tracking-tight text-slate-900 dark:text-white">Configurações</h1>
         <p className="mt-1 text-xl text-slate-500 dark:text-slate-400">Gerencie sua conta e preferências da plataforma.</p>
       </header>
 
       <form action={updateSettings} className="space-y-6">
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-panelDark">
           <div className="border-b border-slate-200 p-5 dark:border-slate-800">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white">User Profile</h2>
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white">Perfil do Usuário</h2>
             <p className="text-sm text-slate-500">Suas informações e plano atual</p>
           </div>
           <div className="p-5">
@@ -32,11 +32,11 @@ export default async function ConfiguracoesPage() {
                 <div>
                   <p className="text-3xl font-black text-slate-900 dark:text-white">{user.name ?? "Usuário"}</p>
                   <p className="text-sm text-slate-500">{user.email}</p>
-                  <span className="mt-1 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">Premium Plan</span>
+                  <span className="mt-1 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">Plano Premium</span>
                 </div>
               </div>
               <button type="button" className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-2 text-sm font-bold dark:border-slate-700 dark:bg-slate-800">
-                Edit Profile
+                Editar Perfil
               </button>
             </div>
           </div>
@@ -46,7 +46,7 @@ export default async function ConfiguracoesPage() {
           <article className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-panelDark">
             <div className="border-b border-slate-200 p-5 dark:border-slate-800">
               <h3 className="text-3xl font-black text-slate-900 dark:text-white">Preferências</h3>
-              <p className="text-sm text-slate-500">Customize sua experiência</p>
+              <p className="text-sm text-slate-500">Personalize sua experiência</p>
             </div>
             <div className="space-y-4 p-5">
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -78,10 +78,10 @@ export default async function ConfiguracoesPage() {
             </div>
             <div className="space-y-4 p-5">
               {[
-                ["Email Notifications", "Resumos e alertas de desempenho", true],
-                ["Push Notifications", "Alertas em tempo real", true],
-                ["Study Reminders", "Lembretes de revisão", true],
-                ["Course Updates", "Novos conteúdos", false],
+                ["Notificações por E-mail", "Resumos e alertas de desempenho", true],
+                ["Notificações Push", "Alertas em tempo real", true],
+                ["Lembretes de Estudo", "Lembretes de revisão", true],
+                ["Atualizações de Conteúdo", "Novos conteúdos", false],
               ].map(([title, text, checked]) => (
                 <label key={String(title)} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
                   <div>
@@ -97,7 +97,7 @@ export default async function ConfiguracoesPage() {
 
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-panelDark">
           <div className="border-b border-slate-200 p-5 dark:border-slate-800">
-            <h3 className="text-3xl font-black text-slate-900 dark:text-white">Security</h3>
+            <h3 className="text-3xl font-black text-slate-900 dark:text-white">Segurança</h3>
             <p className="text-sm text-slate-500">Proteja sua conta e dados</p>
           </div>
 
@@ -107,29 +107,29 @@ export default async function ConfiguracoesPage() {
                 <p className="font-semibold">Senha</p>
                 <p className="text-xs text-slate-500">Última alteração há 3 meses</p>
               </div>
-              <button type="button" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold dark:border-slate-700">Change Password</button>
+              <button type="button" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold dark:border-slate-700">Alterar Senha</button>
             </div>
             <div className="flex items-center justify-between p-5">
               <div>
-                <p className="font-semibold">Two-Factor Authentication</p>
+                <p className="font-semibold">Autenticação em Dois Fatores</p>
                 <p className="text-xs text-slate-500">Habilitado (SMS final 4421)</p>
               </div>
-              <button type="button" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold dark:border-slate-700">Configure 2FA</button>
+              <button type="button" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold dark:border-slate-700">Configurar 2FA</button>
             </div>
             <div className="flex items-center justify-between p-5">
               <div>
-                <p className="font-semibold">Active Sessions</p>
+                <p className="font-semibold">Sessões Ativas</p>
                 <p className="text-xs text-slate-500">Você está logado em 3 dispositivos</p>
               </div>
-              <button type="button" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold dark:border-slate-700">Manage Devices</button>
+              <button type="button" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold dark:border-slate-700">Gerenciar Dispositivos</button>
             </div>
           </div>
 
           <div className="border-t border-red-200 bg-red-50 p-5 dark:border-red-500/20 dark:bg-red-500/10">
-            <p className="text-sm font-bold text-red-600 dark:text-red-400">Danger Zone</p>
+            <p className="text-sm font-bold text-red-600 dark:text-red-400">Zona de Perigo</p>
             <p className="text-xs text-red-500">Excluir sua conta é permanente e irreversível.</p>
             <div className="mt-3">
-              <button type="button" className="rounded-lg border border-red-400 px-4 py-2 text-sm font-bold text-red-600 dark:text-red-300">Delete Account</button>
+              <button type="button" className="rounded-lg border border-red-400 px-4 py-2 text-sm font-bold text-red-600 dark:text-red-300">Excluir Conta</button>
             </div>
           </div>
         </section>
@@ -138,10 +138,12 @@ export default async function ConfiguracoesPage() {
           <input type="hidden" name="targetPercentage" value={target} />
           <input type="hidden" name="theme" value={settings?.theme ?? "system"} />
           <button type="button" className="rounded-xl border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
-          <button type="submit" className="rounded-xl bg-primary px-6 py-2 text-sm font-bold text-white shadow-soft">Save Changes</button>
+          <button type="submit" className="rounded-xl bg-primary px-6 py-2 text-sm font-bold text-white shadow-soft">Salvar Alterações</button>
         </section>
       </form>
     </div>
   );
 }
+
+
 

@@ -4,7 +4,7 @@ import { getDashboardData } from "@/lib/analytics";
 
 function trendIcon(value: number) {
   if (value >= 80) return <TrendingUp size={16} className="text-emerald-500" />;
-  if (value >= 65) return <span className="text-slate-400">?</span>;
+  if (value >= 65) return <span className="text-slate-400">→</span>;
   return <TrendingDown size={16} className="text-rose-500" />;
 }
 
@@ -116,7 +116,7 @@ export default async function EstatisticasPage() {
               {topSubjects.map((item) => (
                 <tr key={`${item.discipline}-${item.subject}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                   <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{item.discipline}</td>
-                  <td className="px-6 py-4">{(item.questions / 8).toFixed(1)}h</td>
+                  <td className="px-6 py-4">{(item.estimatedMinutes / 60).toFixed(1)}h</td>
                   <td className="px-6 py-4">{item.questions}</td>
                   <td className="px-6 py-4 font-bold">{item.percentage.toFixed(1)}%</td>
                   <td className="px-6 py-4">{trendIcon(item.percentage)}</td>
@@ -132,6 +132,7 @@ export default async function EstatisticasPage() {
     </div>
   );
 }
+
 
 
 
