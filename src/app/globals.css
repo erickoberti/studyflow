@@ -1,15 +1,15 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #f4f2fb;
-  --foreground: #151127;
+  --background: #f6f6f8;
+  --foreground: #111827;
 }
 
 .dark {
-  --background: #0f0c19;
-  --foreground: #f5f2ff;
+  --background: #141121;
+  --foreground: #f8fafc;
 }
 
 html,
@@ -19,21 +19,16 @@ body {
 
 body {
   font-size: 15px;
-  line-height: 1.35;
-  background:
-    radial-gradient(circle at 8% -10%, rgba(137, 90, 246, 0.12), transparent 40%),
-    radial-gradient(circle at 95% 2%, rgba(95, 66, 180, 0.12), transparent 35%),
-    var(--background);
+  line-height: 1.4;
+  background: var(--background);
   color: var(--foreground);
 }
 
-.dark body {
-  background:
-    radial-gradient(circle at 10% -10%, rgba(137, 90, 246, 0.2), transparent 40%),
-    radial-gradient(circle at 92% 8%, rgba(109, 56, 224, 0.2), transparent 35%),
-    var(--background);
+* {
+  border-color: rgb(203 213 225 / 0.65);
 }
 
-* {
-  border-color: rgb(56 43 85 / 0.32);
+.dark * {
+  border-color: rgb(71 85 105 / 0.45);
 }
+

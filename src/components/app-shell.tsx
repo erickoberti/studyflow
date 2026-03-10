@@ -9,10 +9,11 @@ import {
   BookOpen,
   BookOpenCheck,
   History,
-  ListChecks,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   RefreshCcw,
+  Search,
   Settings,
   UserCircle2,
 } from "lucide-react";
@@ -24,15 +25,21 @@ const links = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/registro", label: "Registrar Estudo", icon: BookOpenCheck },
   { href: "/registros", label: "Sessões", icon: ListChecks },
-  { href: "/ciclo", label: "Ciclo de Estudos", icon: RefreshCcw },
-  { href: "/base", label: "Cadastro", icon: BookOpen },
-  { href: "/estatisticas", label: "Desempenho", icon: BarChart3 },
+  { href: "/ciclo", label: "Ciclo", icon: RefreshCcw },
+  { href: "/base", label: "Disciplinas", icon: BookOpen },
+  { href: "/estatisticas", label: "Estatísticas", icon: BarChart3 },
   { href: "/revisao", label: "Revisão", icon: History },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
-const topLinks = [links[0], links[3], links[5], links[6]];
-const mobileLinks = [links[0], links[1], links[2], links[3], links[5]];
+const topNav = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/ciclo", label: "Ciclo" },
+  { href: "/base", label: "Matérias" },
+  { href: "/estatisticas", label: "Relatórios" },
+];
+
+const mobileLinks = [links[0], links[1], links[3], links[5], links[7]];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -50,19 +57,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-backgroundLight text-slate-900 dark:bg-backgroundDark dark:text-slate-100">
-      <div className="mx-auto grid min-h-screen max-w-[1720px] grid-cols-1 lg:grid-cols-[265px_1fr]">
-        <aside className="hidden border-r border-slate-200 bg-white lg:flex lg:flex-col dark:border-primary/15 dark:bg-[#100c1d]">
-          <div className="flex h-full flex-col p-6">
-            <div className="mb-7 flex items-center gap-3">
+      <div className="mx-auto grid min-h-screen max-w-[1700px] grid-cols-1 lg:grid-cols-[275px_1fr]">
+        <aside className="hidden border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-backgroundDark lg:flex lg:flex-col">
+          <div className="p-6">
+            <div className="mb-8 flex items-center gap-3">
               <BrandLogo className="h-10 w-10 rounded-xl object-cover" />
-              <div>
-                <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">STUDYFLOW</h1>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Plataforma de estudos</p>
-              </div>
+              <span className="text-3xl font-black tracking-tight">StudyFlow</span>
             </div>
 
-            <nav className="space-y-1.5">
-              {links.slice(0, 7).map((item) => {
+            <nav className="space-y-1">
+              {links.map((item) => {
                 const Icon = item.icon;
                 const active = pathname.startsWith(item.href);
                 return (
@@ -72,8 +76,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     className={cn(
                       "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
                       active
-                        ? "bg-primary/15 text-primary"
-                        : "text-slate-600 hover:bg-primary/10 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white",
+                        ? "bg-primary text-white shadow-lg shadow-primary/20"
+                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/70",
                     )}
                   >
                     <Icon size={17} />
@@ -82,29 +86,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 );
               })}
             </nav>
+          </div>
 
-            <div className="mt-6">
-              <Link
-                href="/configuracoes"
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
-                  pathname.startsWith("/configuracoes")
-                    ? "bg-primary/15 text-primary"
-                    : "text-slate-600 hover:bg-primary/10 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white",
-                )}
-              >
-                <Settings size={17} />
-                Configurações
-              </Link>
-            </div>
-
-            <div className="mt-auto rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-primary/15 dark:bg-[#161126]">
+          <div className="mt-auto border-t border-slate-200 p-6 dark:border-slate-800">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/60">
               <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/20 text-primary">
-                  <UserCircle2 size={17} />
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-primary">
+                  <UserCircle2 size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{session?.user?.name ?? "Usuário"}</p>
+                  <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{session?.user?.name ?? "Usuário"}</p>
                   <p className="truncate text-xs text-slate-500 dark:text-slate-400">{session?.user?.email ?? "-"}</p>
                 </div>
               </div>
@@ -120,15 +111,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <div className="flex min-h-screen flex-col">
-          <header className="sticky top-0 z-40 border-b border-slate-200 bg-backgroundLight/95 px-4 py-3 backdrop-blur md:px-8 dark:border-primary/15 dark:bg-backgroundDark/90">
-            <div className="flex items-center justify-between gap-3">
+          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-backgroundDark/90 md:px-8">
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-3 lg:hidden">
                 <BrandLogo className="h-8 w-8 rounded-lg object-cover" />
-                <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">STUDYFLOW</p>
+                <span className="text-lg font-black">StudyFlow</span>
               </div>
 
-              <nav className="hidden items-center gap-6 lg:flex">
-                {topLinks.map((item) => {
+              <nav className="hidden items-center gap-8 lg:flex">
+                {topNav.map((item) => {
                   const active = pathname.startsWith(item.href);
                   return (
                     <Link
@@ -136,7 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       href={item.href}
                       className={cn(
                         "border-b-2 pb-1 text-sm font-semibold transition-colors",
-                        active ? "border-primary text-primary" : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
+                        active ? "border-primary text-primary" : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
                       )}
                     >
                       {item.label}
@@ -145,36 +136,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 })}
               </nav>
 
+              <label className="hidden max-w-md flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 md:flex dark:border-slate-700 dark:bg-slate-900/60">
+                <Search size={16} className="text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Pesquisar tópicos, aulas ou materiais..."
+                  className="w-full border-none bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100"
+                />
+              </label>
+
               <div className="ml-auto flex items-center gap-2">
-                <button className="hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 md:flex dark:border-primary/20 dark:bg-[#1b1530] dark:text-slate-300">
+                <button className="grid h-10 w-10 place-items-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                   <Bell size={16} />
                 </button>
                 <ThemeToggle />
-                <Link
-                  href="/configuracoes"
-                  className="hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 md:flex dark:border-primary/20 dark:bg-[#1b1530] dark:text-slate-300"
-                >
+                <Link href="/configuracoes" className="grid h-10 w-10 place-items-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                   <Settings size={16} />
                 </Link>
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className="hidden h-9 items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-bold text-primary md:inline-flex"
+                  className="hidden items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary md:inline-flex"
                 >
                   <LogOut size={14} /> Sair
                 </button>
-                <div className="hidden rounded-xl border border-slate-200 bg-white px-3 py-1.5 md:block dark:border-primary/20 dark:bg-[#1d1732]">
-                  <p className="max-w-[170px] truncate text-xs font-semibold text-slate-800 dark:text-white">{session?.user?.email ?? "Usuário"}</p>
-                </div>
               </div>
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-5 md:px-7 md:py-6">{children}</main>
+          <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5 border-t border-slate-200 bg-white/95 p-1 backdrop-blur lg:hidden dark:border-primary/20 dark:bg-[#120e20]/95">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5 border-t border-slate-200 bg-white/95 p-1 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-backgroundDark/95">
         {mobileLinks.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);
@@ -196,3 +190,4 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
