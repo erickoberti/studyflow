@@ -129,7 +129,7 @@ export default async function DashboardPage() {
           <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Daily Goal Progress</h3>
-              <span className="rounded bg-primary/10 px-2 py-1 text-xs font-bold text-primary">Target: {dashboard.totals.dailyGoal}q</span>
+              <span className="rounded bg-primary/10 px-2 py-1 text-xs font-bold text-primary">Target: 50q</span>
             </div>
 
             <div className="space-y-4">
@@ -241,4 +241,5 @@ export default async function DashboardPage() {
     </div>
   );
 }
+
 

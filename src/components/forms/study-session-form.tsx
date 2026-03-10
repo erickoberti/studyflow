@@ -189,7 +189,7 @@ export function StudySessionForm({
     <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
       <div className="space-y-6">
         <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <h2 className="mb-5 inline-flex items-center gap-2 text-3xl font-black text-slate-900 dark:text-white">
+          <h2 className="mb-5 inline-flex items-center gap-2 text-2xl font-black text-slate-900 dark:text-white">
             <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-white text-sm">i</span>
             Detalhes do Estudo
           </h2>
@@ -321,7 +321,7 @@ export function StudySessionForm({
 
       <aside className="space-y-5">
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <h3 className="mb-4 text-3xl font-black text-slate-900 dark:text-white">Progresso Diário</h3>
+          <h3 className="mb-4 text-2xl font-black text-slate-900 dark:text-white">Progresso Diário</h3>
           <div className="space-y-3">
             <div>
               <div className="mb-1 flex justify-between text-sm"><span className="text-slate-500">Horas Estudadas</span><span className="font-bold">{(estimatedMinutes / 60).toFixed(1)} / 6h</span></div>
@@ -335,7 +335,7 @@ export function StudySessionForm({
               <div className="flex items-center gap-3">
                 <div className="grid h-11 w-11 place-items-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300"><Flame size={18} /></div>
                 <div>
-                  <p className="text-xl font-black text-slate-900 dark:text-white">12 Dias de Streak!</p>
+                  <p className="text-lg font-black text-slate-900 dark:text-white">12 Dias de Streak!</p>
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Mantenha o foco</p>
                 </div>
               </div>
@@ -344,7 +344,7 @@ export function StudySessionForm({
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <h3 className="mb-4 text-3xl font-black text-slate-900 dark:text-white">Métricas Calculadas</h3>
+          <h3 className="mb-4 text-2xl font-black text-slate-900 dark:text-white">Métricas Calculadas</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
               <span className="inline-flex items-center gap-2 text-sm"><Clock3 size={14} className="text-primary" /> Produtividade</span>
@@ -369,4 +369,5 @@ export function StudySessionForm({
     </section>
   );
 }
+
 
