@@ -5,7 +5,6 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LoginForm } from "@/components/forms/login-form";
-import { BrandLogo } from "@/components/brand-logo";
 
 function detectAppMode() {
   if (typeof window === "undefined") return false;
@@ -46,7 +45,9 @@ export default function LoginPage() {
 
           <div className="px-8 pb-8 pt-3">
             <div className="mb-6 flex justify-center">
-              <BrandLogo className="h-14 w-14 rounded-xl object-cover" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-brand text-lg font-black text-white shadow-lg shadow-brand/20">
+                SF
+              </div>
             </div>
 
             <div className="mb-7 text-center">
