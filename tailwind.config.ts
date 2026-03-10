@@ -1,4 +1,4 @@
-import type { Config } from "tailwindcss";
+﻿import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
@@ -10,20 +10,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        backgroundLight: "#f6f5f8",
-        backgroundDark: "#151022",
-        panelDark: "#1b1530",
-        primary: "#895af6",
-        primarySoft: "#ae8aff",
+        backgroundLight: "#f6f6f8",
+        backgroundDark: "#141121",
+        panelDark: "#1a1c2e",
+        primary: "#3b19e6",
+        primarySoft: "#7f67ff",
       },
       borderRadius: {
         card: "1rem",
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        sans: ["var(--font-lexend)", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        soft: "0 20px 40px rgba(137, 90, 246, 0.18)",
+        soft: "0 16px 34px rgba(59, 25, 230, 0.22)",
       },
     },
   },
@@ -31,3 +31,4 @@ const config: Config = {
 };
 
 export default config;
+
