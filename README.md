@@ -1,6 +1,6 @@
-# StudyFlow Concurso (PWA)
+# StudyFlow Ciclos (PWA)
 
-Sistema completo para gestão de estudos por ciclo para concursos, com foco em resolução de questões.
+Sistema completo para gestão de ciclos de estudos, com foco em organização, acompanhamento e resolução de questões.
 
 ## Stack
 

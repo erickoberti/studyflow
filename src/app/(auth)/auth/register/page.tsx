@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import Image from "next/image";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { registerUser } from "@/app/actions";
@@ -22,7 +21,9 @@ export default function RegisterPage() {
         }}
       >
         <div className="mb-3 flex items-center gap-3">
-          <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={38} height={38} className="h-9 w-9 rounded-lg object-cover" priority unoptimized />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-sm font-black text-white shadow-soft">
+            SF
+          </div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primarySoft">STUDYFLOW</p>
         </div>
 

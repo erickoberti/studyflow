@@ -9,8 +9,8 @@ const lexend = Lexend({
 });
 
 export const metadata: Metadata = {
-  title: "StudyFlow Concurso",
-  description: "Sistema de gestão de estudos por ciclo para concursos públicos",
+  title: "StudyFlow Ciclos",
+  description: "Sistema de gestão de ciclos de estudos com foco em evolução contínua",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [{ url: "/brand/studyflow-logo.png", sizes: "512x512", type: "image/png" }],

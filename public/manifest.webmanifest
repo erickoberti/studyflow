@@ -1,7 +1,7 @@
 ﻿{
-  "name": "StudyFlow Concurso",
+  "name": "StudyFlow Ciclos",
   "short_name": "STUDYFLOW",
-  "description": "Gestão de estudos por ciclo para concursos públicos",
+  "description": "Gestão de ciclos de estudos com foco em evolução contínua",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#151022",
