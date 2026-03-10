@@ -22,7 +22,7 @@ export default function RegisterPage() {
         }}
       >
         <div className="mb-3 flex items-center gap-3">
-          <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={38} height={38} className="h-9 w-9 rounded-lg object-cover" priority />
+          <Image src="/brand/studyflow-logo.png" alt="StudyFlow" width={38} height={38} className="h-9 w-9 rounded-lg object-cover" priority unoptimized />
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primarySoft">STUDYFLOW</p>
         </div>
 
@@ -43,5 +43,6 @@ export default function RegisterPage() {
     </div>
   );
 }
+
 
 

@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const schema = z.object({
+const createSchema = z.object({
   date: z.string(),
   cycleEntryId: z.string().min(1),
   questions: z.number().int().min(1),
@@ -12,6 +12,10 @@ const schema = z.object({
   wrong: z.number().int().min(0),
   notes: z.string().optional().nullable(),
   estimatedMinutes: z.number().int().min(0).optional(),
+});
+
+const updateSchema = createSchema.extend({
+  id: z.string().min(1),
 });
 
 export async function GET() {
@@ -47,7 +51,7 @@ export async function POST(request: Request) {
   }
 
   const payload = await request.json();
-  const parsed = schema.safeParse(payload);
+  const parsed = createSchema.safeParse(payload);
   if (!parsed.success) {
     return NextResponse.json({ message: "Dados invalidos" }, { status: 400 });
   }
@@ -73,7 +77,7 @@ export async function POST(request: Request) {
     data: {
       userId: session.user.id,
       cycleEntryId,
-      date: new Date(date),
+      date: new Date(`${date}T12:00:00-03:00`),
       questions,
       correct,
       wrong,
@@ -84,4 +88,58 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json(created, { status: 201 });
+}
+
+export async function PUT(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+  }
+
+  const payload = await request.json();
+  const parsed = updateSchema.safeParse(payload);
+  if (!parsed.success) {
+    return NextResponse.json({ message: "Dados invalidos" }, { status: 400 });
+  }
+
+  const { id, date, cycleEntryId, questions, correct, wrong, notes, estimatedMinutes } = parsed.data;
+
+  if (correct + wrong !== questions) {
+    return NextResponse.json({ message: "Questoes deve ser acertos + erros" }, { status: 400 });
+  }
+
+  const existing = await prisma.studySession.findFirst({
+    where: { id, userId: session.user.id },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ message: "Registro nao encontrado" }, { status: 404 });
+  }
+
+  const cycleEntry = await prisma.cycleEntry.findFirst({
+    where: {
+      id: cycleEntryId,
+      userId: session.user.id,
+    },
+  });
+
+  if (!cycleEntry) {
+    return NextResponse.json({ message: "Entrada de ciclo nao encontrada" }, { status: 404 });
+  }
+
+  const updated = await prisma.studySession.update({
+    where: { id },
+    data: {
+      cycleEntryId,
+      date: new Date(`${date}T12:00:00-03:00`),
+      questions,
+      correct,
+      wrong,
+      percentage: questions > 0 ? (correct / questions) * 100 : 0,
+      estimatedMinutes: estimatedMinutes ?? Math.round(questions * 1.5),
+      notes,
+    },
+  });
+
+  return NextResponse.json(updated, { status: 200 });
 }

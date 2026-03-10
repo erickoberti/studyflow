@@ -1,8 +1,39 @@
-﻿import { differenceInCalendarDays, format, parseISO, startOfWeek } from "date-fns";
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 
 export type PriorityLevel = "urgente" | "atencao" | "bom" | "forte";
 export type MetaSignal = "verde" | "amarelo" | "vermelho";
+
+function dayKey(date: Date) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function parseDayKey(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function startOfWeekKey(key: string) {
+  const date = parseDayKey(key);
+  const dayOfWeek = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - dayOfWeek);
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function diffCalendarDaysUTC(aKey: string, bKey: string) {
+  const a = parseDayKey(aKey).getTime();
+  const b = parseDayKey(bKey).getTime();
+  return Math.round((a - b) / 86_400_000);
+}
 
 function classify(percentage: number): PriorityLevel {
   if (percentage < 60) return "urgente";
@@ -46,7 +77,7 @@ export async function getNextCycleSuggestion(userId: string) {
 }
 
 export async function getDashboardData(userId: string) {
-  const [sessions, settings] = await Promise.all([
+  const [sessions, settings, activeEntries] = await Promise.all([
     prisma.studySession.findMany({
       where: { userId },
       include: {
@@ -63,6 +94,10 @@ export async function getDashboardData(userId: string) {
       orderBy: { date: "asc" },
     }),
     prisma.userSettings.findUnique({ where: { userId } }),
+    prisma.cycleEntry.findMany({
+      where: { userId, active: true, subject: { active: true, discipline: { active: true } } },
+      select: { id: true },
+    }),
   ]);
 
   const targetPercentage = settings?.targetPercentage ?? 80;
@@ -78,18 +113,25 @@ export async function getDashboardData(userId: string) {
   const byDiscipline = new Map<string, { discipline: string; questions: number; correct: number; wrong: number }>();
   const bySubject = new Map<string, { subject: string; discipline: string; questions: number; correct: number; weight: number }>();
 
+  const sessionsByActiveEntryRecent = new Map<string, number>();
+  const todayKey = dayKey(new Date());
+
   for (const session of sessions) {
-    const dayKey = format(session.date, "yyyy-MM-dd");
-    const weekDate = startOfWeek(session.date, { weekStartsOn: 1 });
-    const weekKey = format(weekDate, "yyyy-MM-dd");
+    const sessionDayKey = dayKey(session.date);
+    const weekKey = startOfWeekKey(sessionDayKey);
     const disciplineName = session.cycleEntry.subject.discipline.name;
     const subjectName = session.cycleEntry.subject.name;
 
-    const dayData = byDay.get(dayKey) ?? { date: dayKey, questions: 0, correct: 0, percentage: 0 };
+    const dayDistance = diffCalendarDaysUTC(todayKey, sessionDayKey);
+    if (dayDistance >= 0 && dayDistance <= 29) {
+      sessionsByActiveEntryRecent.set(session.cycleEntryId, (sessionsByActiveEntryRecent.get(session.cycleEntryId) ?? 0) + 1);
+    }
+
+    const dayData = byDay.get(sessionDayKey) ?? { date: sessionDayKey, questions: 0, correct: 0, percentage: 0 };
     dayData.questions += session.questions;
     dayData.correct += session.correct;
     dayData.percentage = dayData.questions > 0 ? (dayData.correct / dayData.questions) * 100 : 0;
-    byDay.set(dayKey, dayData);
+    byDay.set(sessionDayKey, dayData);
 
     const weekData = byWeek.get(weekKey) ?? { week: weekKey, questions: 0, correct: 0, percentage: 0 };
     weekData.questions += session.questions;
@@ -147,15 +189,13 @@ export async function getDashboardData(userId: string) {
 
   subjectStats.sort((a, b) => a.priorityScore - b.priorityScore);
   const overallSignal = metaSignal(overallPercentage, targetPercentage);
-  const byDayList = Array.from(byDay.values());
+  const byDayList = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
 
   let streakDays = 0;
   if (byDayList.length > 0) {
     streakDays = 1;
     for (let idx = byDayList.length - 1; idx > 0; idx -= 1) {
-      const current = parseISO(byDayList[idx].date);
-      const previous = parseISO(byDayList[idx - 1].date);
-      const diff = differenceInCalendarDays(current, previous);
+      const diff = diffCalendarDaysUTC(byDayList[idx].date, byDayList[idx - 1].date);
       if (diff === 1) {
         streakDays += 1;
       } else {
@@ -166,6 +206,10 @@ export async function getDashboardData(userId: string) {
 
   const activeDays = byDayList.length;
   const avgQuestionsPerDay = activeDays > 0 ? totalQuestions / activeDays : 0;
+  const cyclePasses =
+    activeEntries.length > 0
+      ? Math.min(...activeEntries.map((entry) => sessionsByActiveEntryRecent.get(entry.id) ?? 0))
+      : 0;
 
   return {
     totals: {
@@ -181,9 +225,10 @@ export async function getDashboardData(userId: string) {
       activeDays,
       avgQuestionsPerDay,
       streakDays,
+      cyclePasses,
     },
     byDay: byDayList,
-    byWeek: Array.from(byWeek.values()),
+    byWeek: Array.from(byWeek.values()).sort((a, b) => a.week.localeCompare(b.week)),
     disciplineStats,
     subjectStats,
     strongestSubjects: [...subjectStats].sort((a, b) => b.percentage - a.percentage).slice(0, 5),

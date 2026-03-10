@@ -6,7 +6,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Github, Lock, Mail } from "lucide-react";
 
-export function LoginForm() {
+export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,92 +38,84 @@ export function LoginForm() {
     router.refresh();
   }
 
+  const isApp = mode === "app";
+  const inputCls = isApp
+    ? "h-12 rounded-lg border border-primary/25 bg-primary/10 pl-10 pr-4 text-base text-slate-900 outline-none focus:border-primary dark:text-white"
+    : "h-11 rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-900 outline-none focus:border-primary dark:border-primary/20 dark:bg-primary/10 dark:text-white";
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="mb-2 block text-[1.05rem] font-medium text-slate-200">E-mail</label>
-        <div className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-[#0f1426] px-4 py-4">
-          <Mail size={22} className="text-slate-400" />
-          <input
-            name="email"
-            type="email"
-            required
-            placeholder="seu@email.com"
-            className="w-full bg-transparent text-3xl text-white placeholder:text-slate-500 outline-none"
-          />
+        <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">E-mail</label>
+        <div className="relative">
+          <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input name="email" type="email" required placeholder="seu@email.com" className={`w-full ${inputCls}`} />
         </div>
       </div>
 
       <div>
-        <label className="mb-2 block text-[1.05rem] font-medium text-slate-200">Senha</label>
-        <div className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-[#0f1426] px-4 py-4">
-          <Lock size={22} className="text-slate-400" />
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Senha</label>
+          <Link href="/auth/forgot" className="text-xs font-medium text-primary hover:underline">
+            Esqueceu a senha?
+          </Link>
+        </div>
+        <div className="relative">
+          <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             name="password"
             type={showPassword ? "text" : "password"}
             required
-            placeholder="Sua senha secreta"
-            className="w-full bg-transparent text-3xl text-white placeholder:text-slate-500 outline-none"
+            placeholder="••••••••"
+            className={`w-full ${inputCls} pr-10`}
           />
           <button
             type="button"
             onClick={() => setShowPassword((prev) => !prev)}
-            className="text-slate-400 hover:text-slate-200"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary"
             aria-label="Mostrar ou ocultar senha"
           >
-            {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-sm">
-        <label className="inline-flex items-center gap-2 text-slate-400">
-          <input type="checkbox" className="h-4 w-4 rounded border-primary/40 bg-transparent" />
-          Lembrar de mim
-        </label>
-        <Link href="/auth/forgot" className="font-semibold text-primary hover:underline">
-          Esqueci a senha
-        </Link>
-      </div>
-
-      {error ? <p className="text-sm text-red-300">{error}</p> : null}
+      {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-2xl bg-gradient-to-r from-primary to-[#8a63f7] px-4 py-4 text-2xl font-extrabold text-white shadow-soft disabled:opacity-50"
+        className="mt-1 w-full rounded-lg bg-primary py-3 text-base font-semibold text-white shadow-soft transition-all hover:bg-primary/90 disabled:opacity-60"
       >
         {loading ? "Entrando..." : "Entrar"}
       </button>
 
-      <div className="pt-2">
-        <div className="flex items-center gap-3 text-xs uppercase tracking-wider text-slate-500">
-          <span className="h-px flex-1 bg-primary/20" />
-          ou continue com
-          <span className="h-px flex-1 bg-primary/20" />
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <button type="button" className="rounded-2xl border border-primary/30 bg-[#0f1426] py-3 text-sm font-bold text-slate-200">
-            Google
-          </button>
-          <button type="button" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-[#0f1426] py-3 text-sm font-bold text-slate-200">
-            <Github size={16} /> GitHub
-          </button>
-        </div>
+      <div className="my-4 flex items-center gap-3">
+        <span className="h-px flex-1 bg-slate-200 dark:bg-primary/20" />
+        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">ou continue com</span>
+        <span className="h-px flex-1 bg-slate-200 dark:bg-primary/20" />
       </div>
 
-      <p className="pt-2 text-center text-base text-slate-400">
+      <div className="grid grid-cols-2 gap-3">
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-primary/20 dark:bg-primary/10 dark:text-slate-200 dark:hover:bg-primary/15">
+          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-bold text-slate-700">G</span>
+          Google
+        </button>
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-primary/20 dark:bg-primary/10 dark:text-slate-200 dark:hover:bg-primary/15">
+          <Github size={16} /> GitHub
+        </button>
+      </div>
+
+      <p className="pt-2 text-center text-sm text-slate-500 dark:text-slate-400">
         Ainda não tem uma conta?{" "}
-        <Link href="/auth/register" className="font-bold text-primary hover:underline">
-          Criar conta
+        <Link href="/auth/register" className="font-semibold text-primary hover:underline">
+          Cadastre-se
         </Link>
       </p>
-
-      <div className="pt-3 text-center text-sm text-slate-500">
-        <span>Termos de Uso</span>
-        <span className="mx-4">Privacidade</span>
-        <span>Suporte</span>
-      </div>
     </form>
   );
 }
+
+
+
+
