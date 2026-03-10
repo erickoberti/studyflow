@@ -74,7 +74,7 @@ export default async function CicloPage({
   );
 
   const currentOrder = entries.find((e) => e.active)?.orderIndex ?? null;
-  const totalMinutes = entries.reduce((sum, entry) => sum + minutesForWeight(entry.subject.weight), 0);
+  const totalMinutes = aggregates.reduce((sum, a) => sum + (a._sum.estimatedMinutes ?? 0), 0);
   const totalQuestions = aggregates.reduce((sum, a) => sum + (a._sum.questions ?? 0), 0);
   const totalCorrect = aggregates.reduce((sum, a) => sum + (a._sum.correct ?? 0), 0);
   const weeklyGoal = Math.max(100, entries.length * 25);
@@ -290,4 +290,5 @@ export default async function CicloPage({
     </div>
   );
 }
+
 

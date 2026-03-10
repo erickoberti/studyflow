@@ -22,7 +22,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
 
 const links = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { href: "/registro", label: "Registrar Estudo", icon: BookOpenCheck },
   { href: "/registros", label: "Sessões", icon: ListChecks },
   { href: "/ciclo", label: "Ciclo", icon: RefreshCcw },
@@ -33,7 +33,7 @@ const links = [
 ];
 
 const topNav = [
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard", label: "Painel" },
   { href: "/ciclo", label: "Ciclo" },
   { href: "/base", label: "Matérias" },
   { href: "/estatisticas", label: "Relatórios" },
@@ -190,4 +190,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
 

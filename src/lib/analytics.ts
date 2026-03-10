@@ -110,8 +110,8 @@ export async function getDashboardData(userId: string) {
 
   const byDay = new Map<string, { date: string; questions: number; percentage: number; correct: number }>();
   const byWeek = new Map<string, { week: string; questions: number; percentage: number; correct: number }>();
-  const byDiscipline = new Map<string, { discipline: string; questions: number; correct: number; wrong: number }>();
-  const bySubject = new Map<string, { subject: string; discipline: string; questions: number; correct: number; weight: number }>();
+  const byDiscipline = new Map<string, { discipline: string; questions: number; correct: number; wrong: number; estimatedMinutes: number }>();
+  const bySubject = new Map<string, { subject: string; discipline: string; questions: number; correct: number; weight: number; estimatedMinutes: number }>();
 
   const sessionsByActiveEntryRecent = new Map<string, number>();
   const todayKey = dayKey(new Date());
@@ -139,10 +139,11 @@ export async function getDashboardData(userId: string) {
     weekData.percentage = weekData.questions > 0 ? (weekData.correct / weekData.questions) * 100 : 0;
     byWeek.set(weekKey, weekData);
 
-    const discData = byDiscipline.get(disciplineName) ?? { discipline: disciplineName, questions: 0, correct: 0, wrong: 0 };
+    const discData = byDiscipline.get(disciplineName) ?? { discipline: disciplineName, questions: 0, correct: 0, wrong: 0, estimatedMinutes: 0 };
     discData.questions += session.questions;
     discData.correct += session.correct;
     discData.wrong += session.wrong;
+    discData.estimatedMinutes += session.estimatedMinutes;
     byDiscipline.set(disciplineName, discData);
 
     const subjData = bySubject.get(subjectName) ?? {
@@ -151,9 +152,11 @@ export async function getDashboardData(userId: string) {
       questions: 0,
       correct: 0,
       weight: session.cycleEntry.subject.weight,
+      estimatedMinutes: 0,
     };
     subjData.questions += session.questions;
     subjData.correct += session.correct;
+    subjData.estimatedMinutes += session.estimatedMinutes;
     bySubject.set(subjectName, subjData);
   }
 
@@ -286,3 +289,5 @@ export async function getReviewSuggestions(userId: string) {
       .slice(0, 8),
   };
 }
+
+

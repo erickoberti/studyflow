@@ -73,7 +73,7 @@ export default async function DashboardPage() {
     <div className="space-y-8 pb-10">
       <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">Study Dashboard</h1>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">Painel de Estudos</h1>
           <p className="mt-1 text-slate-500 dark:text-slate-400">
             Bem-vindo de volta, {user.name?.split(" ")[0] ?? "Aluno"}. Sequência atual de {streak} dias.
           </p>
@@ -89,7 +89,7 @@ export default async function DashboardPage() {
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-500">Study Hours</span>
+            <span className="text-sm font-medium text-slate-500">Horas Estudadas</span>
             <span className="rounded-lg bg-primary/10 p-1.5 text-primary"><Clock3 size={16} /></span>
           </div>
           <p className="text-4xl font-black text-slate-900 dark:text-white">{(dashboard.totals.totalEstimatedMinutes / 60).toFixed(1)}h</p>
@@ -98,16 +98,16 @@ export default async function DashboardPage() {
 
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-500">Active Courses</span>
+            <span className="text-sm font-medium text-slate-500">Disciplinas Ativas</span>
             <span className="rounded-lg bg-primary/10 p-1.5 text-primary"><Library size={16} /></span>
           </div>
           <p className="text-4xl font-black text-slate-900 dark:text-white">{dashboard.disciplineStats.length}</p>
-          <p className="mt-1 text-sm font-semibold text-slate-400">Steady</p>
+          <p className="mt-1 text-sm font-semibold text-slate-400">Estável</p>
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-500">Daily Streak</span>
+            <span className="text-sm font-medium text-slate-500">Sequência Atual</span>
             <span className="rounded-lg bg-orange-500/10 p-1.5 text-orange-500"><Flame size={16} /></span>
           </div>
           <p className="text-4xl font-black text-slate-900 dark:text-white">{streak} dias</p>
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
 
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-500">Focus Score</span>
+            <span className="text-sm font-medium text-slate-500">Índice de Foco</span>
             <span className="rounded-lg bg-primary/10 p-1.5 text-primary"><Target size={16} /></span>
           </div>
           <p className="text-4xl font-black text-slate-900 dark:text-white">{focusScore.toFixed(1)}%</p>
@@ -128,8 +128,8 @@ export default async function DashboardPage() {
         <div className="space-y-6 xl:col-span-2">
           <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Daily Goal Progress</h3>
-              <span className="rounded bg-primary/10 px-2 py-1 text-xs font-bold text-primary">Target: 50q</span>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Progresso da Meta Diária</h3>
+              <span className="rounded bg-primary/10 px-2 py-1 text-xs font-bold text-primary">Meta: 50 questões</span>
             </div>
 
             <div className="space-y-4">
@@ -151,7 +151,7 @@ export default async function DashboardPage() {
 
             <div className="mt-8 border-t border-slate-100 pt-5 dark:border-slate-800">
               <div className="mb-4 flex items-center justify-between">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Study Activity (This Week)</h4>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Atividade de Estudo \(Semana\)</h4>
                 <span className="text-xs font-bold text-slate-500">Hoje: {today} questões</span>
               </div>
               <div className="flex h-36 items-end justify-between gap-2 px-1">
@@ -173,7 +173,7 @@ export default async function DashboardPage() {
 
           <article>
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Active Courses</h3>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Disciplinas Ativas</h3>
               <Link href="/base" className="text-sm font-bold text-primary hover:underline">Ver todos</Link>
             </div>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -197,8 +197,8 @@ export default async function DashboardPage() {
         <aside className="space-y-6">
           <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Upcoming Tasks</h3>
-              <Link href="/registros" className="text-xs font-bold text-primary hover:underline">View All</Link>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Próximas Tarefas</h3>
+              <Link href="/registros" className="text-xs font-bold text-primary hover:underline">Ver todas</Link>
             </div>
             <div className="space-y-3">
               {recentSessions.map((session) => (
@@ -221,7 +221,7 @@ export default async function DashboardPage() {
                   <Sparkles size={16} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">AI Study Tip</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">Dica de IA</p>
                   <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Foque em {nextDiscipline} e revise o tópico {nextSubject.toLowerCase()}.</p>
                 </div>
               </div>
@@ -241,5 +241,6 @@ export default async function DashboardPage() {
     </div>
   );
 }
+
 
 
