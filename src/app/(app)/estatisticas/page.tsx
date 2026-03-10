@@ -1,6 +1,15 @@
-﻿import { CalendarDays, Download, TrendingDown, TrendingUp } from "lucide-react";
+import { CalendarDays, Download, TrendingDown, TrendingUp } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/analytics";
+
+function dayKeyInSaoPaulo(date: Date) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
 
 function trendIcon(value: number) {
   if (value >= 80) return <TrendingUp size={16} className="text-emerald-500" />;
@@ -20,8 +29,20 @@ export default async function EstatisticasPage() {
   const dashboard = await getDashboardData(user.id);
 
   const topSubjects = dashboard.subjectStats.slice(0, 5);
-  const week = dashboard.byDay.slice(-7);
+  const byDayMap = new Map(dashboard.byDay.map((day) => [day.date, day]));
+  const week = Array.from({ length: 7 }).map((_, idx) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - idx));
+    const key = dayKeyInSaoPaulo(date);
+    const day = byDayMap.get(key);
+
+    return {
+      date: key,
+      questions: day?.questions ?? 0,
+    };
+  });
   const maxWeek = Math.max(1, ...week.map((d) => d.questions));
+  const avgHoursPerDay = week.reduce((sum, day) => sum + day.questions / 10, 0) / week.length;
 
   return (
     <div className="space-y-8 pb-12">
@@ -67,12 +88,18 @@ export default async function EstatisticasPage() {
         <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark xl:col-span-7">
           <div className="mb-5 flex items-center justify-between">
             <h3 className="text-3xl font-black text-slate-900 dark:text-white">Atividade Semanal</h3>
-            <span className="text-sm font-semibold text-slate-500">Média: 6.2h/dia</span>
+            <span className="text-sm font-semibold text-slate-500">Média: {avgHoursPerDay.toFixed(1)}h/dia</span>
           </div>
           <div className="flex h-64 items-end justify-between gap-4 px-2">
             {week.map((day) => (
-              <div key={day.date} className="flex flex-1 flex-col items-center gap-2">
-                <div className="w-full rounded-t-lg bg-primary/25" style={{ height: `${Math.max(15, (day.questions / maxWeek) * 100)}%` }} />
+              <div key={day.date} className="flex h-full flex-1 flex-col items-center gap-2">
+                <div className="flex w-full flex-1 items-end">
+                  <div
+                    className="w-full rounded-t-lg bg-primary/25"
+                    title={`${day.questions} questões`}
+                    style={{ height: `${Math.max(15, (day.questions / maxWeek) * 100)}%` }}
+                  />
+                </div>
                 <span className="text-xs font-medium text-slate-500">{day.date.slice(8, 10)}</span>
               </div>
             ))}
@@ -132,7 +159,3 @@ export default async function EstatisticasPage() {
     </div>
   );
 }
-
-
-
-
