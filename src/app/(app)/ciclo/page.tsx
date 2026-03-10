@@ -82,13 +82,16 @@ export default async function CicloPage({
   const accuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-10">
       <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-5xl font-black tracking-tight text-slate-900 dark:text-white">Meu Ciclo de Estudos</h1>
-          <p className="mt-1 text-xl text-slate-500 dark:text-slate-400">Acompanhamento do progresso atual por disciplina e metas.</p>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white md:text-5xl">Meu Ciclo de Estudos</h1>
+          <p className="mt-1 text-lg text-slate-500 dark:text-slate-400">Acompanhamento do progresso atual por disciplina e metas.</p>
         </div>
-        <Link href={`/ciclo?novo=${showAdd ? "0" : "1"}`} className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-xl font-bold text-white shadow-soft">
+        <Link
+          href={`/ciclo?novo=${showAdd ? "0" : "1"}`}
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-base font-bold text-white shadow-soft"
+        >
           <Plus size={18} /> {showAdd ? "Fechar" : "Novo Ciclo"}
         </Link>
       </section>
@@ -110,7 +113,9 @@ export default async function CicloPage({
                 ))}
               </select>
             </label>
-            <button type="submit" className="h-11 rounded-lg bg-primary px-5 text-sm font-bold text-white">Adicionar</button>
+            <button type="submit" className="h-11 rounded-lg bg-primary px-5 text-sm font-bold text-white">
+              Adicionar
+            </button>
           </form>
         </section>
       ) : null}
@@ -185,7 +190,7 @@ export default async function CicloPage({
                       <div className="flex items-center gap-3">
                         <div className={`h-10 w-2 rounded-full ${color}`} />
                         <div>
-                          <p className="text-3xl font-bold text-slate-900 dark:text-white">{entry.subject.discipline.name}</p>
+                          <p className="text-[30px] font-bold leading-tight text-slate-900 dark:text-white">{entry.subject.discipline.name}</p>
                           <p className="text-sm text-slate-500 dark:text-slate-400">{entry.subject.name}</p>
                         </div>
                       </div>
@@ -201,7 +206,7 @@ export default async function CicloPage({
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-4xl font-semibold text-slate-800 dark:text-slate-200">{timeLabel}</td>
+                    <td className="px-6 py-5 text-[38px] font-semibold text-slate-800 dark:text-slate-200">{timeLabel}</td>
                     <td className="px-6 py-5">
                       <span className={`rounded-lg px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${statusChip(status)}`}>{status}</span>
                     </td>
@@ -269,7 +274,7 @@ export default async function CicloPage({
             <div className="flex justify-between"><span className="text-slate-600 dark:text-slate-400">Taxa de Acerto</span><span className="font-bold text-emerald-500">{accuracy.toFixed(1)}%</span></div>
           </div>
           <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <Link href="/estatisticas" className="text-xl font-bold text-primary hover:underline">Ver relatório completo ?</Link>
+            <Link href="/estatisticas" className="text-xl font-bold text-primary hover:underline">Ver relatório completo →</Link>
           </div>
         </article>
       </section>
