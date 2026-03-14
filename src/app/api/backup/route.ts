@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAllStudyGuideSettings } from "@/lib/study-guide-settings";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -16,7 +17,7 @@ export async function GET() {
     prisma.cycleEntry.findMany({ where: { userId: session.user.id } }),
     prisma.studySession.findMany({ where: { userId: session.user.id } }),
     prisma.userSettings.findUnique({ where: { userId: session.user.id } }),
-    prisma.studyGuideSettings.findMany({ where: { userId: session.user.id } }),
+    getAllStudyGuideSettings(session.user.id),
   ]);
 
   return NextResponse.json(

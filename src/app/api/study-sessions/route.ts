@@ -19,6 +19,10 @@ const updateSchema = createSchema.extend({
   id: z.string().min(1),
 });
 
+const deleteSchema = z.object({
+  id: z.string().min(1),
+});
+
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -158,4 +162,36 @@ export async function PUT(request: Request) {
   });
 
   return NextResponse.json(updated, { status: 200 });
+}
+
+export async function DELETE(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+  }
+  const guide = await getActiveStudyGuideForUser(session.user.id);
+  if (!guide) {
+    return NextResponse.json({ message: "Selecione um guia ativo" }, { status: 409 });
+  }
+
+  const payload = await request.json();
+  const parsed = deleteSchema.safeParse(payload);
+  if (!parsed.success) {
+    return NextResponse.json({ message: "Dados invalidos" }, { status: 400 });
+  }
+
+  const existing = await prisma.studySession.findFirst({
+    where: { id: parsed.data.id, userId: session.user.id, studyGuideId: guide.id },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ message: "Registro nao encontrado" }, { status: 404 });
+  }
+
+  await prisma.studySession.delete({
+    where: { id: existing.id },
+  });
+
+  return NextResponse.json({ ok: true }, { status: 200 });
 }

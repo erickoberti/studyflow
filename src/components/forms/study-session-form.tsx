@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Clock3,
   Flame,
-  Pencil,
   TrendingUp,
   XCircle,
 } from "lucide-react";
@@ -84,11 +83,17 @@ export function StudySessionForm({
   suggestedId,
   recentSessions,
   dailyQuestionsGoal,
+  returnTo,
+  showForm = true,
+  toggleHref,
 }: {
   cycleEntries: CycleOption[];
   suggestedId?: string;
   recentSessions?: RecentSession[];
   dailyQuestionsGoal: number;
+  returnTo?: string;
+  showForm?: boolean;
+  toggleHref: string;
 }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -100,6 +105,7 @@ export function StudySessionForm({
   const [date, setDate] = useState(() => dayKeySaoPaulo(new Date()));
   const [estimatedMinutes, setEstimatedMinutes] = useState(60);
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const wrong = Math.max(0, questions - correct);
   const percentage = questions > 0 ? (correct / questions) * 100 : 0;
@@ -110,6 +116,7 @@ export function StudySessionForm({
 
   function resetForm() {
     setEditingId(null);
+    setStatus(null);
     setTopic("");
     setNotes("");
     setQuestions(0);
@@ -119,28 +126,28 @@ export function StudySessionForm({
     setDate(dayKeySaoPaulo(new Date()));
   }
 
-  function startEdit(session: RecentSession) {
-    setEditingId(session.id);
-    setCycleEntryId(session.cycleEntryId);
-    setDate(dayKeySaoPaulo(new Date(session.date)));
-    setQuestions(session.questions);
-    setCorrect(session.correct);
-    setEstimatedMinutes(session.estimatedMinutes || 60);
-    setNotes(session.notes ?? "");
-    setTopic("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  function handleCancel() {
+    if (editingId) {
+      resetForm();
+      return;
+    }
+
+    router.push(toggleHref);
   }
 
   async function submit() {
     if (!cycleEntryId) {
+      setStatus({ type: "error", message: "Selecione um assunto do ciclo." });
       toast.error("Selecione um assunto do ciclo.");
       return;
     }
     if (questions <= 0) {
+      setStatus({ type: "error", message: "Informe a quantidade de questões." });
       toast.error("Informe a quantidade de questões.");
       return;
     }
     if (correct > questions) {
+      setStatus({ type: "error", message: "Acertos não podem ser maiores que questões." });
       toast.error("Acertos não podem ser maiores que questões.");
       return;
     }
@@ -166,11 +173,21 @@ export function StudySessionForm({
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
+      setStatus({ type: "error", message: data.message ?? "Erro ao salvar registro." });
       toast.error(data.message ?? "Erro ao salvar registro.");
       return;
     }
 
+    setStatus({
+      type: "success",
+      message: editingId ? "Registro atualizado com sucesso." : "Registro salvo com sucesso.",
+    });
     toast.success(editingId ? "Registro atualizado com sucesso." : "Registro salvo com sucesso.");
+
+    if (returnTo && !editingId) {
+      router.push(returnTo);
+      return;
+    }
 
     if (editingId) {
       resetForm();
@@ -189,102 +206,137 @@ export function StudySessionForm({
   return (
     <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
       <div className="space-y-6">
-        <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <h2 className="mb-5 inline-flex items-center gap-2 text-2xl font-black text-slate-900 dark:text-white">
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-white text-sm">i</span>
-            Detalhes do Estudo
-          </h2>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
+          <div className="mb-4 flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white">Registros Recentes</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={toggleHref}
+                className={`rounded-xl px-4 py-2 text-sm font-bold ${
+                  showForm
+                    ? "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-panelDark dark:text-slate-200"
+                    : "bg-primary text-white hover:opacity-90"
+                }`}
+              >
+                {showForm ? "Fechar registro" : "Novo registro"}
+              </Link>
+              <Link href="/registros" className="text-xs font-bold text-primary hover:underline">
+                Ver todos e editar
+              </Link>
+            </div>
+          </div>
 
-          {editingId ? (
-            <p className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
-              Você está editando um registro existente.
-            </p>
+          {showForm ? (
+            <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/40">
+              <h2 className="mb-5 inline-flex items-center gap-2 text-xl font-black text-slate-900 dark:text-white">
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-white text-sm">i</span>
+                Detalhes do Estudo
+              </h2>
+
+              {status ? (
+                <p
+                  className={`mb-4 rounded-lg px-3 py-2 text-xs font-semibold ${
+                    status.type === "success"
+                      ? "border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
+                      : "border border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300"
+                  }`}
+                >
+                  {status.message}
+                </p>
+              ) : null}
+
+              {editingId ? (
+                <p className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+                  Você está editando um registro existente.
+                </p>
+              ) : null}
+
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Data da Sessão
+                  <div className="relative mt-1.5">
+                    <CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-slate-900 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                </label>
+
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Matéria
+                  <select
+                    value={cycleEntryId}
+                    onChange={(e) => setCycleEntryId(e.target.value)}
+                    className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  >
+                    {cycleEntries.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        #{entry.orderIndex} - {entry.subject.discipline.name} / {entry.subject.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="mt-5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Tópico de Estudo
+                <input
+                  type="text"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="Ex: Controle de Constitucionalidade"
+                  className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </label>
+
+              <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-4">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Tempo (min)
+                  <input type="number" min={1} value={estimatedMinutes} onChange={(e) => setEstimatedMinutes(Number(e.target.value) || 0)} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800" />
+                </label>
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Total Questões
+                  <input type="number" min={0} value={questions} onChange={(e) => setQuestions(Number(e.target.value) || 0)} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800" />
+                </label>
+                <label className="text-sm font-semibold text-green-700 dark:text-green-300">
+                  Acertos
+                  <input type="number" min={0} max={questions} value={correct} onChange={(e) => setCorrect(Number(e.target.value) || 0)} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800" />
+                </label>
+                <label className="text-sm font-semibold text-red-700 dark:text-red-300">
+                  Erros
+                  <input type="number" readOnly value={wrong} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-slate-100 px-3 dark:border-slate-700 dark:bg-slate-800/80" />
+                </label>
+              </div>
+
+              <label className="mt-5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Notas e Dificuldades
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={5}
+                  placeholder="Descreva o que aprendeu ou as principais dúvidas encontradas..."
+                  className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </label>
+
+              <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-5 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-bold text-slate-600 dark:border-slate-700 dark:text-slate-200"
+                >
+                  Cancelar
+                </button>
+                <button type="button" onClick={submit} disabled={loading} className="rounded-xl bg-primary px-8 py-3 text-sm font-bold text-white shadow-soft disabled:opacity-60">
+                  {loading ? "Salvando..." : headline}
+                </button>
+              </div>
+            </div>
           ) : null}
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Data da Sessão
-              <div className="relative mt-1.5">
-                <CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 pl-10 pr-3 text-slate-900 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                />
-              </div>
-            </label>
-
-            <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Matéria
-              <select
-                value={cycleEntryId}
-                onChange={(e) => setCycleEntryId(e.target.value)}
-                className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-slate-900 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                {cycleEntries.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    #{entry.orderIndex} - {entry.subject.discipline.name} / {entry.subject.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="mt-5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Tópico de Estudo
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="Ex: Controle de Constitucionalidade"
-              className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-slate-900 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </label>
-
-          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-4">
-            <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Tempo (min)
-              <input type="number" min={1} value={estimatedMinutes} onChange={(e) => setEstimatedMinutes(Number(e.target.value) || 0)} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800" />
-            </label>
-            <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Total Questões
-              <input type="number" min={0} value={questions} onChange={(e) => setQuestions(Number(e.target.value) || 0)} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800" />
-            </label>
-            <label className="text-sm font-semibold text-green-700 dark:text-green-300">
-              Acertos
-              <input type="number" min={0} max={questions} value={correct} onChange={(e) => setCorrect(Number(e.target.value) || 0)} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800" />
-            </label>
-            <label className="text-sm font-semibold text-red-700 dark:text-red-300">
-              Erros
-              <input type="number" readOnly value={wrong} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-slate-100 px-3 dark:border-slate-700 dark:bg-slate-800/80" />
-            </label>
-          </div>
-
-          <label className="mt-5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Notas e Dificuldades
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={5}
-              placeholder="Descreva o que aprendeu ou as principais dúvidas encontradas..."
-              className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-slate-900 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </label>
-
-          <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-5 dark:border-slate-800">
-            <button type="button" onClick={resetForm} className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-bold text-slate-600 dark:border-slate-700 dark:text-slate-200">Cancelar</button>
-            <button type="button" onClick={submit} disabled={loading} className="rounded-xl bg-primary px-8 py-3 text-sm font-bold text-white shadow-soft disabled:opacity-60">
-              {loading ? "Salvando..." : headline}
-            </button>
-          </div>
-        </article>
-
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white">Registros Recentes</h3>
-            <Link href="/registros" className="text-xs font-bold text-primary hover:underline">Ver todos e editar</Link>
-          </div>
           {recentSessions && recentSessions.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -294,7 +346,6 @@ export function StudySessionForm({
                     <th className="py-2">Assunto</th>
                     <th className="py-2 text-right">Questões</th>
                     <th className="py-2 text-right">Data</th>
-                    <th className="py-2 text-right">Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -304,11 +355,6 @@ export function StudySessionForm({
                       <td className="py-2.5 text-slate-600 dark:text-slate-300">{session.cycleEntry.subject.name}</td>
                       <td className="py-2.5 text-right">{session.questions}</td>
                       <td className="py-2.5 text-right text-slate-500">{formatPtBrDay(session.date)}</td>
-                      <td className="py-2.5 text-right">
-                        <button type="button" onClick={() => startEdit(session)} className="inline-flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20">
-                          <Pencil size={12} /> Editar
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
