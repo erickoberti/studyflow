@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import Papa from "papaparse";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 
 function normalizeKey(value: string) {
   return value
@@ -62,6 +63,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
   }
 
+  const guide = await getActiveStudyGuideForUser(session.user.id);
+  if (!guide) {
+    return NextResponse.json({ message: "Selecione um guia ativo" }, { status: 409 });
+  }
+
   const form = await request.formData();
   const file = form.get("file") as File | null;
   if (!file) {
@@ -81,7 +87,8 @@ export async function POST(request: Request) {
   }
 
   let importedRows = 0;
-  const importedTargets: number[] = [];
+  let validRows = 0;
+  let skippedRows = 0;
 
   for (const row of rows) {
     const date = parseDate(getField(row, ["Data"]));
@@ -91,11 +98,12 @@ export async function POST(request: Request) {
     if (!date || !disciplineName || !subjectName) continue;
 
     const weight = parseNumber(getField(row, ["Peso"])) ?? 1;
-    const questions = parseNumber(getField(row, ["Questões", "Questoes", "Quest", "Questo"])) ?? 0;
+    const questions = parseNumber(getField(row, ["Questoes", "Questões", "Quest", "Questo"])) ?? 0;
     const correct = parseNumber(getField(row, ["Acertos", "Acerto"])) ?? 0;
     let wrong = parseNumber(getField(row, ["Erros", "Erro"])) ?? 0;
 
     if (questions <= 0) continue;
+    validRows += 1;
 
     if (correct + wrong !== questions) {
       wrong = Math.max(0, questions - correct);
@@ -106,11 +114,10 @@ export async function POST(request: Request) {
       (questions > 0 ? (correct / questions) * 100 : 0);
 
     const target = parseNumber(getField(row, ["Meta %", "Meta%", "% Meta", "Meta"]));
-    if (target !== null) importedTargets.push(target);
 
     const gapFromFile = parseNumber(getField(row, ["Gap (Meta - %)", "Gap (Meta-%)", "Gap", "Gap (Meta %) "]));
     const gap = gapFromFile ?? (target !== null ? target - percentage : null);
-    const priority = getField(row, ["Prioridade", "Prioridade (Nível)", "Prioridade (Nivel)"]);
+    const priority = getField(row, ["Prioridade", "Prioridade (Nivel)", "Prioridade (Nível)"]);
 
     const notes = [
       target !== null ? `Meta: ${target.toFixed(1)}%` : null,
@@ -120,57 +127,63 @@ export async function POST(request: Request) {
       .filter(Boolean)
       .join(" | ") || null;
 
-    const discipline = await prisma.discipline.upsert({
+    const existingDiscipline = await prisma.discipline.findFirst({
       where: {
-        userId_name: {
-          userId: session.user.id,
-          name: disciplineName,
-        },
-      },
-      update: { active: true },
-      create: {
         userId: session.user.id,
+        studyGuideId: guide.id,
         name: disciplineName,
-        active: true,
-        category: null,
       },
     });
 
-    const subject = await prisma.subject.upsert({
-      where: {
-        userId_disciplineId_name: {
+    const discipline =
+      existingDiscipline ??
+      (await prisma.discipline.create({
+        data: {
           userId: session.user.id,
-          disciplineId: discipline.id,
-          name: subjectName,
+          studyGuideId: guide.id,
+          name: disciplineName,
+          active: true,
+          category: null,
         },
-      },
-      update: {
-        active: true,
-        weight,
-      },
-      create: {
+      }));
+
+    const existingSubject = await prisma.subject.findFirst({
+      where: {
         userId: session.user.id,
+        studyGuideId: guide.id,
         disciplineId: discipline.id,
         name: subjectName,
-        weight,
-        active: true,
       },
     });
 
+    const subject =
+      existingSubject ??
+      (await prisma.subject.create({
+        data: {
+          userId: session.user.id,
+          studyGuideId: guide.id,
+          disciplineId: discipline.id,
+          name: subjectName,
+          weight,
+          active: true,
+        },
+      }));
+
     let cycleEntry = await prisma.cycleEntry.findFirst({
-      where: { userId: session.user.id, subjectId: subject.id },
+      where: { userId: session.user.id, studyGuideId: guide.id, subjectId: subject.id },
       orderBy: { orderIndex: "asc" },
     });
 
     if (!cycleEntry) {
       const last = await prisma.cycleEntry.findFirst({
-        where: { userId: session.user.id },
+        where: { userId: session.user.id, studyGuideId: guide.id },
         orderBy: { orderIndex: "desc" },
       });
 
       cycleEntry = await prisma.cycleEntry.create({
         data: {
           userId: session.user.id,
+          studyGuideId: guide.id,
           subjectId: subject.id,
           orderIndex: (last?.orderIndex ?? 0) + 1,
           active: true,
@@ -183,6 +196,7 @@ export async function POST(request: Request) {
     const exists = await prisma.studySession.findFirst({
       where: {
         userId: session.user.id,
+        studyGuideId: guide.id,
         cycleEntryId: cycleEntry.id,
         date,
         questions,
@@ -195,6 +209,7 @@ export async function POST(request: Request) {
       await prisma.studySession.create({
         data: {
           userId: session.user.id,
+          studyGuideId: guide.id,
           cycleEntryId: cycleEntry.id,
           date,
           questions,
@@ -206,26 +221,36 @@ export async function POST(request: Request) {
         },
       });
       importedRows += 1;
+    } else {
+      skippedRows += 1;
     }
   }
 
-  if (importedTargets.length) {
-    const avgTarget = importedTargets.reduce((sum, value) => sum + value, 0) / importedTargets.length;
-    await prisma.userSettings.upsert({
-      where: { userId: session.user.id },
-      create: {
-        userId: session.user.id,
-        targetPercentage: avgTarget,
+  if (!validRows) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Nenhuma linha valida encontrada. Use um CSV com colunas como: Data, Disciplina, Assunto, Peso, Questoes, Acertos, Erros.",
       },
-      update: {
-        targetPercentage: avgTarget,
+      { status: 400 },
+    );
+  }
+
+  if (!importedRows) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: `O arquivo foi lido, mas nenhum registro novo foi importado. ${skippedRows} linha(s) ja existiam no guia atual.`,
       },
-    });
+      { status: 409 },
+    );
   }
 
   return NextResponse.json({
     ok: true,
     importedRows,
-    message: "Registro diário importado com sucesso.",
+    skippedRows,
+    message: `Registro diario importado com sucesso. ${importedRows} linha(s) nova(s) criada(s) e ${skippedRows} ignorada(s) por ja existirem.`,
   });
 }

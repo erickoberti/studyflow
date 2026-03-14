@@ -1,11 +1,38 @@
-﻿import { updateSettings } from "@/app/actions";
+import {
+  Bell,
+  CalendarRange,
+  Flame,
+  LockKeyhole,
+  Mail,
+  MoonStar,
+  ShieldCheck,
+  SlidersHorizontal,
+  Target,
+  Trash2,
+  UserCircle2,
+} from "lucide-react";
+import { updateSettings } from "@/app/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireActiveStudyGuide } from "@/lib/study-guide";
+import { getStudyGuideSettings } from "@/lib/study-guide-settings";
+
+function infoCardClassName(danger = false) {
+  return `rounded-[22px] border bg-white p-5 shadow-sm dark:bg-panelDark ${
+    danger
+      ? "border-red-200 dark:border-red-500/20"
+      : "border-slate-200 dark:border-slate-800"
+  }`;
+}
 
 export default async function ConfiguracoesPage() {
   const user = await requireUser();
-  const settings = await prisma.userSettings.findUnique({ where: { userId: user.id } });
+  const guide = await requireActiveStudyGuide(user.id);
+  const [themeSettings, settings] = await Promise.all([
+    prisma.userSettings.findUnique({ where: { userId: user.id } }),
+    getStudyGuideSettings(user.id, guide.id),
+  ]);
 
   const dailyGoal = settings?.dailyQuestionsGoal ?? 30;
   const weeklyGoal = settings?.weeklyQuestionsGoal ?? 200;
@@ -13,137 +40,293 @@ export default async function ConfiguracoesPage() {
   const bias = settings?.weightPriorityBias ?? 1.25;
 
   return (
-    <div className="space-y-8 pb-12">
-      <header>
-        <h1 className="text-5xl font-black tracking-tight text-slate-900 dark:text-white">Configurações</h1>
-        <p className="mt-1 text-xl text-slate-500 dark:text-slate-400">Gerencie sua conta e preferências da plataforma.</p>
+    <div className="space-y-5 pb-10">
+      <header className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Configuracoes</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Ajustes essenciais da conta e do seu ritmo de estudo em uma tela mais enxuta.
+          </p>
+        </div>
       </header>
 
-      <form action={updateSettings} className="space-y-6">
-        <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <div className="border-b border-slate-200 p-5 dark:border-slate-800">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white">Perfil do Usuário</h2>
-            <p className="text-sm text-slate-500">Suas informações e plano atual</p>
-          </div>
-          <div className="p-5">
-            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="h-20 w-20 rounded-full bg-primary/20" />
-                <div>
-                  <p className="text-3xl font-black text-slate-900 dark:text-white">{user.name ?? "Usuário"}</p>
-                  <p className="text-sm text-slate-500">{user.email}</p>
-                  <span className="mt-1 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">Plano Premium</span>
+      <form action={updateSettings} className="space-y-5">
+        <section className={infoCardClassName()}>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/15 text-primary">
+                <UserCircle2 className="h-10 w-10" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{user.name ?? "Usuario"}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
+                <div className="mt-2 inline-flex rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-primary">
+                  Plano Premium
                 </div>
               </div>
-              <button type="button" className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-2 text-sm font-bold dark:border-slate-700 dark:bg-slate-800">
-                Editar Perfil
-              </button>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center dark:border-slate-700 dark:bg-slate-800/60">
+                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Meta diaria</p>
+                <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">{dailyGoal}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center dark:border-slate-700 dark:bg-slate-800/60">
+                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Meta semanal</p>
+                <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">{weeklyGoal}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center dark:border-slate-700 dark:bg-slate-800/60">
+                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Meta %</p>
+                <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">{target.toFixed(0)}%</p>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <article className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-panelDark">
-            <div className="border-b border-slate-200 p-5 dark:border-slate-800">
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white">Preferências</h3>
-              <p className="text-sm text-slate-500">Personalize sua experiência</p>
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+          <article className={infoCardClassName()}>
+            <div className="mb-4 flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-primary" />
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Preferencias de estudo</h2>
             </div>
-            <div className="space-y-4 p-5">
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Meta diária
-                <input name="dailyQuestionsGoal" type="number" min={1} defaultValue={dailyGoal} className="mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800" />
+
+            <div className="space-y-3">
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Target className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">Meta diaria</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Questoes por dia</p>
+                  </div>
+                </div>
+                <input
+                  name="dailyQuestionsGoal"
+                  type="number"
+                  min={1}
+                  defaultValue={dailyGoal}
+                  className="h-11 w-24 rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black outline-none focus:border-primary dark:border-slate-600 dark:bg-[#120e20]"
+                />
               </label>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Meta semanal
-                <input name="weeklyQuestionsGoal" type="number" min={1} defaultValue={weeklyGoal} className="mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800" />
+
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <CalendarRange className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">Meta semanal</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Volume total da semana</p>
+                  </div>
+                </div>
+                <input
+                  name="weeklyQuestionsGoal"
+                  type="number"
+                  min={1}
+                  defaultValue={weeklyGoal}
+                  className="h-11 w-24 rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black outline-none focus:border-primary dark:border-slate-600 dark:bg-[#120e20]"
+                />
               </label>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Viés de prioridade
-                <input name="weightPriorityBias" type="number" step="0.05" defaultValue={bias} className="mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800" />
+
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Flame className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">Meta de acerto</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Percentual ideal de desempenho</p>
+                  </div>
+                </div>
+                <input
+                  name="targetPercentage"
+                  type="number"
+                  min={1}
+                  max={100}
+                  step="1"
+                  defaultValue={target}
+                  className="h-11 w-24 rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black outline-none focus:border-primary dark:border-slate-600 dark:bg-[#120e20]"
+                />
               </label>
-              <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
-                <div>
-                  <p className="text-sm font-semibold">Tema</p>
-                  <p className="text-xs text-slate-500">Claro / Escuro</p>
+
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">Viés de prioridade</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Peso extra para assuntos mais relevantes</p>
+                  </div>
+                </div>
+                <input
+                  name="weightPriorityBias"
+                  type="number"
+                  step="0.05"
+                  defaultValue={bias}
+                  className="h-11 w-24 rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black outline-none focus:border-primary dark:border-slate-600 dark:bg-[#120e20]"
+                />
+              </label>
+            </div>
+          </article>
+
+          <article className={infoCardClassName()}>
+            <div className="mb-4 flex items-center gap-2">
+              <Bell className="h-4 w-4 text-primary" />
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Interface e notificacoes</h2>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <MoonStar className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">Modo de tema</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Controle rapido entre claro e escuro</p>
+                  </div>
                 </div>
                 <ThemeToggle />
               </div>
-            </div>
-          </article>
 
-          <article className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-panelDark">
-            <div className="border-b border-slate-200 p-5 dark:border-slate-800">
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white">Notificações</h3>
-              <p className="text-sm text-slate-500">Como você quer ser avisado</p>
-            </div>
-            <div className="space-y-4 p-5">
+              <input type="hidden" name="theme" value={themeSettings?.theme ?? "system"} />
+
               {[
-                ["Notificações por E-mail", "Resumos e alertas de desempenho", true],
-                ["Notificações Push", "Alertas em tempo real", true],
-                ["Lembretes de Estudo", "Lembretes de revisão", true],
-                ["Atualizações de Conteúdo", "Novos conteúdos", false],
-              ].map(([title, text, checked]) => (
-                <label key={String(title)} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
-                  <div>
-                    <p className="text-sm font-semibold">{title}</p>
-                    <p className="text-xs text-slate-500">{text}</p>
-                  </div>
-                  <input type="checkbox" defaultChecked={Boolean(checked)} className="h-4 w-4 accent-primary" />
-                </label>
-              ))}
+                {
+                  icon: Mail,
+                  title: "Emails de lembrete",
+                  text: "Resumo e notificacoes por email",
+                  checked: true,
+                },
+                {
+                  icon: Bell,
+                  title: "Notificacoes push",
+                  text: "Alertas no navegador",
+                  checked: true,
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <label
+                    key={item.title}
+                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{item.title}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{item.text}</p>
+                      </div>
+                    </div>
+                    <input type="checkbox" defaultChecked={item.checked} className="h-4 w-4 accent-primary" />
+                  </label>
+                );
+              })}
             </div>
           </article>
         </section>
 
-        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <div className="border-b border-slate-200 p-5 dark:border-slate-800">
-            <h3 className="text-3xl font-black text-slate-900 dark:text-white">Segurança</h3>
-            <p className="text-sm text-slate-500">Proteja sua conta e dados</p>
-          </div>
+        <section className="grid gap-5 xl:grid-cols-2">
+          <article className={infoCardClassName()}>
+            <div className="mb-4 flex items-center gap-2">
+              <LockKeyhole className="h-4 w-4 text-primary" />
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Seguranca</h2>
+            </div>
 
-          <div className="divide-y divide-slate-200 dark:divide-slate-800">
-            <div className="flex items-center justify-between p-5">
-              <div>
-                <p className="font-semibold">Senha</p>
-                <p className="text-xs text-slate-500">Última alteração há 3 meses</p>
-              </div>
-              <button type="button" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold dark:border-slate-700">Alterar Senha</button>
+            <div className="space-y-3">
+              {[
+                {
+                  icon: LockKeyhole,
+                  title: "Alterar senha",
+                  text: "Ultima alteracao ha 3 meses",
+                },
+                {
+                  icon: ShieldCheck,
+                  title: "Autenticacao em 2 etapas",
+                  text: "Ativado via app",
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.title}
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-primary/30 dark:border-slate-700 dark:bg-slate-800/60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{item.title}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{item.text}</p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-black text-slate-400">›</span>
+                  </button>
+                );
+              })}
             </div>
-            <div className="flex items-center justify-between p-5">
-              <div>
-                <p className="font-semibold">Autenticação em Dois Fatores</p>
-                <p className="text-xs text-slate-500">Habilitado (SMS final 4421)</p>
-              </div>
-              <button type="button" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold dark:border-slate-700">Configurar 2FA</button>
-            </div>
-            <div className="flex items-center justify-between p-5">
-              <div>
-                <p className="font-semibold">Sessões Ativas</p>
-                <p className="text-xs text-slate-500">Você está logado em 3 dispositivos</p>
-              </div>
-              <button type="button" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold dark:border-slate-700">Gerenciar Dispositivos</button>
-            </div>
-          </div>
+          </article>
 
-          <div className="border-t border-red-200 bg-red-50 p-5 dark:border-red-500/20 dark:bg-red-500/10">
-            <p className="text-sm font-bold text-red-600 dark:text-red-400">Zona de Perigo</p>
-            <p className="text-xs text-red-500">Excluir sua conta é permanente e irreversível.</p>
-            <div className="mt-3">
-              <button type="button" className="rounded-lg border border-red-400 px-4 py-2 text-sm font-bold text-red-600 dark:text-red-300">Excluir Conta</button>
+          <article className="space-y-5">
+            <div className={infoCardClassName()}>
+              <div className="mb-4 flex items-center gap-2">
+                <UserCircle2 className="h-4 w-4 text-primary" />
+                <h2 className="text-lg font-black text-slate-900 dark:text-white">Conta</h2>
+              </div>
+
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-primary/30 dark:border-slate-700 dark:bg-slate-800/60"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <UserCircle2 className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">Sessoes ativas</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Gerencie dispositivos conectados</p>
+                  </div>
+                </div>
+                <span className="text-sm font-black text-slate-400">›</span>
+              </button>
             </div>
-          </div>
+
+            <div className={infoCardClassName(true)}>
+              <div className="mb-4 flex items-center gap-2">
+                <Trash2 className="h-4 w-4 text-red-500" />
+                <h2 className="text-lg font-black text-slate-900 dark:text-white">Zona de perigo</h2>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Excluir sua conta remove dados de estudo, guias e historico de forma permanente.
+              </p>
+              <button
+                type="button"
+                className="mt-4 rounded-xl border border-red-300 px-4 py-2 text-sm font-black text-red-600 dark:border-red-500/30 dark:text-red-300"
+              >
+                Excluir conta
+              </button>
+            </div>
+          </article>
         </section>
 
         <section className="flex items-center justify-end gap-3 border-t border-slate-200 pt-5 dark:border-slate-800">
-          <input type="hidden" name="targetPercentage" value={target} />
-          <input type="hidden" name="theme" value={settings?.theme ?? "system"} />
-          <button type="button" className="rounded-xl border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
-          <button type="submit" className="rounded-xl bg-primary px-6 py-2 text-sm font-bold text-white shadow-soft">Salvar Alterações</button>
+          <button
+            type="button"
+            className="rounded-xl border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300"
+          >
+            Cancelar
+          </button>
+          <button type="submit" className="rounded-xl bg-primary px-6 py-2 text-sm font-bold text-white shadow-soft">
+            Salvar alteracoes
+          </button>
         </section>
       </form>
     </div>
   );
 }
-
-
-

@@ -4,13 +4,16 @@ import { StudySessionForm } from "@/components/forms/study-session-form";
 import { requireUser } from "@/lib/auth";
 import { getNextCycleSuggestion } from "@/lib/analytics";
 import { prisma } from "@/lib/prisma";
+import { requireActiveStudyGuide } from "@/lib/study-guide";
+import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 
 export default async function RegistroPage() {
   const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
 
-  const [cycleEntries, suggestion, recentSessions] = await Promise.all([
+  const [cycleEntries, suggestion, recentSessions, settings] = await Promise.all([
     prisma.cycleEntry.findMany({
-      where: { userId: user.id, active: true, subject: { active: true } },
+      where: { userId: user.id, studyGuideId: guide.id, active: true, subject: { active: true } },
       include: {
         subject: {
           include: {
@@ -20,9 +23,9 @@ export default async function RegistroPage() {
       },
       orderBy: { orderIndex: "asc" },
     }),
-    getNextCycleSuggestion(user.id),
+    getNextCycleSuggestion(user.id, guide.id),
     prisma.studySession.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, studyGuideId: guide.id },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       take: 5,
       include: {
@@ -33,6 +36,7 @@ export default async function RegistroPage() {
         },
       },
     }),
+    getStudyGuideSettings(user.id, guide.id),
   ]);
 
   return (
@@ -68,7 +72,12 @@ export default async function RegistroPage() {
         </p>
       </section>
 
-      <StudySessionForm cycleEntries={cycleEntries} suggestedId={suggestion.next?.id} recentSessions={recentSessions} />
+      <StudySessionForm
+        cycleEntries={cycleEntries}
+        suggestedId={suggestion.next?.id}
+        recentSessions={recentSessions}
+        dailyQuestionsGoal={settings.dailyQuestionsGoal}
+      />
     </div>
   );
 }

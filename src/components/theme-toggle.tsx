@@ -1,11 +1,19 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/cn";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const activeTheme = mounted ? resolvedTheme : "light";
 
   return (
     <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
@@ -14,7 +22,7 @@ export function ThemeToggle() {
         onClick={() => setTheme("light")}
         className={cn(
           "rounded-md px-2 py-1 text-xs font-semibold",
-          resolvedTheme === "light" ? "bg-brand text-white" : "text-slate-600 dark:text-slate-300",
+          activeTheme === "light" ? "bg-primary text-white" : "text-slate-600 dark:text-slate-300",
         )}
         aria-label="Ativar modo claro"
       >
@@ -25,7 +33,7 @@ export function ThemeToggle() {
         onClick={() => setTheme("dark")}
         className={cn(
           "rounded-md px-2 py-1 text-xs font-semibold",
-          resolvedTheme === "dark" ? "bg-brand text-white" : "text-slate-600 dark:text-slate-300",
+          activeTheme === "dark" ? "bg-primary text-white" : "text-slate-600 dark:text-slate-300",
         )}
         aria-label="Ativar modo escuro"
       >

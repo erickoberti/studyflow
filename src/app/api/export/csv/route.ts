@@ -3,15 +3,20 @@ import { getServerSession } from "next-auth";
 import Papa from "papaparse";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
   }
+  const guide = await getActiveStudyGuideForUser(session.user.id);
+  if (!guide) {
+    return NextResponse.json({ message: "Selecione um guia ativo" }, { status: 409 });
+  }
 
   const sessions = await prisma.studySession.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, studyGuideId: guide.id },
     include: {
       cycleEntry: {
         include: {
@@ -43,7 +48,7 @@ export async function GET() {
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": "attachment; filename=study-sessions.csv",
+      "Content-Disposition": `attachment; filename="${guide.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-sessions.csv"`,
     },
   });
 }
