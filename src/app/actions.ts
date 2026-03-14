@@ -1,5 +1,6 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -13,7 +14,7 @@ import {
   STUDY_GUIDE_COLORS,
   STUDY_GUIDE_ICONS,
 } from "@/lib/study-guide";
-import { ensureStudyGuideSettings } from "@/lib/study-guide-settings";
+import { ensureStudyGuideSettings, upsertStudyGuideSettings } from "@/lib/study-guide-settings";
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -110,15 +111,54 @@ export async function createDiscipline(formData: FormData) {
   const sortOrder = sortOrderRaw ? Number(sortOrderRaw) : null;
   if (!name) return;
 
-  await prisma.discipline.create({
-    data: {
-      userId: user.id,
-      studyGuideId: guide.id,
-      name,
-      sortOrder: Number.isFinite(sortOrder) ? sortOrder : null,
-      category: null,
-    },
+  const existing = await prisma.discipline.findFirst({
+    where: { userId: user.id, studyGuideId: guide.id, name },
+    select: { id: true },
   });
+
+  if (existing) {
+    await prisma.discipline.update({
+      where: { id: existing.id },
+      data: {
+        sortOrder: Number.isFinite(sortOrder) ? sortOrder : null,
+        active: true,
+      },
+    });
+  } else {
+    try {
+      await prisma.discipline.create({
+        data: {
+          userId: user.id,
+          studyGuideId: guide.id,
+          name,
+          sortOrder: Number.isFinite(sortOrder) ? sortOrder : null,
+          category: null,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const duplicated = await prisma.discipline.findFirst({
+          where: { userId: user.id, studyGuideId: guide.id, name },
+          select: { id: true },
+        });
+
+        if (duplicated) {
+          await prisma.discipline.update({
+            where: { id: duplicated.id },
+            data: {
+              sortOrder: Number.isFinite(sortOrder) ? sortOrder : null,
+              active: true,
+            },
+          });
+        }
+      } else {
+        throw error;
+      }
+    }
+  }
 
   revalidatePath("/base");
 }
@@ -145,12 +185,119 @@ export async function updateDiscipline(formData: FormData) {
   revalidatePath("/guias");
 }
 
+async function applySubjectCycleOrder(userId: string, studyGuideId: string, subjectId: string, requestedOrder: number | null) {
+  if (!Number.isFinite(requestedOrder) || requestedOrder === null || requestedOrder <= 0) return;
+
+  const entry = await prisma.cycleEntry.findFirst({
+    where: { userId, studyGuideId, subjectId },
+    orderBy: { orderIndex: "asc" },
+  });
+
+  const lastEntry = await prisma.cycleEntry.findFirst({
+    where: { userId, studyGuideId },
+    orderBy: { orderIndex: "desc" },
+    select: { orderIndex: true },
+  });
+
+  const currentMax = Math.max(1, lastEntry?.orderIndex ?? 1);
+  const targetOrder = Math.min(Math.max(1, requestedOrder), entry ? currentMax : currentMax + 1);
+  const safetyOffset = currentMax + 1000;
+
+  if (entry) {
+    if (targetOrder === entry.orderIndex) return;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.cycleEntry.update({
+        where: { id: entry.id },
+        data: { orderIndex: -1 },
+      });
+
+      if (targetOrder < entry.orderIndex) {
+        await tx.cycleEntry.updateMany({
+          where: {
+            userId,
+            studyGuideId,
+            orderIndex: { gte: targetOrder, lt: entry.orderIndex },
+          },
+          data: { orderIndex: { increment: safetyOffset } },
+        });
+
+        await tx.cycleEntry.updateMany({
+          where: {
+            userId,
+            studyGuideId,
+            orderIndex: { gte: targetOrder + safetyOffset, lt: entry.orderIndex + safetyOffset },
+          },
+          data: { orderIndex: { decrement: safetyOffset - 1 } },
+        });
+      } else {
+        await tx.cycleEntry.updateMany({
+          where: {
+            userId,
+            studyGuideId,
+            orderIndex: { gt: entry.orderIndex, lte: targetOrder },
+          },
+          data: { orderIndex: { increment: safetyOffset } },
+        });
+
+        await tx.cycleEntry.updateMany({
+          where: {
+            userId,
+            studyGuideId,
+            orderIndex: { gt: entry.orderIndex + safetyOffset, lte: targetOrder + safetyOffset },
+          },
+          data: { orderIndex: { decrement: safetyOffset + 1 } },
+        });
+      }
+
+      await tx.cycleEntry.update({
+        where: { id: entry.id },
+        data: { orderIndex: targetOrder },
+      });
+    });
+    return;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.cycleEntry.updateMany({
+      where: {
+        userId,
+        studyGuideId,
+        orderIndex: { gte: targetOrder },
+      },
+      data: { orderIndex: { increment: safetyOffset } },
+    });
+
+    await tx.cycleEntry.create({
+      data: {
+        userId,
+        studyGuideId,
+        subjectId,
+        orderIndex: targetOrder,
+        active: true,
+      },
+    });
+
+    await tx.cycleEntry.updateMany({
+      where: {
+        userId,
+        studyGuideId,
+        orderIndex: { gte: targetOrder + safetyOffset },
+      },
+      data: { orderIndex: { decrement: safetyOffset - 1 } },
+    });
+  });
+}
+
 export async function createSubject(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  const redirectTo = String(formData.get("redirectTo") ?? "").trim();
   const disciplineId = String(formData.get("disciplineId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const weight = Number(formData.get("weight") ?? 1);
+  const orderIndexRaw = String(formData.get("orderIndex") ?? "").trim();
+  const orderIndex = orderIndexRaw ? Number(orderIndexRaw) : null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const tecReference = String(formData.get("tecReference") ?? "").trim() || null;
   if (!name || !disciplineId) return;
@@ -161,22 +308,181 @@ export async function createSubject(formData: FormData) {
   });
   if (!discipline) return;
 
-  await prisma.subject.create({
-    data: {
+  const existing = await prisma.subject.findFirst({
+    where: { userId: user.id, studyGuideId: guide.id, disciplineId, name },
+    select: { id: true },
+  });
+
+  let subject;
+
+  if (existing) {
+    subject = await prisma.subject.update({
+      where: { id: existing.id },
+      data: {
+        weight: Number.isFinite(weight) ? weight : 1,
+        notes,
+        tecReference,
+        active: true,
+      },
+    });
+  } else {
+    try {
+      subject = await prisma.subject.create({
+        data: {
+          userId: user.id,
+          studyGuideId: guide.id,
+          disciplineId,
+          name,
+          weight,
+          notes,
+          tecReference,
+          groupName: null,
+          active: true,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const duplicated = await prisma.subject.findFirst({
+          where: { userId: user.id, studyGuideId: guide.id, disciplineId, name },
+          select: { id: true },
+        });
+
+        if (!duplicated) {
+          throw error;
+        }
+
+        subject = await prisma.subject.update({
+          where: { id: duplicated.id },
+          data: {
+            weight: Number.isFinite(weight) ? weight : 1,
+            notes,
+            tecReference,
+            active: true,
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  await applySubjectCycleOrder(user.id, guide.id, subject.id, orderIndex);
+
+  revalidatePath("/base");
+  revalidatePath("/ciclo");
+  revalidatePath("/registro");
+
+  if (redirectTo) {
+    redirect(redirectTo);
+  }
+}
+
+export async function updateSubject(formData: FormData) {
+  const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
+  const redirectTo = String(formData.get("redirectTo") ?? "").trim();
+  const subjectId = String(formData.get("subjectId") ?? "");
+  const disciplineId = String(formData.get("disciplineId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const weight = Number(formData.get("weight") ?? 1);
+  const orderIndexRaw = String(formData.get("orderIndex") ?? "").trim();
+  const orderIndex = orderIndexRaw ? Number(orderIndexRaw) : null;
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+  const tecReference = String(formData.get("tecReference") ?? "").trim() || null;
+
+  if (!subjectId || !disciplineId || !name) return;
+
+  const discipline = await prisma.discipline.findFirst({
+    where: { id: disciplineId, userId: user.id, studyGuideId: guide.id },
+    select: { id: true },
+  });
+  if (!discipline) return;
+
+  let targetSubjectId = subjectId;
+  const conflicting = await prisma.subject.findFirst({
+    where: {
       userId: user.id,
       studyGuideId: guide.id,
       disciplineId,
       name,
-      weight,
-      notes,
-      tecReference,
-      groupName: null,
-      active: true,
+      id: { not: subjectId },
     },
+    select: { id: true },
   });
+
+  if (conflicting) {
+    targetSubjectId = conflicting.id;
+
+    await prisma.subject.update({
+      where: { id: conflicting.id },
+      data: {
+        weight: Number.isFinite(weight) ? weight : 1,
+        notes,
+        tecReference,
+        active: true,
+      },
+    });
+  } else {
+    try {
+      await prisma.subject.update({
+        where: { id: subjectId },
+        data: {
+          disciplineId,
+          name,
+          weight: Number.isFinite(weight) ? weight : 1,
+          notes,
+          tecReference,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const duplicated = await prisma.subject.findFirst({
+          where: {
+            userId: user.id,
+            studyGuideId: guide.id,
+            disciplineId,
+            name,
+            id: { not: subjectId },
+          },
+          select: { id: true },
+        });
+
+        if (!duplicated) {
+          throw error;
+        }
+
+        targetSubjectId = duplicated.id;
+
+        await prisma.subject.update({
+          where: { id: duplicated.id },
+          data: {
+            weight: Number.isFinite(weight) ? weight : 1,
+            notes,
+            tecReference,
+            active: true,
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  await applySubjectCycleOrder(user.id, guide.id, targetSubjectId, orderIndex);
 
   revalidatePath("/base");
   revalidatePath("/ciclo");
+  revalidatePath("/registro");
+
+  if (redirectTo) {
+    redirect(redirectTo);
+  }
 }
 
 export async function addCycleEntry(formData: FormData) {
@@ -326,22 +632,11 @@ export async function updateSettings(formData: FormData) {
 
   await ensureStudyGuideSettings(user.id, guide.id);
 
-  await prisma.studyGuideSettings.upsert({
-    where: { studyGuideId: guide.id },
-    create: {
-      userId: user.id,
-      studyGuideId: guide.id,
-      targetPercentage: Number(formData.get("targetPercentage") ?? 80),
-      dailyQuestionsGoal: Number(formData.get("dailyQuestionsGoal") ?? 30),
-      weeklyQuestionsGoal: Number(formData.get("weeklyQuestionsGoal") ?? 200),
-      weightPriorityBias: Number(formData.get("weightPriorityBias") ?? 1.25),
-    },
-    update: {
-      targetPercentage: Number(formData.get("targetPercentage") ?? 80),
-      dailyQuestionsGoal: Number(formData.get("dailyQuestionsGoal") ?? 30),
-      weeklyQuestionsGoal: Number(formData.get("weeklyQuestionsGoal") ?? 200),
-      weightPriorityBias: Number(formData.get("weightPriorityBias") ?? 1.25),
-    },
+  await upsertStudyGuideSettings(user.id, guide.id, {
+    targetPercentage: Number(formData.get("targetPercentage") ?? 80),
+    dailyQuestionsGoal: Number(formData.get("dailyQuestionsGoal") ?? 30),
+    weeklyQuestionsGoal: Number(formData.get("weeklyQuestionsGoal") ?? 200),
+    weightPriorityBias: Number(formData.get("weightPriorityBias") ?? 1.25),
   });
 
   await prisma.userSettings.upsert({
@@ -390,13 +685,10 @@ export async function createStudyGuideAction(formData: FormData) {
       icon: STUDY_GUIDE_ICONS.includes(icon as (typeof STUDY_GUIDE_ICONS)[number]) ? icon : "book-open",
       color: STUDY_GUIDE_COLORS.includes(color as (typeof STUDY_GUIDE_COLORS)[number]) ? color : "#6366f1",
       description,
-      settings: {
-        create: {
-          userId: user.id,
-        },
-      },
     },
   });
+
+  await ensureStudyGuideSettings(user.id, guide.id);
 
   await prisma.user.update({
     where: { id: user.id },

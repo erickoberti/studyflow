@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { upsertStudyGuideSettings } from "@/lib/study-guide-settings";
 
 export const LEGACY_GUIDE_NAME = "CAU - RJ - Especialista Adm";
 export const STUDY_GUIDE_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#f43f5e", "#06b6d4", "#64748b"] as const;
@@ -67,15 +68,6 @@ export async function getStudyGuideState(userId: string) {
             icon: "briefcase",
             color: "#6366f1",
             description: "Guia migrado a partir dos dados existentes.",
-            settings: {
-              create: {
-                userId,
-                targetPercentage: legacySettings?.targetPercentage ?? 80,
-                dailyQuestionsGoal: legacySettings?.dailyQuestionsGoal ?? 30,
-                weeklyQuestionsGoal: legacySettings?.weeklyQuestionsGoal ?? 200,
-                weightPriorityBias: legacySettings?.weightPriorityBias ?? 1.25,
-              },
-            },
           },
           include: {
             _count: {
@@ -87,6 +79,13 @@ export async function getStudyGuideState(userId: string) {
               },
             },
           },
+        });
+
+        await upsertStudyGuideSettings(userId, guide.id, {
+          targetPercentage: legacySettings?.targetPercentage ?? 80,
+          dailyQuestionsGoal: legacySettings?.dailyQuestionsGoal ?? 30,
+          weeklyQuestionsGoal: legacySettings?.weeklyQuestionsGoal ?? 200,
+          weightPriorityBias: legacySettings?.weightPriorityBias ?? 1.25,
         });
 
         await Promise.all([

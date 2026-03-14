@@ -50,6 +50,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     id: "",
@@ -102,6 +103,37 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
 
   function cancelEdit() {
     setEditingId(null);
+  }
+
+  async function deleteSession(id: string) {
+    const confirmed = window.confirm("Excluir este registro de estudo? Esta ação não pode ser desfeita.");
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(id);
+      const response = await fetch("/api/study-sessions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast.error(data?.message ?? "Erro ao excluir registro.");
+        return;
+      }
+
+      setLocalSessions((current) => current.filter((item) => item.id !== id));
+      if (editingId === id) {
+        setEditingId(null);
+      }
+      toast.success("Registro excluído.");
+      router.refresh();
+    } catch {
+      toast.error("Nao foi possivel excluir agora. Tente novamente.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function saveEdit() {
@@ -275,6 +307,14 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
             >
               Cancelar
             </button>
+            <button
+              type="button"
+              onClick={() => editingId && deleteSession(editingId)}
+              disabled={!editingId || deletingId === editingId}
+              className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 disabled:opacity-50 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300"
+            >
+              {deletingId === editingId ? "Excluindo..." : "Excluir"}
+            </button>
           </div>
         </div>
       ) : null}
@@ -325,6 +365,14 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                       className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
                     >
                       Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteSession(item.id)}
+                      disabled={deletingId === item.id}
+                      className="ml-2 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300"
+                    >
+                      {deletingId === item.id ? "Excluindo..." : "Excluir"}
                     </button>
                   </td>
                 </tr>
