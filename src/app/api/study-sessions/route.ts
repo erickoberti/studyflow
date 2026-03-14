@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 
 const createSchema = z.object({
   date: z.string(),
@@ -23,9 +24,13 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
   }
+  const guide = await getActiveStudyGuideForUser(session.user.id);
+  if (!guide) {
+    return NextResponse.json({ message: "Selecione um guia ativo" }, { status: 409 });
+  }
 
   const data = await prisma.studySession.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, studyGuideId: guide.id },
     include: {
       cycleEntry: {
         include: {
@@ -49,6 +54,10 @@ export async function POST(request: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
   }
+  const guide = await getActiveStudyGuideForUser(session.user.id);
+  if (!guide) {
+    return NextResponse.json({ message: "Selecione um guia ativo" }, { status: 409 });
+  }
 
   const payload = await request.json();
   const parsed = createSchema.safeParse(payload);
@@ -66,6 +75,7 @@ export async function POST(request: Request) {
     where: {
       id: cycleEntryId,
       userId: session.user.id,
+      studyGuideId: guide.id,
     },
   });
 
@@ -76,6 +86,7 @@ export async function POST(request: Request) {
   const created = await prisma.studySession.create({
     data: {
       userId: session.user.id,
+      studyGuideId: guide.id,
       cycleEntryId,
       date: new Date(`${date}T12:00:00-03:00`),
       questions,
@@ -95,6 +106,10 @@ export async function PUT(request: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
   }
+  const guide = await getActiveStudyGuideForUser(session.user.id);
+  if (!guide) {
+    return NextResponse.json({ message: "Selecione um guia ativo" }, { status: 409 });
+  }
 
   const payload = await request.json();
   const parsed = updateSchema.safeParse(payload);
@@ -109,7 +124,7 @@ export async function PUT(request: Request) {
   }
 
   const existing = await prisma.studySession.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId: session.user.id, studyGuideId: guide.id },
   });
 
   if (!existing) {
@@ -120,6 +135,7 @@ export async function PUT(request: Request) {
     where: {
       id: cycleEntryId,
       userId: session.user.id,
+      studyGuideId: guide.id,
     },
   });
 

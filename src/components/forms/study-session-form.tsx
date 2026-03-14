@@ -83,10 +83,12 @@ export function StudySessionForm({
   cycleEntries,
   suggestedId,
   recentSessions,
+  dailyQuestionsGoal,
 }: {
   cycleEntries: CycleOption[];
   suggestedId?: string;
   recentSessions?: RecentSession[];
+  dailyQuestionsGoal: number;
 }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -103,8 +105,7 @@ export function StudySessionForm({
   const percentage = questions > 0 ? (correct / questions) * 100 : 0;
   const signal = signalByPercentage(percentage);
 
-  const dailyQuestionsTarget = 50;
-  const questionProgress = Math.min(100, (questions / dailyQuestionsTarget) * 100);
+  const questionProgress = Math.min(100, (questions / Math.max(1, dailyQuestionsGoal)) * 100);
   const headline = useMemo(() => (editingId ? "Salvar Alterações" : "Salvar Sessão"), [editingId]);
 
   function resetForm() {
@@ -328,7 +329,7 @@ export function StudySessionForm({
               <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-2 rounded-full bg-primary" style={{ width: `${Math.min(100, (estimatedMinutes / 360) * 100)}%` }} /></div>
             </div>
             <div>
-              <div className="mb-1 flex justify-between text-sm"><span className="text-slate-500">Questões Realizadas</span><span className="font-bold">{questions} / {dailyQuestionsTarget}</span></div>
+              <div className="mb-1 flex justify-between text-sm"><span className="text-slate-500">Questões Realizadas</span><span className="font-bold">{questions} / {dailyQuestionsGoal}</span></div>
               <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-2 rounded-full ${signal.bg}`} style={{ width: `${questionProgress}%` }} /></div>
             </div>
             <div className="pt-4">

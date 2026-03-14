@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import Papa from "papaparse";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 
 function normalizeKey(value: string) {
   return value
@@ -40,6 +41,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
   }
 
+  const guide = await getActiveStudyGuideForUser(session.user.id);
+  if (!guide) {
+    return NextResponse.json({ message: "Selecione um guia ativo" }, { status: 409 });
+  }
+
   const form = await request.formData();
   const file = form.get("file") as File | null;
   if (!file) {
@@ -66,22 +72,35 @@ export async function POST(request: Request) {
       disciplina: getField(row, ["Disciplina"]),
       tec: getField(row, ["Onde marcar no TEC", "Onde marcar no tec", "TEC", "Tec"]),
     }))
-    .filter((r) => r.seq !== null && r.assunto && r.disciplina)
+    .filter((row) => row.seq !== null && row.assunto && row.disciplina)
     .sort((a, b) => (a.seq as number) - (b.seq as number));
+
+  if (!ordered.length) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Nenhuma linha valida encontrada. Use um CSV com colunas como: Seq, Assunto, Peso, Disciplina, Onde marcar no TEC.",
+      },
+      { status: 400 },
+    );
+  }
 
   let importedRows = 0;
 
   for (const item of ordered) {
     const discipline = await prisma.discipline.upsert({
       where: {
-        userId_name: {
+        userId_studyGuideId_name: {
           userId: session.user.id,
+          studyGuideId: guide.id,
           name: item.disciplina,
         },
       },
       update: { active: true },
       create: {
         userId: session.user.id,
+        studyGuideId: guide.id,
         name: item.disciplina,
         active: true,
         category: null,
@@ -90,8 +109,9 @@ export async function POST(request: Request) {
 
     const subject = await prisma.subject.upsert({
       where: {
-        userId_disciplineId_name: {
+        userId_studyGuideId_disciplineId_name: {
           userId: session.user.id,
+          studyGuideId: guide.id,
           disciplineId: discipline.id,
           name: item.assunto,
         },
@@ -104,6 +124,7 @@ export async function POST(request: Request) {
       },
       create: {
         userId: session.user.id,
+        studyGuideId: guide.id,
         disciplineId: discipline.id,
         name: item.assunto,
         weight: item.peso,
@@ -115,8 +136,9 @@ export async function POST(request: Request) {
 
     await prisma.cycleEntry.upsert({
       where: {
-        userId_orderIndex: {
+        userId_studyGuideId_orderIndex: {
           userId: session.user.id,
+          studyGuideId: guide.id,
           orderIndex: item.seq as number,
         },
       },
@@ -126,6 +148,7 @@ export async function POST(request: Request) {
       },
       create: {
         userId: session.user.id,
+        studyGuideId: guide.id,
         subjectId: subject.id,
         orderIndex: item.seq as number,
         active: true,
@@ -135,9 +158,20 @@ export async function POST(request: Request) {
     importedRows += 1;
   }
 
+  if (!importedRows) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "O arquivo foi lido, mas nada novo foi importado. Verifique se as linhas ja existem no guia atual ou se as colunas estao no formato esperado.",
+      },
+      { status: 409 },
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     importedRows,
-    message: "Planilha cadastrada com sucesso.",
+    message: `Planilha importada com sucesso. ${importedRows} linha(s) processada(s) no guia atual.`,
   });
 }

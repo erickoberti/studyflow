@@ -12,6 +12,7 @@ import {
 import { requireUser } from "@/lib/auth";
 import { getDashboardData, getNextCycleSuggestion } from "@/lib/analytics";
 import { prisma } from "@/lib/prisma";
+import { requireActiveStudyGuide } from "@/lib/study-guide";
 
 function dayKeyInSaoPaulo(date: Date) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -33,13 +34,14 @@ function formatPtBrDay(date: Date) {
 
 export default async function DashboardPage() {
   const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
 
   const todayKey = dayKeyInSaoPaulo(new Date());
   const [dashboard, suggestion, recentSessions] = await Promise.all([
-    getDashboardData(user.id),
-    getNextCycleSuggestion(user.id),
+    getDashboardData(user.id, guide.id),
+    getNextCycleSuggestion(user.id, guide.id),
     prisma.studySession.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, studyGuideId: guide.id },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       take: 3,
       include: {
@@ -129,7 +131,9 @@ export default async function DashboardPage() {
           <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Progresso da Meta Diária</h3>
-              <span className="rounded bg-primary/10 px-2 py-1 text-xs font-bold text-primary">Meta: 50 questões</span>
+                <span className="rounded bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
+                  Meta: {dashboard.totals.dailyQuestionsGoal} questões
+                </span>
             </div>
 
             <div className="space-y-4">

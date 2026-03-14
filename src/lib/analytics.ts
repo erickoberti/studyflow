@@ -1,4 +1,5 @@
-﻿import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
+import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 
 export type PriorityLevel = "urgente" | "atencao" | "bom" | "forte";
 export type MetaSignal = "verde" | "amarelo" | "vermelho";
@@ -49,9 +50,9 @@ function metaSignal(percentage: number, target: number) {
   return { gap, level: "vermelho" as MetaSignal, label: "Urgente" };
 }
 
-export async function getNextCycleSuggestion(userId: string) {
+export async function getNextCycleSuggestion(userId: string, studyGuideId: string) {
   const activeEntries = await prisma.cycleEntry.findMany({
-    where: { userId, active: true, subject: { active: true, discipline: { active: true } } },
+    where: { userId, studyGuideId, active: true, subject: { active: true, discipline: { active: true } } },
     include: { subject: { include: { discipline: true } } },
     orderBy: { orderIndex: "asc" },
   });
@@ -61,7 +62,7 @@ export async function getNextCycleSuggestion(userId: string) {
   }
 
   const lastSession = await prisma.studySession.findFirst({
-    where: { userId },
+    where: { userId, studyGuideId },
     include: { cycleEntry: { include: { subject: { include: { discipline: true } } } } },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
@@ -76,10 +77,10 @@ export async function getNextCycleSuggestion(userId: string) {
   return { last: lastSession.cycleEntry, next };
 }
 
-export async function getDashboardData(userId: string) {
+export async function getDashboardData(userId: string, studyGuideId: string) {
   const [sessions, settings, activeEntries] = await Promise.all([
     prisma.studySession.findMany({
-      where: { userId },
+      where: { userId, studyGuideId },
       include: {
         cycleEntry: {
           include: {
@@ -93,14 +94,14 @@ export async function getDashboardData(userId: string) {
       },
       orderBy: { date: "asc" },
     }),
-    prisma.userSettings.findUnique({ where: { userId } }),
+    getStudyGuideSettings(userId, studyGuideId),
     prisma.cycleEntry.findMany({
-      where: { userId, active: true, subject: { active: true, discipline: { active: true } } },
+      where: { userId, studyGuideId, active: true, subject: { active: true, discipline: { active: true } } },
       select: { id: true },
     }),
   ]);
 
-  const targetPercentage = settings?.targetPercentage ?? 80;
+  const targetPercentage = settings.targetPercentage;
 
   const totalQuestions = sessions.reduce((sum, item) => sum + item.questions, 0);
   const totalCorrect = sessions.reduce((sum, item) => sum + item.correct, 0);
@@ -222,6 +223,9 @@ export async function getDashboardData(userId: string) {
       totalEstimatedMinutes,
       overallPercentage,
       targetPercentage,
+      dailyQuestionsGoal: settings.dailyQuestionsGoal,
+      weeklyQuestionsGoal: settings.weeklyQuestionsGoal,
+      weightPriorityBias: settings.weightPriorityBias,
       gapToTarget: overallSignal.gap,
       metaLevel: overallSignal.level,
       metaLabel: overallSignal.label,
@@ -239,9 +243,9 @@ export async function getDashboardData(userId: string) {
   };
 }
 
-export async function getReviewSuggestions(userId: string) {
+export async function getReviewSuggestions(userId: string, studyGuideId: string) {
   const subjects = await prisma.subject.findMany({
-    where: { userId, active: true },
+    where: { userId, studyGuideId, active: true },
     include: {
       discipline: true,
       cycleEntries: {
@@ -289,5 +293,3 @@ export async function getReviewSuggestions(userId: string) {
       .slice(0, 8),
   };
 }
-
-

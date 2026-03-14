@@ -1,13 +1,15 @@
 ﻿import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SessionManager } from "@/components/forms/session-manager";
+import { requireActiveStudyGuide } from "@/lib/study-guide";
 
 export default async function RegistrosPage() {
   const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
 
   const [sessions, cycleEntries] = await Promise.all([
     prisma.studySession.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, studyGuideId: guide.id },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       include: {
         cycleEntry: {
@@ -18,7 +20,7 @@ export default async function RegistrosPage() {
       },
     }),
     prisma.cycleEntry.findMany({
-      where: { userId: user.id, active: true, subject: { active: true, discipline: { active: true } } },
+      where: { userId: user.id, studyGuideId: guide.id, active: true, subject: { active: true, discipline: { active: true } } },
       orderBy: { orderIndex: "asc" },
       include: { subject: { include: { discipline: true } } },
     }),

@@ -9,22 +9,26 @@ export async function GET() {
     return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
   }
 
-  const [disciplines, subjects, cycleEntries, sessions, settings] = await Promise.all([
+  const [guides, disciplines, subjects, cycleEntries, sessions, settings, guideSettings] = await Promise.all([
+    prisma.studyGuide.findMany({ where: { userId: session.user.id } }),
     prisma.discipline.findMany({ where: { userId: session.user.id } }),
     prisma.subject.findMany({ where: { userId: session.user.id } }),
     prisma.cycleEntry.findMany({ where: { userId: session.user.id } }),
     prisma.studySession.findMany({ where: { userId: session.user.id } }),
     prisma.userSettings.findUnique({ where: { userId: session.user.id } }),
+    prisma.studyGuideSettings.findMany({ where: { userId: session.user.id } }),
   ]);
 
   return NextResponse.json(
     {
       exportedAt: new Date().toISOString(),
+      guides,
       disciplines,
       subjects,
       cycleEntries,
       sessions,
       settings,
+      guideSettings,
     },
     {
       headers: {

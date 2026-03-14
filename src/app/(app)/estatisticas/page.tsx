@@ -1,6 +1,7 @@
 import { CalendarDays, Download, TrendingDown, TrendingUp } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/analytics";
+import { requireActiveStudyGuide } from "@/lib/study-guide";
 
 function dayKeyInSaoPaulo(date: Date) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -26,7 +27,8 @@ function barColor(value: number) {
 
 export default async function EstatisticasPage() {
   const user = await requireUser();
-  const dashboard = await getDashboardData(user.id);
+  const guide = await requireActiveStudyGuide(user.id);
+  const dashboard = await getDashboardData(user.id, guide.id);
 
   const topSubjects = dashboard.subjectStats.slice(0, 5);
   const byDayMap = new Map(dashboard.byDay.map((day) => [day.date, day]));
@@ -41,15 +43,17 @@ export default async function EstatisticasPage() {
       questions: day?.questions ?? 0,
     };
   });
-  const maxWeek = Math.max(1, ...week.map((d) => d.questions));
+  const maxWeek = Math.max(1, ...week.map((day) => day.questions));
   const avgHoursPerDay = week.reduce((sum, day) => sum + day.questions / 10, 0) / week.length;
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 pb-10">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-5xl font-black tracking-tight text-slate-900 dark:text-white">Desempenho Geral</h1>
-          <p className="mt-1 text-xl text-slate-500 dark:text-slate-400">Acompanhe sua evolução nos estudos nos últimos 30 dias.</p>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Desempenho Geral</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Acompanhe sua evolucao nos estudos nos ultimos 30 dias.
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-panelDark dark:text-slate-200">
@@ -62,41 +66,55 @@ export default async function EstatisticasPage() {
       </header>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
           <p className="text-sm font-medium text-slate-500">Tempo Total</p>
-          <p className="mt-2 text-5xl font-black text-slate-900 dark:text-white">{(dashboard.totals.totalEstimatedMinutes / 60).toFixed(1)}h</p>
-          <span className="mt-3 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-600">+12%</span>
+          <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">
+            {(dashboard.totals.totalEstimatedMinutes / 60).toFixed(1)}h
+          </p>
+          <span className="mt-3 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-600">
+            +12%
+          </span>
         </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <p className="text-sm font-medium text-slate-500">Precisão Média</p>
-          <p className="mt-2 text-5xl font-black text-slate-900 dark:text-white">{dashboard.totals.overallPercentage.toFixed(1)}%</p>
-          <span className="mt-3 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-600">-2.4%</span>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
+          <p className="text-sm font-medium text-slate-500">Precisao Media</p>
+          <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">
+            {dashboard.totals.overallPercentage.toFixed(1)}%
+          </p>
+          <span className="mt-3 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-600">
+            -2.4%
+          </span>
         </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <p className="text-sm font-medium text-slate-500">Questões Totais</p>
-          <p className="mt-2 text-5xl font-black text-slate-900 dark:text-white">{dashboard.totals.totalQuestions}</p>
-          <span className="mt-3 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-600">+5%</span>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
+          <p className="text-sm font-medium text-slate-500">Questoes Totais</p>
+          <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{dashboard.totals.totalQuestions}</p>
+          <span className="mt-3 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-600">
+            +5%
+          </span>
         </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <p className="text-sm font-medium text-slate-500">Meta Concluída</p>
-          <p className="mt-2 text-5xl font-black text-slate-900 dark:text-white">{dashboard.totals.targetPercentage.toFixed(0)}%</p>
-          <span className="mt-3 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-600">+10%</span>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
+          <p className="text-sm font-medium text-slate-500">Meta Concluida</p>
+          <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">
+            {dashboard.totals.targetPercentage.toFixed(0)}%
+          </p>
+          <span className="mt-3 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-600">
+            +10%
+          </span>
         </article>
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-10">
-        <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark xl:col-span-7">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark xl:col-span-7">
           <div className="mb-5 flex items-center justify-between">
-            <h3 className="text-3xl font-black text-slate-900 dark:text-white">Atividade Semanal</h3>
-            <span className="text-sm font-semibold text-slate-500">Média: {avgHoursPerDay.toFixed(1)}h/dia</span>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white">Atividade Semanal</h3>
+            <span className="text-sm font-semibold text-slate-500">Media: {avgHoursPerDay.toFixed(1)}h/dia</span>
           </div>
-          <div className="flex h-64 items-end justify-between gap-4 px-2">
+          <div className="flex h-56 items-end justify-between gap-3 px-1">
             {week.map((day) => (
               <div key={day.date} className="flex h-full flex-1 flex-col items-center gap-2">
                 <div className="flex w-full flex-1 items-end">
                   <div
                     className="w-full rounded-t-lg bg-primary/25"
-                    title={`${day.questions} questões`}
+                    title={`${day.questions} questoes`}
                     style={{ height: `${Math.max(15, (day.questions / maxWeek) * 100)}%` }}
                   />
                 </div>
@@ -106,9 +124,9 @@ export default async function EstatisticasPage() {
           </div>
         </article>
 
-        <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark xl:col-span-3">
-          <h3 className="mb-5 text-3xl font-black text-slate-900 dark:text-white">Precisão por Matéria</h3>
-          <div className="space-y-5">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark xl:col-span-3">
+          <h3 className="mb-5 text-xl font-black text-slate-900 dark:text-white">Precisao por Materia</h3>
+          <div className="space-y-4">
             {dashboard.disciplineStats.slice(0, 5).map((item) => (
               <div key={item.discipline}>
                 <div className="mb-2 flex justify-between text-sm">
@@ -125,18 +143,18 @@ export default async function EstatisticasPage() {
       </section>
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-panelDark">
-        <div className="border-b border-slate-200 p-6 dark:border-slate-800">
-          <h3 className="text-3xl font-black text-slate-900 dark:text-white">Estatísticas Detalhadas</h3>
+        <div className="border-b border-slate-200 p-5 dark:border-slate-800">
+          <h3 className="text-xl font-black text-slate-900 dark:text-white">Estatisticas Detalhadas</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left">
+          <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 dark:bg-slate-800/50">
               <tr>
                 <th className="px-6 py-4 font-bold">Disciplina</th>
                 <th className="px-6 py-4 font-bold">Tempo Estudado</th>
-                <th className="px-6 py-4 font-bold">Questões</th>
-                <th className="px-6 py-4 font-bold">Precisão %</th>
-                <th className="px-6 py-4 font-bold">Tendência</th>
+                <th className="px-6 py-4 font-bold">Questoes</th>
+                <th className="px-6 py-4 font-bold">Precisao %</th>
+                <th className="px-6 py-4 font-bold">Tendencia</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -153,7 +171,7 @@ export default async function EstatisticasPage() {
           </table>
         </div>
         <div className="border-t border-slate-200 bg-slate-50/60 p-4 text-center text-sm font-bold text-primary dark:border-slate-800 dark:bg-slate-800/30">
-          Ver relatório completo
+          Ver relatorio completo
         </div>
       </section>
     </div>
