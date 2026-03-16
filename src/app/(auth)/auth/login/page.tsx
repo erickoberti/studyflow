@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LoginForm } from "@/components/forms/login-form";
 
 function detectAppMode() {
@@ -15,6 +15,7 @@ function detectAppMode() {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const forced = searchParams.get("mode");
   const [isAppMode, setIsAppMode] = useState(false);
@@ -30,6 +31,16 @@ export default function LoginPage() {
     }
     setIsAppMode(detectAppMode() || window.innerWidth <= 768);
   }, [forced]);
+
+  useEffect(() => {
+    router.prefetch("/offline/dashboard");
+    router.prefetch("/offline/registro");
+    router.prefetch("/offline/registros");
+    router.prefetch("/offline/ciclo");
+    router.prefetch("/offline/base");
+    router.prefetch("/offline/guias");
+    router.prefetch("/offline/configuracoes");
+  }, [router]);
 
   const mode = useMemo<"web" | "app">(() => (isAppMode ? "app" : "web"), [isAppMode]);
 

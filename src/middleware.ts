@@ -7,6 +7,7 @@ const publicPaths = [
   "/auth/register",
   "/auth/forgot",
   "/auth/reset",
+  "/offline",
   "/api/auth",
   "/manifest.webmanifest",
   "/icons",

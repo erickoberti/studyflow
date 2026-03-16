@@ -1,41 +1,78 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Github, Lock, Mail } from "lucide-react";
+import { getOfflineSnapshot, setOfflineAccess } from "@/lib/offline/store";
 
 export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  function continueOffline(candidateEmail?: string) {
+    const snapshot = getOfflineSnapshot();
+    const cachedEmail = snapshot.user?.email?.toLowerCase();
+    const typedEmail = candidateEmail?.trim().toLowerCase() ?? "";
+
+    if (!cachedEmail) {
+      setError("Este dispositivo ainda nao tem dados sincronizados para acesso offline.");
+      return false;
+    }
+
+    if (typedEmail && typedEmail !== cachedEmail) {
+      setError("Use o mesmo e-mail da ultima sincronizacao para entrar offline.");
+      return false;
+    }
+
+    setOfflineAccess({
+      email: snapshot.user?.email ?? "",
+      name: snapshot.user?.name ?? "Aluno",
+      unlockedAt: new Date().toISOString(),
+    });
+    router.push("/offline/dashboard");
+    return true;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setLoading(true);
 
-    const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email") ?? "");
-    const password = String(formData.get("password") ?? "");
-
-    const response = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (response?.error) {
-      setError("Credenciais inválidas");
+    if (!navigator.onLine) {
+      setLoading(false);
+      continueOffline(email);
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    try {
+      const response = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      setLoading(false);
+
+      if (response?.error) {
+        setError("Credenciais invalidas");
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setLoading(false);
+      if (!navigator.onLine && continueOffline(email)) {
+        return;
+      }
+      setError("Nao foi possivel autenticar agora.");
+    }
   }
 
   const isApp = mode === "app";
@@ -49,7 +86,15 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
         <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">E-mail</label>
         <div className="relative">
           <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input name="email" type="email" required placeholder="seu@email.com" className={`w-full ${inputCls}`} />
+          <input
+            name="email"
+            type="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="seu@email.com"
+            className={`w-full ${inputCls}`}
+          />
         </div>
       </div>
 
@@ -66,6 +111,8 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
             name="password"
             type={showPassword ? "text" : "password"}
             required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
             placeholder="••••••••"
             className={`w-full ${inputCls} pr-10`}
           />
@@ -90,6 +137,14 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
         {loading ? "Entrando..." : "Entrar"}
       </button>
 
+      <button
+        type="button"
+        onClick={() => continueOffline(email)}
+        className="w-full rounded-lg border border-primary/30 bg-primary/10 py-3 text-sm font-semibold text-primary"
+      >
+        Entrar offline com dados salvos
+      </button>
+
       <div className="my-4 flex items-center gap-3">
         <span className="h-px flex-1 bg-slate-200 dark:bg-primary/20" />
         <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">ou continue com</span>
@@ -107,7 +162,7 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
       </div>
 
       <p className="pt-2 text-center text-sm text-slate-500 dark:text-slate-400">
-        Ainda não tem uma conta?{" "}
+        Ainda nao tem uma conta?{" "}
         <Link href="/auth/register" className="font-semibold text-primary hover:underline">
           Cadastre-se
         </Link>
@@ -115,7 +170,3 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
     </form>
   );
 }
-
-
-
-

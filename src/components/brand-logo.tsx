@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 export function BrandLogo({
@@ -13,9 +14,11 @@ export function BrandLogo({
   const [index, setIndex] = useState(0);
 
   return (
-    <img
+    <Image
       src={sources[index]}
       alt={alt}
+      width={64}
+      height={64}
       className={className}
       onError={() => {
         if (index < sources.length - 1) {
