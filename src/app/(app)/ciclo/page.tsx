@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   addCycleEntry,
+  deleteAllCycleEntries,
   deleteCycleEntry,
   duplicateCycleEntry,
   moveCycleEntry,
@@ -14,11 +15,11 @@ import {
   CalendarDays,
   Clock3,
   GripVertical,
-  MoreVertical,
   Play,
   Plus,
   Rocket,
   Target,
+  Trash2,
 } from "lucide-react";
 
 function minutesForWeight(weight: number) {
@@ -164,9 +165,18 @@ export default async function CicloPage({
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-panelDark">
         <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
           <h3 className="text-xl font-black text-slate-900 dark:text-white">Tabela de Gerenciamento</h3>
-          <div className="flex items-center gap-5 text-sm font-bold">
-            <button className="text-slate-600 dark:text-slate-300">Filtrar</button>
-            <button className="text-primary">Exportar</button>
+          <div className="flex items-center gap-3 text-sm font-bold">
+            {entries.length > 0 ? (
+              <form action={deleteAllCycleEntries}>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-red-600 transition hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
+                >
+                  <Trash2 size={16} />
+                  Excluir todos
+                </button>
+              </form>
+            ) : null}
           </div>
         </div>
 
@@ -253,8 +263,11 @@ export default async function CicloPage({
                         </form>
                         <form action={deleteCycleEntry}>
                           <input type="hidden" name="entryId" value={entry.id} />
-                          <button className="rounded p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700" title="Mais opcoes">
-                            <MoreVertical size={16} />
+                          <button
+                            className="rounded p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
+                            title="Excluir ciclo"
+                          >
+                            <Trash2 size={16} />
                           </button>
                         </form>
                       </div>
@@ -262,6 +275,13 @@ export default async function CicloPage({
                   </tr>
                 );
               })}
+              {entries.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+                    Nenhum ciclo cadastrado no guia atual.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

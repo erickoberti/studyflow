@@ -126,7 +126,7 @@ export default async function BasePage({
       {showImport ? (
         <section className="rounded-xl border border-slate-200 bg-white p-5 dark:border-primary/20 dark:bg-[#161126]">
           <h3 className="text-sm font-extrabold uppercase tracking-[0.12em] text-slate-500">Importar cadastro-base</h3>
-          <p className="mt-1 text-xs text-slate-500">Formato: Seq, Assunto, Peso, Disciplina, Onde marcar no TEC.</p>
+          <p className="mt-1 text-xs text-slate-500">Baixe o modelo, preencha as colunas e envie o CSV.</p>
           <ImportBaseForm />
         </section>
       ) : null}

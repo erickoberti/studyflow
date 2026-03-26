@@ -626,6 +626,23 @@ export async function deleteCycleEntry(formData: FormData) {
   revalidatePath("/registro");
 }
 
+export async function deleteAllCycleEntries() {
+  const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.studySession.deleteMany({
+      where: { userId: user.id, studyGuideId: guide.id },
+    });
+    await tx.cycleEntry.deleteMany({
+      where: { userId: user.id, studyGuideId: guide.id },
+    });
+  });
+
+  revalidatePath("/ciclo");
+  revalidatePath("/registro");
+}
+
 export async function updateSettings(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
