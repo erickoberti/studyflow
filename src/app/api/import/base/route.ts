@@ -44,6 +44,12 @@ function getField(row: Record<string, string>, aliases: string[]) {
   return "";
 }
 
+function getFieldByIndex(row: Record<string, string>, headers: string[], index: number) {
+  const header = headers[index];
+  if (!header) return "";
+  return String(row[header] ?? "").trim();
+}
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -63,19 +69,28 @@ export async function POST(request: Request) {
 
   const text = await file.text();
   const parsed = parseCsvRows(text);
-
   const rows = parsed.data;
+  const headers = (parsed.meta.fields ?? []).map((field) => String(field ?? "").trim());
+
   if (!rows.length) {
     return NextResponse.json({ ok: false, message: "Planilha vazia." }, { status: 400 });
   }
 
   const ordered = rows
     .map((row) => ({
-      seq: parseNumber(getField(row, ["Seq", "Sequencia", "Sequência"])),
-      assunto: getField(row, ["Assunto"]),
-      peso: parseNumber(getField(row, ["Peso"])) ?? 1,
-      disciplina: getField(row, ["Disciplina"]),
-      tec: getField(row, ["Onde marcar no TEC", "Onde marcar no tec", "TEC", "Tec"]),
+      seq:
+        parseNumber(getField(row, ["Seq", "Sequencia", "Sequência", "Sequencia no ciclo", "Ordem"])) ??
+        parseNumber(getFieldByIndex(row, headers, 0)),
+      assunto:
+        getField(row, ["Assunto", "Materia", "Matéria", "Topico", "Tópico"]) ||
+        getFieldByIndex(row, headers, 1),
+      peso: parseNumber(getField(row, ["Peso"])) ?? parseNumber(getFieldByIndex(row, headers, 2)) ?? 1,
+      disciplina:
+        getField(row, ["Disciplina", "Area", "Área", "Materia mae", "Matéria mãe"]) ||
+        getFieldByIndex(row, headers, 3),
+      tec:
+        getField(row, ["Onde marcar no TEC", "Onde marcar no tec", "TEC", "Tec", "Referencia TEC", "Referência TEC"]) ||
+        getFieldByIndex(row, headers, 4),
     }))
     .filter((row) => row.seq !== null && row.assunto && row.disciplina)
     .sort((a, b) => (a.seq as number) - (b.seq as number));
@@ -84,8 +99,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        message:
-          "Nenhuma linha valida encontrada. Use um CSV com colunas como: Seq, Assunto, Peso, Disciplina, Onde marcar no TEC.",
+        message: `Nenhuma linha valida encontrada. Use um CSV com colunas como: Seq, Assunto, Peso, Disciplina, Onde marcar no TEC. Cabecalhos detectados: ${headers.join(" | ") || "nenhum"}.`,
       },
       { status: 400 },
     );
