@@ -5,6 +5,15 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 
+function parseCsvRows(text: string) {
+  return Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, ""), {
+    header: true,
+    skipEmptyLines: "greedy",
+    delimitersToGuess: [",", ";", "\t", "|"],
+    transformHeader: (header) => header.replace(/^\uFEFF/, "").trim(),
+  });
+}
+
 function normalizeKey(value: string) {
   return value
     .normalize("NFD")
@@ -53,11 +62,7 @@ export async function POST(request: Request) {
   }
 
   const text = await file.text();
-  const parsed = Papa.parse<Record<string, string>>(text, {
-    header: true,
-    skipEmptyLines: true,
-    delimiter: text.includes(";") ? ";" : ",",
-  });
+  const parsed = parseCsvRows(text);
 
   const rows = parsed.data;
   if (!rows.length) {
