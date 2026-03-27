@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { createDiscipline, createSubject, deleteAllGuideDisciplinesAction, deleteGuideDisciplineAction, updateDiscipline, updateSubject } from "@/app/actions";
+import {
+  createDiscipline,
+  createSubject,
+  deleteAllGuideDisciplinesAction,
+  deleteAllSubjectsAction,
+  deleteGuideDisciplineAction,
+  deleteSubjectAction,
+  updateDiscipline,
+  updateSubject,
+} from "@/app/actions";
 import { ImportBaseForm } from "@/components/forms/import-base-form";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -324,6 +333,18 @@ export default async function BasePage({
                 </form>
               </div>
             ) : null}
+            {tab === "assuntos" && subjects.length > 0 ? (
+              <div className="mb-3 flex justify-end">
+                <form action={deleteAllSubjectsAction}>
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+                  >
+                    Excluir todos assuntos
+                  </button>
+                </form>
+              </div>
+            ) : null}
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-primary/20">
               {tab === "disciplinas" ? (
                 <table className="w-full min-w-[760px] text-sm">
@@ -389,12 +410,23 @@ export default async function BasePage({
                         <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{subject.weight}</td>
                         <td className="px-5 py-3 text-slate-500">{subject.tecReference ?? subject.notes ?? "-"}</td>
                         <td className="px-5 py-3 text-right">
-                          <Link
-                            href={`/base?tab=assuntos&editSubject=${subject.id}`}
-                            className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
-                          >
-                            Editar
-                          </Link>
+                          <div className="flex justify-end gap-2">
+                            <Link
+                              href={`/base?tab=assuntos&editSubject=${subject.id}`}
+                              className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
+                            >
+                              Editar
+                            </Link>
+                            <form action={deleteSubjectAction}>
+                              <input type="hidden" name="subjectId" value={subject.id} />
+                              <button
+                                type="submit"
+                                className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+                              >
+                                Excluir
+                              </button>
+                            </form>
+                          </div>
                         </td>
                       </tr>
                     ))}

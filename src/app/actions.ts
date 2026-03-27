@@ -504,6 +504,48 @@ export async function updateSubject(formData: FormData) {
   }
 }
 
+export async function deleteSubjectAction(formData: FormData) {
+  const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
+  const subjectId = String(formData.get("subjectId") ?? "");
+  if (!subjectId) return;
+
+  const subject = await prisma.subject.findFirst({
+    where: { id: subjectId, userId: user.id, studyGuideId: guide.id },
+    select: { id: true },
+  });
+  if (!subject) return;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.subject.delete({
+      where: { id: subject.id },
+    });
+    await normalizeCycleEntryOrder(tx, user.id, guide.id);
+  });
+
+  revalidatePath("/base");
+  revalidatePath("/ciclo");
+  revalidatePath("/registro");
+  revalidatePath("/guias");
+}
+
+export async function deleteAllSubjectsAction() {
+  const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.subject.deleteMany({
+      where: { userId: user.id, studyGuideId: guide.id },
+    });
+    await normalizeCycleEntryOrder(tx, user.id, guide.id);
+  });
+
+  revalidatePath("/base");
+  revalidatePath("/ciclo");
+  revalidatePath("/registro");
+  revalidatePath("/guias");
+}
+
 export async function addCycleEntry(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
