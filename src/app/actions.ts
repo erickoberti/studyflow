@@ -380,6 +380,25 @@ export async function createSubject(formData: FormData) {
   }
 }
 
+async function normalizeCycleEntryOrder(tx: Prisma.TransactionClient, userId: string, studyGuideId: string) {
+  const entries = await tx.cycleEntry.findMany({
+    where: { userId, studyGuideId },
+    orderBy: { orderIndex: "asc" },
+    select: { id: true, orderIndex: true },
+  });
+
+  await Promise.all(
+    entries.map((entry, index) => {
+      const nextOrder = index + 1;
+      if (entry.orderIndex === nextOrder) return Promise.resolve();
+      return tx.cycleEntry.update({
+        where: { id: entry.id },
+        data: { orderIndex: nextOrder },
+      });
+    }),
+  );
+}
+
 export async function updateSubject(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
@@ -728,26 +747,71 @@ export async function selectStudyGuideAction(formData: FormData) {
 
 export async function updateStudyGuideAction(formData: FormData) {
   const user = await requireUser();
-  const guide = await requireActiveStudyGuide(user.id);
+  const activeGuide = await requireActiveStudyGuide(user.id);
+  const studyGuideId = String(formData.get("studyGuideId") ?? activeGuide.id);
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
-  const icon = String(formData.get("icon") ?? guide.icon);
-  const color = String(formData.get("color") ?? guide.color);
+  const icon = String(formData.get("icon") ?? activeGuide.icon);
+  const color = String(formData.get("color") ?? activeGuide.color);
 
   if (!name) return;
+
+  const guide = await prisma.studyGuide.findFirst({
+    where: { id: studyGuideId, userId: user.id },
+  });
+
+  if (!guide) return;
 
   await prisma.studyGuide.update({
     where: { id: guide.id },
     data: {
       name,
       description,
-      icon: STUDY_GUIDE_ICONS.includes(icon as (typeof STUDY_GUIDE_ICONS)[number]) ? icon : guide.icon,
-      color: STUDY_GUIDE_COLORS.includes(color as (typeof STUDY_GUIDE_COLORS)[number]) ? color : guide.color,
+      icon: STUDY_GUIDE_ICONS.includes(icon as (typeof STUDY_GUIDE_ICONS)[number]) ? icon : activeGuide.icon,
+      color: STUDY_GUIDE_COLORS.includes(color as (typeof STUDY_GUIDE_COLORS)[number]) ? color : activeGuide.color,
     },
   });
 
   revalidatePath("/guias");
   revalidatePath("/dashboard");
+  revalidatePath("/base");
+  revalidatePath("/ciclo");
+  revalidatePath("/registro");
+}
+
+export async function resetStudyGuideAction(formData: FormData) {
+  const user = await requireUser();
+  const activeGuide = await requireActiveStudyGuide(user.id);
+  const studyGuideId = String(formData.get("studyGuideId") ?? activeGuide.id);
+
+  const guide = await prisma.studyGuide.findFirst({
+    where: { id: studyGuideId, userId: user.id },
+    select: { id: true },
+  });
+
+  if (!guide) return;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.studySession.deleteMany({
+      where: { userId: user.id, studyGuideId: guide.id },
+    });
+    await tx.cycleEntry.deleteMany({
+      where: { userId: user.id, studyGuideId: guide.id },
+    });
+    await tx.subject.deleteMany({
+      where: { userId: user.id, studyGuideId: guide.id },
+    });
+    await tx.discipline.deleteMany({
+      where: { userId: user.id, studyGuideId: guide.id },
+    });
+  });
+
+  revalidatePath("/guias");
+  revalidatePath("/dashboard");
+  revalidatePath("/base");
+  revalidatePath("/ciclo");
+  revalidatePath("/registro");
+  redirect("/guias");
 }
 
 export async function deleteStudyGuideAction(formData: FormData) {
@@ -783,6 +847,9 @@ export async function deleteStudyGuideAction(formData: FormData) {
 
   revalidatePath("/guias");
   revalidatePath("/dashboard");
+  revalidatePath("/base");
+  revalidatePath("/ciclo");
+  revalidatePath("/registro");
   redirect("/guias");
 }
 
@@ -858,22 +925,32 @@ export async function deleteGuideDisciplineAction(formData: FormData) {
 
   const discipline = await prisma.discipline.findFirst({
     where: { id: disciplineId, userId: user.id, studyGuideId: guide.id },
-    select: {
-      id: true,
-      _count: {
-        select: {
-          subjects: true,
-        },
-      },
-    },
+    select: { id: true },
   });
   if (!discipline) return;
 
-  // Never remove a discipline that already owns subject data.
-  if (discipline._count.subjects > 0) return;
+  await prisma.$transaction(async (tx) => {
+    await tx.discipline.delete({
+      where: { id: discipline.id },
+    });
+    await normalizeCycleEntryOrder(tx, user.id, guide.id);
+  });
 
-  await prisma.discipline.delete({
-    where: { id: discipline.id },
+  revalidatePath("/guias");
+  revalidatePath("/base");
+  revalidatePath("/registro");
+  revalidatePath("/ciclo");
+}
+
+export async function deleteAllGuideDisciplinesAction() {
+  const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.discipline.deleteMany({
+      where: { userId: user.id, studyGuideId: guide.id },
+    });
+    await normalizeCycleEntryOrder(tx, user.id, guide.id);
   });
 
   revalidatePath("/guias");

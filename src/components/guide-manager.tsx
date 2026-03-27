@@ -7,6 +7,7 @@ import {
   createStudyGuideAction,
   deleteGuideDisciplineAction,
   deleteStudyGuideAction,
+  resetStudyGuideAction,
   selectStudyGuideAction,
   toggleGuideDisciplineAction,
   updateGuideDisciplineAction,
@@ -207,6 +208,7 @@ function GuideEditor({
           <div>
             <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Nome do guia</label>
             <input
+              name="name"
               value={name}
               onChange={(event) => onNameChange(event.target.value)}
               placeholder="Ex.: Analista de TI - UERJ"
@@ -217,6 +219,7 @@ function GuideEditor({
           <div>
             <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Descricao</label>
             <textarea
+              name="description"
               value={description}
               onChange={(event) => onDescriptionChange(event.target.value)}
               placeholder="Sem descricao cadastrada."
@@ -441,6 +444,7 @@ export function GuideManager({
             </form>
           ) : activeGuide ? (
             <form action={updateStudyGuideAction} className="space-y-5">
+              <input type="hidden" name="studyGuideId" value={activeGuide.id} />
               <input type="hidden" name="icon" value={selectedIcon} />
               <input type="hidden" name="color" value={selectedColor} />
               <GuideEditor
@@ -458,7 +462,28 @@ export function GuideManager({
                 onDescriptionChange={setDraftDescription}
               />
               <div className="flex items-center justify-between gap-3">
-                <div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    formAction={resetStudyGuideAction}
+                    name="studyGuideId"
+                    value={activeGuide.id}
+                    onClick={(event) => {
+                      if (
+                        !window.confirm(
+                          `Zerar o guia "${activeGuide.name}"? Isso apaga disciplinas, assuntos, ciclos e registros, mas mantém o guia.`,
+                        )
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}
+                    className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Trash2 className="h-4 w-4" />
+                      Zerar guia
+                    </span>
+                  </button>
                   {guides.length > 1 ? (
                     <button
                       type="submit"
@@ -611,6 +636,41 @@ export function GuideManager({
             disciplines={previewGuide.disciplines}
           />
           <GuideList guides={guides} activeGuideId={activeGuideId} />
+          {guides.length > 1 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#151225]">
+              <div className="mb-4 flex items-center gap-2">
+                <Trash2 className="h-4 w-4 text-red-500" />
+                <h4 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800 dark:text-white">Excluir guia</h4>
+              </div>
+              <div className="space-y-2">
+                {guides.map((guide) => (
+                  <form key={guide.id} action={deleteStudyGuideAction}>
+                    <input type="hidden" name="studyGuideId" value={guide.id} />
+                    <button
+                      type="submit"
+                      onClick={(event) => {
+                        if (!window.confirm(`Excluir o guia "${guide.name}"? Essa acao remove os dados vinculados a ele.`)) {
+                          event.preventDefault();
+                        }
+                      }}
+                      className="flex w-full items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-left text-sm font-semibold text-red-700 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <span
+                          className="flex h-9 w-9 items-center justify-center rounded-xl"
+                          style={{ backgroundColor: `${guide.color}16`, color: guide.color }}
+                        >
+                          <StudyGuideIcon icon={guide.icon} className="h-4 w-4" />
+                        </span>
+                        <span className="truncate">{guide.name}</span>
+                      </span>
+                      <Trash2 className="h-4 w-4 shrink-0" />
+                    </button>
+                  </form>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
