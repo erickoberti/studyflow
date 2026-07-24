@@ -37,14 +37,8 @@ type RecentSession = {
   estimatedMinutes: number;
   notes: string | null;
   cycleEntryId: string;
-  cycleEntry: {
-    subject: {
-      name: string;
-      discipline: {
-        name: string;
-      };
-    };
-  };
+  subjectName: string;
+  disciplineName: string;
 };
 
 function formatPtBrDay(date: Date) {
@@ -86,6 +80,7 @@ export function StudySessionForm({
   returnTo,
   showForm = true,
   toggleHref,
+  lockCycle = true,
 }: {
   cycleEntries: CycleOption[];
   suggestedId?: string;
@@ -94,6 +89,7 @@ export function StudySessionForm({
   returnTo?: string;
   showForm?: boolean;
   toggleHref: string;
+  lockCycle?: boolean;
 }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -270,6 +266,7 @@ export function StudySessionForm({
                   <select
                     value={cycleEntryId}
                     onChange={(e) => setCycleEntryId(e.target.value)}
+                    disabled={lockCycle && !editingId}
                     className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   >
                     {cycleEntries.map((entry) => (
@@ -351,8 +348,8 @@ export function StudySessionForm({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {recentSessions.map((session) => (
                     <tr key={session.id}>
-                      <td className="py-2.5 font-medium">{session.cycleEntry.subject.discipline.name}</td>
-                      <td className="py-2.5 text-slate-600 dark:text-slate-300">{session.cycleEntry.subject.name}</td>
+                      <td className="py-2.5 font-medium">{session.disciplineName}</td>
+                      <td className="py-2.5 text-slate-600 dark:text-slate-300">{session.subjectName}</td>
                       <td className="py-2.5 text-right">{session.questions}</td>
                       <td className="py-2.5 text-right text-slate-500">{formatPtBrDay(session.date)}</td>
                     </tr>

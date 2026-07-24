@@ -13,6 +13,7 @@ import { requireUser } from "@/lib/auth";
 import { getDashboardData, getNextCycleSuggestion } from "@/lib/analytics";
 import { prisma } from "@/lib/prisma";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
+import { cycleService } from "@/lib/cycle-service";
 
 function dayKeyInSaoPaulo(date: Date) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -37,7 +38,7 @@ export default async function DashboardPage() {
   const guide = await requireActiveStudyGuide(user.id);
 
   const todayKey = dayKeyInSaoPaulo(new Date());
-  const [dashboard, suggestion, recentSessions] = await Promise.all([
+  const [dashboard, suggestion, recentSessions, activeStudy] = await Promise.all([
     getDashboardData(user.id, guide.id),
     getNextCycleSuggestion(user.id, guide.id),
     prisma.studySession.findMany({
@@ -45,9 +46,11 @@ export default async function DashboardPage() {
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       take: 3,
       include: {
-        cycleEntry: { include: { subject: { include: { discipline: true } } } },
+        subject: { include: { discipline: true } },
+        cycleEntry: { include: { discipline: true, subject: { include: { discipline: true } } } },
       },
     }),
+    cycleService.getActive(user.id, guide.id),
   ]);
 
   const byDayMap = new Map(dashboard.byDay.map((d) => [d.date, d.questions]));
@@ -67,9 +70,9 @@ export default async function DashboardPage() {
   const focusScore = dashboard.totals.overallPercentage;
   const streak = dashboard.totals.streakDays;
 
-  const nextSubject = suggestion.next?.subject.name ?? "Sem tópico definido";
-  const nextDiscipline = suggestion.next?.subject.discipline.name ?? "Organize seu ciclo";
-  const nextNotes = suggestion.next?.subject.notes ?? "Adicione notas no ciclo para uma sugestão mais precisa.";
+  const nextSubject = suggestion.next?.subject?.name ?? "Sem tópico definido";
+  const nextDiscipline = suggestion.next?.subject?.discipline.name ?? "Organize seu ciclo";
+  const nextNotes = suggestion.next?.subject?.notes ?? "Adicione notas no ciclo para uma sugestão mais precisa.";
 
   return (
     <div className="space-y-8 pb-10">
@@ -128,6 +131,12 @@ export default async function DashboardPage() {
 
       <section className="grid grid-cols-1 gap-8 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
+          <article className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary">{activeStudy ? "Sessão em andamento" : "O que estudar agora"}</p>
+            <h2 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{activeStudy ? `${activeStudy.discipline.name} → ${activeStudy.subject.name}` : `${nextDiscipline} → ${nextSubject}`}</h2>
+            <p className="mt-1 text-sm text-slate-500">{activeStudy ? `${activeStudy.status === "PAUSED" ? "Pausada" : "Em andamento"} · ${activeStudy.accumulatedSeconds >= 60 ? `${Math.floor(activeStudy.accumulatedSeconds / 60)} min` : "iniciada agora"}` : "Sugestão calculada pela estratégia do ciclo"}</p>
+            <Link href="/registro" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white"><Play size={15} /> {activeStudy ? "Retomar sessão" : "Iniciar sessão"}</Link>
+          </article>
           <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Progresso da Meta Diária</h3>
@@ -212,7 +221,7 @@ export default async function DashboardPage() {
                     <span className="text-lg font-black text-primary">{format(session.date, "dd")}</span>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{session.cycleEntry.subject.name}</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{session.subject?.name ?? session.cycleEntry.subject?.name ?? "Assunto"}</p>
                     <p className="text-xs text-slate-500">{formatPtBrDay(session.date)} • {session.questions} questões</p>
                   </div>
                 </div>

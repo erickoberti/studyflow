@@ -11,6 +11,7 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
+import { getCyclePositionSuggestions } from "@/lib/cycle-strategy";
 import {
   CalendarDays,
   Clock3,
@@ -48,10 +49,10 @@ export default async function CicloPage({
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
 
-  const [entries, subjects, aggregates, settings] = await Promise.all([
+  const [entries, subjects, aggregates, settings, cycleSuggestions] = await Promise.all([
     prisma.cycleEntry.findMany({
       where: { userId: user.id, studyGuideId: guide.id },
-      include: { subject: { include: { discipline: true } } },
+      include: { subject: { include: { discipline: true } }, discipline: true },
       orderBy: { orderIndex: "asc" },
     }),
     prisma.subject.findMany({
@@ -65,9 +66,22 @@ export default async function CicloPage({
       _sum: { questions: true, correct: true, estimatedMinutes: true },
     }),
     getStudyGuideSettings(user.id, guide.id),
+    getCyclePositionSuggestions(user.id, guide.id),
   ]);
 
   const showAdd = searchParams?.novo === "1";
+  const suggestionByEntry = new Map(cycleSuggestions.map((item) => [item.entryId, item]));
+  const displayEntries = entries.map((entry) => {
+    const suggestion = suggestionByEntry.get(entry.id);
+    return {
+      ...entry,
+      subject: entry.subject ?? {
+        name: suggestion?.subject?.name ?? "Sem assunto ativo",
+        weight: suggestion?.subject?.weight ?? 1,
+        discipline: { name: suggestion?.discipline ?? entry.discipline?.name ?? "Disciplina" },
+      },
+    };
+  });
   const aggMap = new Map(
     aggregates.map((aggregate) => [
       aggregate.cycleEntryId,
@@ -192,12 +206,12 @@ export default async function CicloPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {entries.map((entry) => {
+              {displayEntries.map((entry) => {
                 const aggregate = aggMap.get(entry.id) ?? { questions: 0, correct: 0 };
                 const pct = aggregate.questions > 0 ? (aggregate.correct / aggregate.questions) * 100 : 0;
                 const status = statusForEntry(entry, currentOrder);
-                const timeLabel = `${Math.floor(minutesForWeight(entry.subject.weight) / 60)}h ${String(
-                  minutesForWeight(entry.subject.weight) % 60,
+                const timeLabel = `${Math.floor(minutesForWeight(entry.subject?.weight ?? 1) / 60)}h ${String(
+                  minutesForWeight(entry.subject?.weight ?? 1) % 60,
                 ).padStart(2, "0")}min`;
                 const color =
                   entry.orderIndex % 3 === 0 ? "bg-orange-500" : entry.orderIndex % 2 === 0 ? "bg-purple-500" : "bg-blue-500";
@@ -212,10 +226,10 @@ export default async function CicloPage({
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-sm font-bold leading-tight text-slate-900 dark:text-white">
-                              {entry.subject.discipline.name}
+                              {entry.subject?.discipline.name ?? "Disciplina"}
                             </p>
                             <span className="text-xs text-slate-300 dark:text-slate-600">/</span>
-                            <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{entry.subject.name}</p>
+                            <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{entry.subject?.name ?? "Assunto selecionado automaticamente"}</p>
                           </div>
                           <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
                             Ordem #{entry.orderIndex} • Peso {entry.subject.weight}

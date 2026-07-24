@@ -1,0 +1,13 @@
+import Link from "next/link";
+import { requireUser } from "@/lib/auth";
+import { requireActiveStudyGuide } from "@/lib/study-guide";
+import { getCycleDebug } from "@/lib/cycle-debug";
+
+export default async function CycleDebugPage({ searchParams }: { searchParams?: { simular?: string } }) {
+  const user = await requireUser(); const guide = await requireActiveStudyGuide(user.id);
+  const total = searchParams?.simular === "200" ? 200 : 0;
+  const debug = await getCycleDebug(user.id, guide.id, total);
+  return <div className="space-y-6 pb-10"><header><p className="text-xs font-bold uppercase tracking-widest text-amber-500">Diagnóstico · somente leitura</p><h1 className="text-3xl font-black">DEBUG do Ciclo</h1><p className="text-slate-500">Guia: {guide.name}. Nenhum dado é alterado nesta tela.</p></header><Link href="/debug/ciclo?simular=200" className="inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white">Simular 200 sessões</Link>
+  {debug.details.map(({ discipline, subjects }) => <section key={discipline.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-panelDark"><h2 className="border-b border-slate-200 px-5 py-4 text-lg font-black dark:border-slate-800">{discipline.name}</h2><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-slate-900"><tr><th className="p-3">Assunto</th><th>Peso</th><th>Passagens</th><th>Último estudo</th><th>% médio</th><th>Score</th><th>WRR</th></tr></thead><tbody>{subjects.map((subject) => <tr key={subject.id} className="border-t border-slate-100 dark:border-slate-800"><td className="p-3 font-semibold">{subject.name}{subject.nextPriority ? " · próxima prioridade" : ""}</td><td>{subject.weight}</td><td>{subject.passages}</td><td>{subject.lastStudiedAt?.toLocaleDateString("pt-BR") ?? "Nunca"}</td><td>{subject.averagePercentage.toFixed(1)}%</td><td>{subject.score}</td><td>{subject.currentWeight}</td></tr>)}</tbody></table></div></section>)}
+  {total ? <section className="rounded-2xl border border-primary/30 p-5"><h2 className="text-xl font-black">Resultado da simulação</h2><p className="mt-1 font-semibold">Todos apareceram: {debug.allAppeared ? "Sim" : "Não"}</p><div className="mt-4 max-h-80 overflow-auto text-sm">{debug.simulation.map((item) => <p key={item.session}>#{item.session} · {item.discipline} → {item.subject}</p>)}</div><div className="mt-4 grid gap-1 text-sm">{debug.distribution.map((item) => <p key={item.subject}>{item.subject}: {item.count} ({item.percentage.toFixed(1)}%)</p>)}</div></section> : null}</div>;
+}

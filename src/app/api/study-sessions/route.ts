@@ -8,6 +8,7 @@ import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 const createSchema = z.object({
   date: z.string(),
   cycleEntryId: z.string().min(1),
+  subjectId: z.string().min(1).optional(),
   questions: z.number().int().min(1),
   correct: z.number().int().min(0),
   wrong: z.number().int().min(0),
@@ -75,32 +76,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Questoes deve ser acertos + erros" }, { status: 400 });
   }
 
-  const cycleEntry = await prisma.cycleEntry.findFirst({
-    where: {
-      id: cycleEntryId,
-      userId: session.user.id,
-      studyGuideId: guide.id,
-    },
-  });
-
-  if (!cycleEntry) {
-    return NextResponse.json({ message: "Entrada de ciclo nao encontrada" }, { status: 404 });
-  }
-
-  const created = await prisma.studySession.create({
-    data: {
-      userId: session.user.id,
-      studyGuideId: guide.id,
-      cycleEntryId,
-      date: new Date(`${date}T12:00:00-03:00`),
-      questions,
-      correct,
-      wrong,
-      percentage: questions > 0 ? (correct / questions) * 100 : 0,
-      estimatedMinutes: estimatedMinutes ?? Math.round(questions * 1.5),
-      notes,
-    },
-  });
+  // Legacy/manual endpoint: it intentionally never advances the cycle. The live
+  // cycle flow is exclusively handled by /api/active-study-session.
+  const entry = await prisma.cycleEntry.findFirst({ where: { id: cycleEntryId, userId: session.user.id, studyGuideId: guide.id } });
+  if (!entry) return NextResponse.json({ message: "Posição de ciclo inválida." }, { status: 404 });
+  const sessionDate = new Date(`${date}T12:00:00-03:00`);
+  const created = await prisma.studySession.create({ data: { userId: session.user.id, studyGuideId: guide.id, cycleEntryId, subjectId: parsed.data.subjectId ?? null, cyclePosition: null, cycleRound: null, date: sessionDate, questions, correct, wrong, percentage: (correct / questions) * 100, estimatedMinutes: estimatedMinutes ?? Math.round(questions * 1.5), notes } });
 
   return NextResponse.json(created, { status: 201 });
 }

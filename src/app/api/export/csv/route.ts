@@ -18,6 +18,7 @@ export async function GET() {
   const sessions = await prisma.studySession.findMany({
     where: { userId: session.user.id, studyGuideId: guide.id },
     include: {
+      subject: { include: { discipline: true } },
       cycleEntry: {
         include: {
           subject: {
@@ -34,9 +35,9 @@ export async function GET() {
   const csv = Papa.unparse(
     sessions.map((row) => ({
       data: row.date.toISOString().slice(0, 10),
-      disciplina: row.cycleEntry.subject.discipline.name,
-      assunto: row.cycleEntry.subject.name,
-      peso: row.cycleEntry.subject.weight,
+      disciplina: row.subject?.discipline.name ?? row.cycleEntry.subject?.discipline.name ?? "",
+      assunto: row.subject?.name ?? row.cycleEntry.subject?.name ?? "",
+      peso: row.subject?.weight ?? row.cycleEntry.subject?.weight ?? 0,
       questoes: row.questions,
       acertos: row.correct,
       erros: row.wrong,

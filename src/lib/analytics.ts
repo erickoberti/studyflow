@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
+import { getCycleSuggestion } from "@/lib/cycle-strategy";
 
 export type PriorityLevel = "urgente" | "atencao" | "bom" | "forte";
 export type MetaSignal = "verde" | "amarelo" | "vermelho";
@@ -51,6 +52,10 @@ function metaSignal(percentage: number, target: number) {
 }
 
 export async function getNextCycleSuggestion(userId: string, studyGuideId: string) {
+  const intelligent = await getCycleSuggestion(userId, studyGuideId);
+  if (intelligent?.subject && intelligent.entry.discipline) {
+    return { last: null, next: { id: intelligent.entry.id, orderIndex: intelligent.entry.orderIndex, subject: { ...intelligent.subject, notes: null, discipline: intelligent.entry.discipline } } };
+  }
   const activeEntries = await prisma.cycleEntry.findMany({
     where: { userId, studyGuideId, active: true, subject: { active: true, discipline: { active: true } } },
     include: { subject: { include: { discipline: true } } },
@@ -82,6 +87,7 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
     prisma.studySession.findMany({
       where: { userId, studyGuideId },
       include: {
+        subject: { include: { discipline: true } },
         cycleEntry: {
           include: {
             subject: {
@@ -96,7 +102,7 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
     }),
     getStudyGuideSettings(userId, studyGuideId),
     prisma.cycleEntry.findMany({
-      where: { userId, studyGuideId, active: true, subject: { active: true, discipline: { active: true } } },
+      where: { userId, studyGuideId, active: true, discipline: { active: true } },
       select: { id: true },
     }),
   ]);
@@ -120,8 +126,10 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
   for (const session of sessions) {
     const sessionDayKey = dayKey(session.date);
     const weekKey = startOfWeekKey(sessionDayKey);
-    const disciplineName = session.cycleEntry.subject.discipline.name;
-    const subjectName = session.cycleEntry.subject.name;
+    const studiedSubject = session.subject ?? session.cycleEntry.subject;
+    if (!studiedSubject) continue;
+    const disciplineName = studiedSubject.discipline.name;
+    const subjectName = studiedSubject.name;
 
     const dayDistance = diffCalendarDaysUTC(todayKey, sessionDayKey);
     if (dayDistance >= 0 && dayDistance <= 29) {
@@ -152,7 +160,7 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
       discipline: disciplineName,
       questions: 0,
       correct: 0,
-      weight: session.cycleEntry.subject.weight,
+      weight: studiedSubject.weight,
       estimatedMinutes: 0,
     };
     subjData.questions += session.questions;
@@ -246,21 +254,11 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
 export async function getReviewSuggestions(userId: string, studyGuideId: string) {
   const subjects = await prisma.subject.findMany({
     where: { userId, studyGuideId, active: true },
-    include: {
-      discipline: true,
-      cycleEntries: {
-        include: {
-          sessions: {
-            orderBy: { date: "desc" },
-            take: 20,
-          },
-        },
-      },
-    },
+    include: { discipline: true, sessions: { orderBy: { date: "desc" }, take: 20 } },
   });
 
   const result = subjects.map((subject) => {
-    const allSessions = subject.cycleEntries.flatMap((entry) => entry.sessions);
+    const allSessions = subject.sessions;
     const questions = allSessions.reduce((sum, item) => sum + item.questions, 0);
     const correct = allSessions.reduce((sum, item) => sum + item.correct, 0);
     const errors = allSessions.reduce((sum, item) => sum + item.wrong, 0);

@@ -24,6 +24,9 @@ model User {
   settings           UserSettings?
   guideSettings      StudyGuideSettings[]
   resetTokens        PasswordResetToken[]
+  subjectProgress    SubjectProgress[]
+  cycleStates        StudyGuideCycleState[]
+  activeStudySessions ActiveStudySession[]
 }
 
 model StudyGuide {
@@ -42,6 +45,9 @@ model StudyGuide {
   cycleEntries  CycleEntry[]
   sessions      StudySession[]
   settings      StudyGuideSettings?
+  cycleState    StudyGuideCycleState?
+  subjectProgress SubjectProgress[]
+  activeStudySessions ActiveStudySession[]
 
   @@unique([userId, name])
   @@index([userId])
@@ -67,11 +73,14 @@ model Discipline {
   sortOrder Int?
   category  String?
   active    Boolean     @default(true)
+  questionGoal Int      @default(20)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   studyGuide StudyGuide? @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
   subjects  Subject[]
+  cycleEntries CycleEntry[]
+  activeStudySessions ActiveStudySession[]
 
   @@unique([userId, studyGuideId, name])
   @@index([userId])
@@ -89,12 +98,16 @@ model Subject {
   tecReference  String?
   groupName     String?
   active        Boolean      @default(true)
+  sortOrder     Int          @default(0)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   studyGuide    StudyGuide?  @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
   discipline    Discipline   @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
   cycleEntries  CycleEntry[]
+  sessions      StudySession[]
+  progress      SubjectProgress?
+  activeStudySessions ActiveStudySession[]
 
   @@index([userId])
   @@index([studyGuideId])
@@ -106,19 +119,23 @@ model CycleEntry {
   id         String         @id @default(cuid())
   userId     String
   studyGuideId String?
-  subjectId  String
+  subjectId  String?
+  disciplineId String?
   orderIndex Int
   active     Boolean        @default(true)
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   studyGuide StudyGuide?    @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
-  subject    Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject    Subject?       @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  discipline Discipline?    @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
   sessions   StudySession[]
+  activeStudySessions ActiveStudySession[]
 
   @@index([userId])
   @@index([studyGuideId])
   @@index([subjectId])
+  @@index([disciplineId])
   @@unique([userId, studyGuideId, orderIndex])
 }
 
@@ -127,6 +144,9 @@ model StudySession {
   userId       String
   studyGuideId String?
   cycleEntryId String
+  subjectId    String?
+  cyclePosition Int?
+  cycleRound    Int?
   date         DateTime
   questions    Int
   correct      Int
@@ -134,16 +154,20 @@ model StudySession {
   percentage   Float
   estimatedMinutes Int @default(0)
   notes        String?
+  activeStudySessionId String? @unique
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   studyGuide   StudyGuide? @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
   cycleEntry   CycleEntry @relation(fields: [cycleEntryId], references: [id], onDelete: Cascade)
+  subject      Subject?    @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  activeStudySession ActiveStudySession? @relation("CompletedActiveStudySession", fields: [activeStudySessionId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([studyGuideId])
   @@index([date])
   @@index([cycleEntryId])
+  @@index([subjectId])
 }
 
 model UserSettings {
@@ -167,6 +191,14 @@ model StudyGuideSettings {
   dailyQuestionsGoal  Int        @default(30)
   weeklyQuestionsGoal Int        @default(200)
   weightPriorityBias  Float      @default(1.25)
+  organizer           String?
+  role                String?
+  examDate            DateTime?
+  sessionMinutes      Int        @default(60)
+  questionsPerSession Int        @default(20)
+  cycleAlgorithm      String     @default("weighted_round_robin")
+  aiEnabled           Boolean    @default(false)
+  notes               String?
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
   user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -174,6 +206,83 @@ model StudyGuideSettings {
 
   @@unique([userId, studyGuideId])
   @@index([userId])
+}
+
+model StudyGuideCycleState {
+  id                String     @id @default(cuid())
+  userId            String
+  studyGuideId      String     @unique
+  currentOrderIndex Int        @default(1)
+  roundNumber       Int        @default(1)
+  version           Int        @default(1)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide        StudyGuide @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum StudySessionMode {
+  CYCLE
+  AVULSO
+}
+
+enum ActiveStudySessionStatus {
+  ACTIVE
+  PAUSED
+  FINISHING
+  FINISHED
+  CANCELLED
+}
+
+model ActiveStudySession {
+  id                 String                   @id @default(cuid())
+  userId             String
+  studyGuideId       String
+  cycleEntryId       String?
+  disciplineId       String
+  subjectId          String
+  mode               StudySessionMode
+  status             ActiveStudySessionStatus @default(ACTIVE)
+  startedAt          DateTime                 @default(now())
+  accumulatedSeconds Int                      @default(0)
+  pausedAt           DateTime?
+  version            Int                      @default(1)
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  user               User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide         StudyGuide               @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  cycleEntry         CycleEntry?              @relation(fields: [cycleEntryId], references: [id], onDelete: SetNull)
+  discipline         Discipline                @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  subject            Subject                   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  completedSession   StudySession?             @relation("CompletedActiveStudySession")
+
+  @@index([userId, studyGuideId, status])
+  @@index([studyGuideId])
+}
+
+model SubjectProgress {
+  id              String   @id @default(cuid())
+  userId          String
+  studyGuideId    String
+  subjectId       String   @unique
+  currentWeight   Int      @default(0)
+  passages        Int      @default(0)
+  totalQuestions  Int      @default(0)
+  correct         Int      @default(0)
+  wrong           Int      @default(0)
+  averagePercentage Float  @default(0)
+  lastStudiedAt   DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide      StudyGuide @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, studyGuideId])
 }
 
 model GoalDefinition {

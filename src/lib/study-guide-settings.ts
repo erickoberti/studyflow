@@ -8,6 +8,7 @@ type GuideSettingsShape = {
   dailyQuestionsGoal: number;
   weeklyQuestionsGoal: number;
   weightPriorityBias: number;
+  questionsPerSession: number;
 };
 
 function legacyDefaults(legacy?: {
@@ -21,6 +22,7 @@ function legacyDefaults(legacy?: {
     dailyQuestionsGoal: legacy?.dailyQuestionsGoal ?? 30,
     weeklyQuestionsGoal: legacy?.weeklyQuestionsGoal ?? 200,
     weightPriorityBias: legacy?.weightPriorityBias ?? 1.25,
+    questionsPerSession: 20,
   };
 }
 
