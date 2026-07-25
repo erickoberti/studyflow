@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 import { cycleService } from "@/lib/cycle-service";
 
-const commandSchema = z.object({ command: z.enum(["start", "pause", "resume", "cancel", "finish"]), id: z.string().optional(), version: z.number().int().optional(), mode: z.enum(["CYCLE", "AVULSO"]).optional(), disciplineId: z.string().optional(), subjectId: z.string().optional(), questions: z.number().int().min(0).optional(), correct: z.number().int().min(0).optional(), minutes: z.number().int().min(0).optional(), notes: z.string().max(4000).optional() });
+const commandSchema = z.object({ command: z.enum(["start", "pause", "resume", "cancel", "finish"]), id: z.string().optional(), version: z.number().int().optional(), mode: z.enum(["CYCLE", "AVULSO"]).optional(), disciplineId: z.string().optional(), subjectId: z.string().optional(), questions: z.number().int().min(1).optional(), correct: z.number().int().min(0).optional(), minutes: z.number().int().min(0).optional(), notes: z.string().max(4000).optional() });
 
 async function context() {
   const session = await getServerSession(authOptions); if (!session?.user?.id) return null;
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     if (body.command === "pause") return NextResponse.json({ session: await cycleService.pause(value.userId, value.guideId, body.id, body.version) });
     if (body.command === "resume") return NextResponse.json({ session: await cycleService.resume(value.userId, value.guideId, body.id, body.version) });
     if (body.command === "cancel") return NextResponse.json(await cycleService.cancel(value.userId, value.guideId, body.id, body.version));
-    if (body.questions === undefined || body.correct === undefined) return NextResponse.json({ message: "Informe questões e acertos." }, { status: 400 });
+    if (body.questions === undefined || body.correct === undefined) return NextResponse.json({ message: "Informe acertos e erros." }, { status: 400 });
     return NextResponse.json(await cycleService.finish(value.userId, value.guideId, body.id, body.version, { questions: body.questions, correct: body.correct, minutes: body.minutes, notes: body.notes }));
   } catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : "Não foi possível concluir a operação." }, { status: 409 }); }
 }

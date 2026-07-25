@@ -103,7 +103,7 @@ export class CycleService {
   }
 
   async finish(userId: string, studyGuideId: string, id: string, version: number, input: { questions: number; correct: number; minutes?: number; notes?: string }) {
-    if (input.correct > input.questions || input.questions < 0 || input.correct < 0) throw new Error("Questões e acertos inválidos.");
+    if (input.questions <= 0 || input.correct > input.questions || input.correct < 0) throw new Error("Informe ao menos uma questão e valores válidos de acertos e erros.");
     return prisma.$transaction(async (tx) => {
       const active = await tx.activeStudySession.findFirst({ where: { id, userId, studyGuideId } , include: { completedSession: true } });
       if (!active) throw new Error("Sessão não encontrada."); if (active.completedSession) return { sessionId: active.completedSession.id, idempotent: true };
