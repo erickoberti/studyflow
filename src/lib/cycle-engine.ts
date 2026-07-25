@@ -39,3 +39,11 @@ export function simulateWeightedCycle(
     return { session: index + 1, position: position.orderIndex, round: Math.floor(index / positions.length) + 1, discipline: position.discipline, subject: selected.name, subjectId: selected.id, weight: selected.weight, targetMinutes: position.targetMinutes, questionGoal: position.questionGoal };
   });
 }
+
+export function validateSimulation(rows: ReturnType<typeof simulateWeightedCycle>, expectedSubjects: Array<{ id: string; name: string; weight: number }>) {
+  const counts = new Map(rows.map((row) => [row.subjectId, 0])); rows.forEach((row) => counts.set(row.subjectId, (counts.get(row.subjectId) ?? 0) + 1));
+  const missing = expectedSubjects.filter((subject) => !(counts.get(subject.id) ?? 0)).map((subject) => subject.name);
+  const intervals = new Map<string, number[]>(); rows.forEach((row, index) => intervals.set(row.subjectId, [...(intervals.get(row.subjectId) ?? []), index + 1]));
+  const maxGap = Math.max(0, ...[...intervals.values()].flatMap((list) => list.slice(1).map((value, index) => value - list[index])));
+  return { pass: missing.length === 0 && rows.length > 0, missing, maxGap, counts: Object.fromEntries(counts), messages: missing.length ? [`Assuntos sem seleção: ${missing.join(", ")}`] : ["Todos os assuntos ativos apareceram na simulação."] };
+}

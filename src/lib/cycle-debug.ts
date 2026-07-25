@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { validateSimulation } from "@/lib/cycle-engine";
 
 type Item = { id: string; name: string; weight: number; sortOrder: number; currentWeight: number; passages: number; averagePercentage: number; lastStudiedAt: Date | null };
 
@@ -46,5 +47,6 @@ export async function getCycleDebug(userId: string, studyGuideId: string, total 
   }
   const counts = new Map<string, number>();
   simulation.forEach((item) => counts.set(item.subject, (counts.get(item.subject) ?? 0) + 1));
-  return { details, simulation, distribution: subjects.map((subject) => ({ subject: subject.name, count: counts.get(subject.name) ?? 0, percentage: total ? ((counts.get(subject.name) ?? 0) / total) * 100 : 0 })), allAppeared: total > 0 && subjects.every((subject) => (counts.get(subject.name) ?? 0) > 0) };
+  const validator = total ? validateSimulation(simulation.map((row, index) => ({ ...row, position: index + 1, round: 1, subjectId: subjects.find((subject) => subject.name === row.subject)?.id ?? "", weight: 0, targetMinutes: 60, questionGoal: 20 })), subjects) : null;
+  return { details, simulation, distribution: subjects.map((subject) => ({ subject: subject.name, count: counts.get(subject.name) ?? 0, percentage: total ? ((counts.get(subject.name) ?? 0) / total) * 100 : 0 })), allAppeared: total > 0 && subjects.every((subject) => (counts.get(subject.name) ?? 0) > 0), validator };
 }
