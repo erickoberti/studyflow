@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LoginForm } from "@/components/forms/login-form";
+import { BrandLogo } from "@/components/brand-logo";
 
 function detectAppMode() {
   if (typeof window === "undefined") return false;
@@ -45,33 +46,34 @@ export default function LoginPage() {
   const mode = useMemo<"web" | "app">(() => (isAppMode ? "app" : "web"), [isAppMode]);
 
   return (
-    <div className="min-h-screen bg-background-light px-4 py-6 dark:bg-background-dark">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-center justify-center">
-        <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-primary/20 dark:bg-slate-900/90">
-          <div className="p-6 pb-2">
-            <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+    <div className="min-h-[100dvh] bg-backgroundLight px-4 py-[max(1.5rem,env(safe-area-inset-top))] dark:bg-backgroundDark sm:px-6">
+      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-md items-center justify-center">
+        <div className="w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-primary/20 dark:bg-panelDark">
+          <div className="p-5 pb-0 sm:p-6 sm:pb-0">
+            <Link href="/" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-primary dark:text-slate-300">
               <ArrowLeft size={16} /> Voltar
             </Link>
           </div>
 
-          <div className="px-8 pb-8 pt-3">
+          <div className="px-6 pb-7 pt-5 sm:px-8 sm:pb-8">
             <div className="mb-6 flex justify-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-brand text-lg font-black text-white shadow-lg shadow-brand/20">
-                SF
+              <div className="flex items-center gap-3" aria-label="StudyFlow">
+                <BrandLogo className="h-12 w-12 rounded-2xl object-cover shadow-lg shadow-primary/20" />
+                <span className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">StudyFlow</span>
               </div>
             </div>
 
             <div className="mb-7 text-center">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Bem-vindo ao StudyFlow</h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Organize sua rotina de estudos de forma inteligente</p>
+              <h1 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white">Bem-vindo de volta</h1>
+              <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">Acesse sua rotina de estudos</p>
             </div>
 
             <LoginForm mode={mode} />
           </div>
 
           {!isAppMode ? (
-            <div className="border-t border-slate-100 bg-primary/5 px-8 py-4 text-center text-[11px] font-medium uppercase tracking-widest text-slate-400 dark:border-primary/20 dark:bg-primary/10">
-              © 2024 StudyFlow Academy. Transformando o aprendizado digital.
+            <div className="border-t border-slate-100 bg-primary/5 px-6 py-4 text-center text-xs font-medium text-slate-500 dark:border-primary/20 dark:bg-primary/10 dark:text-slate-400">
+              © 2026 StudyFlow
             </div>
           ) : null}
         </div>

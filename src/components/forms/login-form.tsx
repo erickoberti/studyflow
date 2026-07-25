@@ -83,10 +83,11 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">E-mail</label>
+        <label htmlFor="login-email" className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">E-mail</label>
         <div className="relative">
           <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
+            id="login-email"
             name="email"
             type="email"
             required
@@ -94,13 +95,15 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="seu@email.com"
             className={`w-full ${inputCls}`}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "login-error" : undefined}
           />
         </div>
       </div>
 
       <div>
         <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Senha</label>
+          <label htmlFor="login-password" className="text-sm font-semibold text-slate-700 dark:text-slate-200">Senha</label>
           <Link href="/auth/forgot" className="text-xs font-medium text-primary hover:underline">
             Esqueceu a senha?
           </Link>
@@ -108,6 +111,7 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
         <div className="relative">
           <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
+            id="login-password"
             name="password"
             type={showPassword ? "text" : "password"}
             required
@@ -115,6 +119,8 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
             onChange={(event) => setPassword(event.target.value)}
             placeholder="••••••••"
             className={`w-full ${inputCls} pr-10`}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "login-error" : undefined}
           />
           <button
             type="button"
@@ -127,12 +133,12 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
         </div>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p id="login-error" role="alert" className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-300">{error}</p> : null}
 
       <button
         type="submit"
         disabled={loading}
-        className="mt-1 w-full rounded-lg bg-primary py-3 text-base font-semibold text-white shadow-soft transition-all hover:bg-primary/90 disabled:opacity-60"
+        className="mt-1 min-h-12 w-full rounded-xl bg-primary py-3 text-base font-bold text-white shadow-soft transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? "Entrando..." : "Entrar"}
       </button>
@@ -140,7 +146,8 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
       <button
         type="button"
         onClick={() => continueOffline(email)}
-        className="w-full rounded-lg border border-primary/30 bg-primary/10 py-3 text-sm font-semibold text-primary"
+        disabled={loading}
+        className="min-h-11 w-full rounded-xl border border-primary/25 bg-transparent py-3 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:opacity-50"
       >
         Entrar offline com dados salvos
       </button>
@@ -152,11 +159,11 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-primary/20 dark:bg-primary/10 dark:text-slate-200 dark:hover:bg-primary/15">
+        <button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-primary/20 dark:bg-primary/5 dark:text-slate-300 dark:hover:bg-primary/10">
           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-bold text-slate-700">G</span>
           Google
         </button>
-        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-primary/20 dark:bg-primary/10 dark:text-slate-200 dark:hover:bg-primary/15">
+        <button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-primary/20 dark:bg-primary/5 dark:text-slate-300 dark:hover:bg-primary/10">
           <Github size={16} /> GitHub
         </button>
       </div>
