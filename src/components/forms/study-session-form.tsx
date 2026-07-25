@@ -18,6 +18,7 @@ type CycleOption = {
   orderIndex: number;
   active: boolean;
   subject: {
+    id: string;
     name: string;
     weight: number;
     notes: string | null;
@@ -151,6 +152,7 @@ export function StudySessionForm({
     const payload = {
       id: editingId ?? undefined,
       cycleEntryId,
+      subjectId: cycleEntries.find((entry) => entry.id === cycleEntryId)?.subject.id,
       date,
       questions,
       correct,

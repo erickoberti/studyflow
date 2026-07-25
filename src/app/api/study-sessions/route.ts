@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Dados invalidos" }, { status: 400 });
   }
 
-  const { date, cycleEntryId, questions, correct, wrong, notes, estimatedMinutes } = parsed.data;
+  const { date, cycleEntryId, subjectId, questions, correct, wrong, notes, estimatedMinutes } = parsed.data;
 
   if (correct + wrong !== questions) {
     return NextResponse.json({ message: "Questoes deve ser acertos + erros" }, { status: 400 });
@@ -80,8 +80,11 @@ export async function POST(request: Request) {
   // cycle flow is exclusively handled by /api/active-study-session.
   const entry = await prisma.cycleEntry.findFirst({ where: { id: cycleEntryId, userId: session.user.id, studyGuideId: guide.id } });
   if (!entry) return NextResponse.json({ message: "Posição de ciclo inválida." }, { status: 404 });
+  if (!subjectId) return NextResponse.json({ message: "Selecione um assunto válido para o estudo avulso." }, { status: 400 });
+  const subject = await prisma.subject.findFirst({ where: { id: subjectId, userId: session.user.id, studyGuideId: guide.id, disciplineId: entry.disciplineId ?? undefined } });
+  if (!subject) return NextResponse.json({ message: "O assunto não pertence à disciplina selecionada." }, { status: 400 });
   const sessionDate = new Date(`${date}T12:00:00-03:00`);
-  const created = await prisma.studySession.create({ data: { userId: session.user.id, studyGuideId: guide.id, cycleEntryId, subjectId: parsed.data.subjectId ?? null, cyclePosition: null, cycleRound: null, date: sessionDate, questions, correct, wrong, percentage: (correct / questions) * 100, estimatedMinutes: estimatedMinutes ?? Math.round(questions * 1.5), notes } });
+  const created = await prisma.studySession.create({ data: { userId: session.user.id, studyGuideId: guide.id, cycleEntryId, subjectId: subject.id, cyclePosition: null, cycleRound: null, date: sessionDate, questions, correct, wrong, percentage: (correct / questions) * 100, estimatedMinutes: estimatedMinutes ?? Math.round(questions * 1.5), notes } });
 
   return NextResponse.json(created, { status: 201 });
 }

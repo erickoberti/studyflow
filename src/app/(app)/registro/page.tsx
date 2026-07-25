@@ -16,7 +16,7 @@ export default async function RegistroPage({ searchParams }: { searchParams?: { 
     prisma.studySession.findMany({ where: { userId: user.id, studyGuideId: guide.id }, orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 5, include: { subject: { include: { discipline: true } }, cycleEntry: { include: { discipline: true } } } }),
     getStudyGuideSettings(user.id, guide.id), cycleService.getActive(user.id, guide.id), getDashboardData(user.id, guide.id), cycleService.preview(user.id, guide.id, 2),
   ]);
-  const entries = previews.map((item) => ({ id: item.entryId, orderIndex: item.orderIndex, active: true, subject: { name: item.subject?.name ?? "Sem assunto", weight: item.subject?.weight ?? 1, notes: null, tecReference: null, discipline: { name: item.discipline } } }));
+  const entries = previews.map((item) => ({ id: item.entryId, orderIndex: item.orderIndex, active: true, subject: { id: item.subject?.id ?? "", name: item.subject?.name ?? "Sem assunto", weight: item.subject?.weight ?? 1, notes: null, tecReference: null, discipline: { name: item.discipline } } }));
   const sessions = recentSessions.map((session) => ({ ...session, subjectName: session.subject?.name ?? "Assunto legado indisponível", disciplineName: session.subject?.discipline.name ?? session.cycleEntry.discipline?.name ?? "Disciplina" }));
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const todayData = dashboard.byDay.find((item) => item.date === today);
