@@ -27,6 +27,7 @@ model User {
   subjectProgress    SubjectProgress[]
   cycleStates        StudyGuideCycleState[]
   activeStudySessions ActiveStudySession[]
+  reviews            ReviewSchedule[]
 }
 
 model StudyGuide {
@@ -48,6 +49,7 @@ model StudyGuide {
   cycleState    StudyGuideCycleState?
   subjectProgress SubjectProgress[]
   activeStudySessions ActiveStudySession[]
+  reviews            ReviewSchedule[]
 
   @@unique([userId, name])
   @@index([userId])
@@ -108,6 +110,7 @@ model Subject {
   sessions      StudySession[]
   progress      SubjectProgress?
   activeStudySessions ActiveStudySession[]
+  reviews            ReviewSchedule[]
 
   @@index([userId])
   @@index([studyGuideId])
@@ -162,6 +165,7 @@ model StudySession {
   cycleEntry   CycleEntry @relation(fields: [cycleEntryId], references: [id], onDelete: Cascade)
   subject      Subject?    @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   activeStudySession ActiveStudySession? @relation("CompletedActiveStudySession", fields: [activeStudySessionId], references: [id], onDelete: SetNull)
+  reviews            ReviewSchedule[]
 
   @@index([userId])
   @@index([studyGuideId])
@@ -262,6 +266,35 @@ model ActiveStudySession {
 
   @@index([userId, studyGuideId, status])
   @@index([studyGuideId])
+}
+
+enum ReviewStatus {
+  PENDING
+  COMPLETED
+  DISMISSED
+}
+
+model ReviewSchedule {
+  id           String       @id @default(cuid())
+  userId       String
+  studyGuideId String
+  subjectId    String
+  sourceSessionId String?
+  dueAt        DateTime
+  intervalDays Int
+  status       ReviewStatus @default(PENDING)
+  completedAt  DateTime?
+  dismissedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide   StudyGuide   @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  subject      Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  sourceSession StudySession? @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, studyGuideId, status, dueAt])
+  @@index([subjectId])
+  @@index([sourceSessionId])
 }
 
 model SubjectProgress {

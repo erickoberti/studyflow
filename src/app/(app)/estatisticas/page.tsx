@@ -45,6 +45,10 @@ export default async function EstatisticasPage() {
   });
   const maxWeek = Math.max(1, ...week.map((day) => day.questions));
   const avgHoursPerDay = week.reduce((sum, day) => sum + day.questions / 10, 0) / week.length;
+  const calendar = Array.from({ length: 28 }, (_, index) => {
+    const date = new Date(); date.setDate(date.getDate() - (27 - index)); const key = dayKeyInSaoPaulo(date); const value = byDayMap.get(key)?.questions ?? 0;
+    return { key, value, label: date.getDate() };
+  });
 
   return (
     <div className="space-y-6 pb-10">
@@ -100,6 +104,11 @@ export default async function EstatisticasPage() {
             +10%
           </span>
         </article>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
+        <div className="mb-4 flex items-center justify-between"><div><h3 className="text-xl font-black text-slate-900 dark:text-white">Consistência</h3><p className="text-sm text-slate-500">Últimos 28 dias de estudo</p></div><span className="text-sm font-bold text-primary">Sequência: {dashboard.totals.streakDays} dias</span></div>
+        <div className="grid grid-cols-7 gap-2 sm:grid-cols-14">{calendar.map((day) => <div key={day.key} title={`${day.key}: ${day.value} questões`} className={`aspect-square rounded-lg p-1 text-center text-[10px] font-bold ${day.value === 0 ? "bg-slate-100 text-slate-400 dark:bg-slate-800" : day.value < 20 ? "bg-primary/25 text-primary" : "bg-primary text-white"}`}><span>{day.label}</span><span className="block text-[9px]">{day.value || "–"}</span></div>)}</div>
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-10">
