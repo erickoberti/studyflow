@@ -13,6 +13,10 @@ export type CycleSessionDTO = {
 type Client = Prisma.TransactionClient | typeof prisma;
 const openStates = [ActiveStudySessionStatus.ACTIVE, ActiveStudySessionStatus.PAUSED, ActiveStudySessionStatus.FINISHING];
 
+export class CycleConflictError extends Error {
+  constructor(message: string, public readonly code: string) { super(message); this.name = "CycleConflictError"; }
+}
+
 function toEngine(subject: { id: string; name: string; disciplineId: string; weight: number; sortOrder: number; progress: { currentWeight: number; passages: number; averagePercentage: number; lastStudiedAt: Date | null } | null }): CycleEngineSubject {
   return { id: subject.id, name: subject.name, disciplineId: subject.disciplineId, weight: subject.weight, sortOrder: subject.sortOrder, currentWeight: subject.progress?.currentWeight ?? 0, passages: subject.progress?.passages ?? 0, averagePercentage: subject.progress?.averagePercentage ?? 0, lastStudiedAt: subject.progress?.lastStudiedAt ?? null };
 }
@@ -96,23 +100,33 @@ export class CycleService {
   async pause(userId: string, studyGuideId: string, id: string, version: number) { return this.transition(userId, studyGuideId, id, version, ActiveStudySessionStatus.ACTIVE, ActiveStudySessionStatus.PAUSED); }
   async resume(userId: string, studyGuideId: string, id: string, version: number) { return this.transition(userId, studyGuideId, id, version, ActiveStudySessionStatus.PAUSED, ActiveStudySessionStatus.ACTIVE); }
   private async transition(userId: string, studyGuideId: string, id: string, version: number, expected: ActiveStudySessionStatus, next: ActiveStudySessionStatus) {
-    const existing = await prisma.activeStudySession.findFirst({ where: { id, userId, studyGuideId, status: expected } }); if (!existing) throw new Error("Sessão desatualizada ou indisponível.");
+    const existing = await prisma.activeStudySession.findFirst({ where: { id, userId, studyGuideId } });
+    if (!existing) throw new CycleConflictError("Sessão desatualizada ou alterada em outro dispositivo.", "SESSION_STATE_CHANGED");
+    if (existing.status === next && existing.version === version + 1) return this.dto(prisma, id);
+    if (existing.status !== expected) throw new CycleConflictError("Sessão desatualizada ou alterada em outro dispositivo.", "SESSION_STATE_CHANGED");
     const total = elapsedSeconds(existing); const result = await prisma.activeStudySession.updateMany({ where: { id, version, status: expected }, data: { status: next, accumulatedSeconds: total, pausedAt: next === ActiveStudySessionStatus.ACTIVE ? new Date() : null, version: { increment: 1 } } });
-    if (result.count !== 1) throw new Error("Conflito: a sessão foi alterada em outro dispositivo."); return this.dto(prisma, id);
+    if (result.count !== 1) throw new CycleConflictError("A sessão foi alterada em outro dispositivo.", "SESSION_VERSION_CHANGED"); return this.dto(prisma, id);
   }
 
   async cancel(userId: string, studyGuideId: string, id: string, version: number) {
+    const existing = await prisma.activeStudySession.findFirst({ where: { id, userId, studyGuideId } });
+    if (existing?.status === ActiveStudySessionStatus.CANCELLED && existing.version === version + 1) return { cancelled: true, idempotent: true };
     const result = await prisma.activeStudySession.updateMany({ where: { id, userId, studyGuideId, version, status: { in: [ActiveStudySessionStatus.ACTIVE, ActiveStudySessionStatus.PAUSED] } }, data: { status: ActiveStudySessionStatus.CANCELLED, cancelledAt: new Date(), version: { increment: 1 } } });
-    if (!result.count) throw new Error("Sessão desatualizada ou já encerrada."); return { cancelled: true };
+    if (!result.count) throw new CycleConflictError("Sessão desatualizada ou já encerrada.", "SESSION_VERSION_CHANGED"); return { cancelled: true };
   }
 
   async finish(userId: string, studyGuideId: string, id: string, version: number, input: { questions: number; correct: number; minutes?: number; notes?: string }) {
     if (input.questions <= 0 || input.correct > input.questions || input.correct < 0) throw new Error("Informe ao menos uma questão e valores válidos de acertos e erros.");
     return prisma.$transaction(async (tx) => {
       const active = await tx.activeStudySession.findFirst({ where: { id, userId, studyGuideId } , include: { completedSession: true } });
-      if (!active) throw new Error("Sessão não encontrada."); if (active.completedSession) return { sessionId: active.completedSession.id, idempotent: true };
-      if (!([ActiveStudySessionStatus.ACTIVE, ActiveStudySessionStatus.PAUSED] as ActiveStudySessionStatus[]).includes(active.status) || active.version !== version) throw new Error("Conflito: a sessão já foi processada.");
-      const locked = await tx.activeStudySession.updateMany({ where: { id, version, status: active.status }, data: { status: ActiveStudySessionStatus.FINISHING, version: { increment: 1 } } }); if (!locked.count) throw new Error("Conflito ao finalizar.");
+      if (!active) throw new Error("Sessão não encontrada.");
+      if (active.completedSession) {
+        const sameResult = active.completedSession.questions === input.questions && active.completedSession.correct === input.correct && (input.minutes === undefined || active.completedSession.estimatedMinutes === input.minutes) && (input.notes === undefined || active.completedSession.notes === input.notes);
+        if (!sameResult) throw new CycleConflictError("Esta sessão já foi finalizada em outro dispositivo com dados diferentes.", "SESSION_FINISHED_WITH_DIFFERENT_DATA");
+        return { sessionId: active.completedSession.id, idempotent: true };
+      }
+      if (!([ActiveStudySessionStatus.ACTIVE, ActiveStudySessionStatus.PAUSED] as ActiveStudySessionStatus[]).includes(active.status) || active.version !== version) throw new CycleConflictError("A sessão já foi processada ou possui uma versão mais recente.", "SESSION_VERSION_CHANGED");
+      const locked = await tx.activeStudySession.updateMany({ where: { id, version, status: active.status }, data: { status: ActiveStudySessionStatus.FINISHING, version: { increment: 1 } } }); if (!locked.count) throw new CycleConflictError("Outra finalização venceu a concorrência.", "CONCURRENT_FINISH");
       const wrong = input.questions - input.correct; const minutes = input.minutes ?? Math.max(1, Math.round(elapsedSeconds(active) / 60));
       const created = await tx.studySession.create({ data: { userId, studyGuideId, cycleEntryId: active.cycleEntryId!, subjectId: active.subjectId, cyclePosition: active.mode === StudySessionMode.CYCLE ? active.cycleEntryId ? (await tx.cycleEntry.findUnique({ where: { id: active.cycleEntryId }, select: { orderIndex: true } }))?.orderIndex : null : null, date: new Date(), questions: input.questions, correct: input.correct, wrong, percentage: input.questions ? (input.correct / input.questions) * 100 : 0, estimatedMinutes: minutes, notes: input.notes, activeStudySessionId: active.id } });
       await this.updateProgress(tx, userId, studyGuideId, active.subjectId, input.questions, input.correct, wrong, active.mode === StudySessionMode.CYCLE);
@@ -132,7 +146,7 @@ export class CycleService {
 
   private async advanceCursor(tx: Prisma.TransactionClient, userId: string, studyGuideId: string, entryId: string) {
     const [entry, state, last] = await Promise.all([tx.cycleEntry.findUnique({ where: { id: entryId }, select: { orderIndex: true } }), tx.studyGuideCycleState.findUnique({ where: { studyGuideId } }), tx.cycleEntry.findFirst({ where: { userId, studyGuideId, active: true }, orderBy: { orderIndex: "desc" }, select: { orderIndex: true } })]);
-    if (!entry || !state) throw new Error("Estado do ciclo não encontrado."); const wrap = entry.orderIndex >= (last?.orderIndex ?? entry.orderIndex); const updated = await tx.studyGuideCycleState.updateMany({ where: { id: state.id, version: state.version }, data: { currentOrderIndex: wrap ? 1 : entry.orderIndex + 1, ...(wrap ? { roundNumber: { increment: 1 } } : {}), version: { increment: 1 } } }); if (!updated.count) throw new Error("Conflito no cursor do ciclo.");
+    if (!entry || !state) throw new Error("Estado do ciclo não encontrado."); const wrap = entry.orderIndex >= (last?.orderIndex ?? entry.orderIndex); const updated = await tx.studyGuideCycleState.updateMany({ where: { id: state.id, version: state.version }, data: { currentOrderIndex: wrap ? 1 : entry.orderIndex + 1, ...(wrap ? { roundNumber: { increment: 1 } } : {}), version: { increment: 1 } } }); if (!updated.count) throw new CycleConflictError("O cursor do ciclo foi alterado em outro dispositivo.", "CYCLE_VERSION_CHANGED");
   }
 }
 

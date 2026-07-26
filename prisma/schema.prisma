@@ -8,80 +8,82 @@ datasource db {
 }
 
 model User {
-  id                 String               @id @default(cuid())
-  name               String
-  email              String               @unique
-  passwordHash       String
-  activeStudyGuideId String?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  studyGuides        StudyGuide[]         @relation("StudyGuideOwner")
-  activeStudyGuide   StudyGuide?          @relation("ActiveStudyGuide", fields: [activeStudyGuideId], references: [id], onDelete: SetNull)
-  disciplines        Discipline[]
-  subjects           Subject[]
-  cycleEntries       CycleEntry[]
-  sessions           StudySession[]
-  settings           UserSettings?
-  guideSettings      StudyGuideSettings[]
-  resetTokens        PasswordResetToken[]
-  subjectProgress    SubjectProgress[]
-  cycleStates        StudyGuideCycleState[]
+  id                  String                 @id @default(cuid())
+  name                String
+  email               String                 @unique
+  passwordHash        String
+  activeStudyGuideId  String?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  studyGuides         StudyGuide[]           @relation("StudyGuideOwner")
+  activeStudyGuide    StudyGuide?            @relation("ActiveStudyGuide", fields: [activeStudyGuideId], references: [id], onDelete: SetNull)
+  disciplines         Discipline[]
+  subjects            Subject[]
+  cycleEntries        CycleEntry[]
+  sessions            StudySession[]
+  settings            UserSettings?
+  guideSettings       StudyGuideSettings[]
+  resetTokens         PasswordResetToken[]
+  subjectProgress     SubjectProgress[]
+  cycleStates         StudyGuideCycleState[]
   activeStudySessions ActiveStudySession[]
-  reviews            ReviewSchedule[]
+  reviews             ReviewSchedule[]
+  offlineOperations   OfflineOperation[]
 }
 
 model StudyGuide {
-  id          String         @id @default(cuid())
-  userId      String
-  name        String
-  icon        String         @default("book-open")
-  color       String         @default("#6366f1")
-  description String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  user        User           @relation("StudyGuideOwner", fields: [userId], references: [id], onDelete: Cascade)
-  activeUsers User[]         @relation("ActiveStudyGuide")
-  disciplines   Discipline[]
-  subjects      Subject[]
-  cycleEntries  CycleEntry[]
-  sessions      StudySession[]
-  settings      StudyGuideSettings?
-  cycleState    StudyGuideCycleState?
-  subjectProgress SubjectProgress[]
+  id                  String                @id @default(cuid())
+  userId              String
+  name                String
+  icon                String                @default("book-open")
+  color               String                @default("#6366f1")
+  description         String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  user                User                  @relation("StudyGuideOwner", fields: [userId], references: [id], onDelete: Cascade)
+  activeUsers         User[]                @relation("ActiveStudyGuide")
+  disciplines         Discipline[]
+  subjects            Subject[]
+  cycleEntries        CycleEntry[]
+  sessions            StudySession[]
+  settings            StudyGuideSettings?
+  cycleState          StudyGuideCycleState?
+  subjectProgress     SubjectProgress[]
   activeStudySessions ActiveStudySession[]
-  reviews            ReviewSchedule[]
+  reviews             ReviewSchedule[]
+  offlineOperations   OfflineOperation[]
 
   @@unique([userId, name])
   @@index([userId])
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
 model Discipline {
-  id        String      @id @default(cuid())
-  userId    String
-  studyGuideId String?
-  name      String
-  sortOrder Int?
-  category  String?
-  active    Boolean     @default(true)
-  questionGoal Int      @default(20)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studyGuide StudyGuide? @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
-  subjects  Subject[]
-  cycleEntries CycleEntry[]
+  id                  String               @id @default(cuid())
+  userId              String
+  studyGuideId        String?
+  name                String
+  sortOrder           Int?
+  category            String?
+  active              Boolean              @default(true)
+  questionGoal        Int                  @default(20)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide          StudyGuide?          @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  subjects            Subject[]
+  cycleEntries        CycleEntry[]
   activeStudySessions ActiveStudySession[]
 
   @@unique([userId, studyGuideId, name])
@@ -90,82 +92,82 @@ model Discipline {
 }
 
 model Subject {
-  id            String       @id @default(cuid())
-  userId        String
-  studyGuideId  String?
-  disciplineId  String
-  name          String
-  weight        Int          @default(1)
-  notes         String?
-  tecReference  String?
-  groupName     String?
-  active        Boolean      @default(true)
-  sortOrder     Int          @default(0)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studyGuide    StudyGuide?  @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
-  discipline    Discipline   @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
-  cycleEntries  CycleEntry[]
-  sessions      StudySession[]
-  progress      SubjectProgress?
+  id                  String               @id @default(cuid())
+  userId              String
+  studyGuideId        String?
+  disciplineId        String
+  name                String
+  weight              Int                  @default(1)
+  notes               String?
+  tecReference        String?
+  groupName           String?
+  active              Boolean              @default(true)
+  sortOrder           Int                  @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide          StudyGuide?          @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  discipline          Discipline           @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  cycleEntries        CycleEntry[]
+  sessions            StudySession[]
+  progress            SubjectProgress?
   activeStudySessions ActiveStudySession[]
-  reviews            ReviewSchedule[]
+  reviews             ReviewSchedule[]
 
+  @@unique([userId, studyGuideId, disciplineId, name])
   @@index([userId])
   @@index([studyGuideId])
   @@index([disciplineId])
-  @@unique([userId, studyGuideId, disciplineId, name])
 }
 
 model CycleEntry {
-  id         String         @id @default(cuid())
-  userId     String
-  studyGuideId String?
-  subjectId  String?
-  disciplineId String?
-  orderIndex Int
-  active     Boolean        @default(true)
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studyGuide StudyGuide?    @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
-  subject    Subject?       @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  discipline Discipline?    @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
-  sessions   StudySession[]
+  id                  String               @id @default(cuid())
+  userId              String
+  studyGuideId        String?
+  subjectId           String?
+  disciplineId        String?
+  orderIndex          Int
+  active              Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide          StudyGuide?          @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  subject             Subject?             @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  discipline          Discipline?          @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  sessions            StudySession[]
   activeStudySessions ActiveStudySession[]
 
+  @@unique([userId, studyGuideId, orderIndex])
   @@index([userId])
   @@index([studyGuideId])
   @@index([subjectId])
   @@index([disciplineId])
-  @@unique([userId, studyGuideId, orderIndex])
 }
 
 model StudySession {
-  id           String    @id @default(cuid())
-  userId       String
-  studyGuideId String?
-  cycleEntryId String
-  subjectId    String?
-  cyclePosition Int?
-  cycleRound    Int?
-  date         DateTime
-  questions    Int
-  correct      Int
-  wrong        Int
-  percentage   Float
-  estimatedMinutes Int @default(0)
-  notes        String?
-  activeStudySessionId String? @unique
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studyGuide   StudyGuide? @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
-  cycleEntry   CycleEntry @relation(fields: [cycleEntryId], references: [id], onDelete: Cascade)
-  subject      Subject?    @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  activeStudySession ActiveStudySession? @relation("CompletedActiveStudySession", fields: [activeStudySessionId], references: [id], onDelete: SetNull)
-  reviews            ReviewSchedule[]
+  id                   String              @id @default(cuid())
+  userId               String
+  studyGuideId         String?
+  cycleEntryId         String
+  subjectId            String?
+  cyclePosition        Int?
+  cycleRound           Int?
+  date                 DateTime
+  questions            Int
+  correct              Int
+  wrong                Int
+  percentage           Float
+  estimatedMinutes     Int                 @default(0)
+  notes                String?
+  activeStudySessionId String?             @unique
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide           StudyGuide?         @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  cycleEntry           CycleEntry          @relation(fields: [cycleEntryId], references: [id], onDelete: Cascade)
+  subject              Subject?            @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  activeStudySession   ActiveStudySession? @relation("CompletedActiveStudySession", fields: [activeStudySessionId], references: [id], onDelete: SetNull)
+  reviews              ReviewSchedule[]
 
   @@index([userId])
   @@index([studyGuideId])
@@ -260,12 +262,34 @@ model ActiveStudySession {
   user               User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   studyGuide         StudyGuide               @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
   cycleEntry         CycleEntry?              @relation(fields: [cycleEntryId], references: [id], onDelete: SetNull)
-  discipline         Discipline                @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
-  subject            Subject                   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  completedSession   StudySession?             @relation("CompletedActiveStudySession")
+  discipline         Discipline               @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  subject            Subject                  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  completedSession   StudySession?            @relation("CompletedActiveStudySession")
 
   @@index([userId, studyGuideId, status])
   @@index([studyGuideId])
+}
+
+model OfflineOperation {
+  id           String     @id @default(cuid())
+  operationId  String     @unique
+  userId       String
+  studyGuideId String
+  type         String
+  status       String     @default("PENDING")
+  payloadHash  String
+  response     Json?
+  attempts     Int        @default(0)
+  lastError    String?
+  syncedAt     DateTime?
+  version      Int        @default(1)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide   StudyGuide @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+
+  @@index([userId, studyGuideId, status])
+  @@index([updatedAt])
 }
 
 enum ReviewStatus {
@@ -275,22 +299,22 @@ enum ReviewStatus {
 }
 
 model ReviewSchedule {
-  id           String       @id @default(cuid())
-  userId       String
-  studyGuideId String
-  subjectId    String
+  id              String        @id @default(cuid())
+  userId          String
+  studyGuideId    String
+  subjectId       String
   sourceSessionId String?
-  dueAt        DateTime
-  intervalDays Int
-  status       ReviewStatus @default(PENDING)
-  completedAt  DateTime?
-  dismissedAt  DateTime?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studyGuide   StudyGuide   @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
-  subject      Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  sourceSession StudySession? @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
+  dueAt           DateTime
+  intervalDays    Int
+  status          ReviewStatus  @default(PENDING)
+  completedAt     DateTime?
+  dismissedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide      StudyGuide    @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  subject         Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  sourceSession   StudySession? @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
 
   @@index([userId, studyGuideId, status, dueAt])
   @@index([subjectId])
@@ -298,22 +322,22 @@ model ReviewSchedule {
 }
 
 model SubjectProgress {
-  id              String   @id @default(cuid())
-  userId          String
-  studyGuideId    String
-  subjectId       String   @unique
-  currentWeight   Int      @default(0)
-  passages        Int      @default(0)
-  totalQuestions  Int      @default(0)
-  correct         Int      @default(0)
-  wrong           Int      @default(0)
-  averagePercentage Float  @default(0)
-  lastStudiedAt   DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studyGuide      StudyGuide @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
-  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  id                String     @id @default(cuid())
+  userId            String
+  studyGuideId      String
+  subjectId         String     @unique
+  currentWeight     Int        @default(0)
+  passages          Int        @default(0)
+  totalQuestions    Int        @default(0)
+  correct           Int        @default(0)
+  wrong             Int        @default(0)
+  averagePercentage Float      @default(0)
+  lastStudiedAt     DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide        StudyGuide @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  subject           Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@index([userId, studyGuideId])
 }
@@ -332,5 +356,3 @@ model GoalDefinition {
 
   @@index([metric, active])
 }
-
-

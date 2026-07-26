@@ -222,6 +222,7 @@ export async function queueOfflineSessionOperation(input: {
   type: OfflineSessionOperationType;
   session: OfflineActiveStudySession;
   now?: string;
+  operationId?: string;
 }, storage: OfflineSessionQueueStorage = offlineSessionQueue) {
   const now = input.now ?? new Date().toISOString();
   const session = { ...input.session };
@@ -236,7 +237,7 @@ export async function queueOfflineSessionOperation(input: {
     session.status = "CANCELLED"; session.finishedAt = now;
   }
   session.updatedAt = now; session.pendingSync = true;
-  const operation = createOfflineSessionOperation({ userId: input.userId, studyGuideId: input.studyGuideId, type: input.type, payload: session, createdAt: now });
+  const operation = createOfflineSessionOperation({ operationId: input.operationId, userId: input.userId, studyGuideId: input.studyGuideId, type: input.type, payload: session, createdAt: now });
   await storage.putOperation(operation);
   await storage.putSession(session);
   return { operation, session };
@@ -244,10 +245,10 @@ export async function queueOfflineSessionOperation(input: {
 
 export async function startOfflineActiveSession(input: {
   userId: string; studyGuideId: string; mode: OfflineStudyMode; disciplineId: string; subjectId: string;
-  cycleEntryId: string | null; disciplineName: string; subjectName: string; startedAt?: string;
+  cycleEntryId: string | null; disciplineName: string; subjectName: string; startedAt?: string; operationId?: string;
 }, storage: OfflineSessionQueueStorage = offlineSessionQueue) {
   if (!input.disciplineId || !input.subjectId) throw new Error("Disciplina e assunto são obrigatórios.");
-  const operationId = uuid(); const now = input.startedAt ?? new Date().toISOString();
+  const operationId = input.operationId ?? uuid(); const now = input.startedAt ?? new Date().toISOString();
   const session: OfflineActiveStudySession = {
     ...input, startedAt: now, localSessionId: `offline-${operationId}`, serverSessionId: null, serverVersion: null,
     status: "ACTIVE", pausedAt: now, finishedAt: null, accumulatedSeconds: 0, questions: 0,

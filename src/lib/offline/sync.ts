@@ -8,41 +8,16 @@ import {
   markSessionSynced,
   removeOfflineSession,
 } from "@/lib/offline/store";
-import { offlineSessionQueue, type OfflineSessionOperation } from "@/lib/offline/active-session-queue";
+import { offlineSessionQueue } from "@/lib/offline/active-session-queue";
+import { synchronizeOfflineSessionQueue } from "@/lib/offline/session-sync-engine";
 
 let syncPromise: Promise<void> | null = null;
 
 async function syncActiveSessionOperations(userId: string, studyGuideId: string) {
-  const operations = (await offlineSessionQueue.getOperations(userId, studyGuideId))
-    .filter((operation) => operation.status === "PENDING" || operation.status === "FAILED")
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-
-  for (const queuedOperation of operations) {
-    const operation = (await offlineSessionQueue.getOperations(userId, studyGuideId)).find((item) => item.operationId === queuedOperation.operationId) ?? queuedOperation;
-    await offlineSessionQueue.updateOperation(operation.operationId, { status: "SYNCING", attempts: operation.attempts + 1, lastError: null });
-    try {
-      const response = await fetch("/api/offline/session-operations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(operation) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const status: OfflineSessionOperation["status"] = response.status === 409 ? "CONFLICT" : "FAILED";
-        await offlineSessionQueue.updateOperation(operation.operationId, { status, lastError: data.message ?? "Falha ao sincronizar a sessão." });
-        if (status === "CONFLICT") break;
-        continue;
-      }
-      const serverSessionId = data.session?.id ?? data.serverSessionId;
-      const serverVersion = data.session?.version ?? data.version;
-      if (serverSessionId) await offlineSessionQueue.updateOperationsForSession(operation.payload.localSessionId, { serverSessionId, serverVersion: typeof serverVersion === "number" ? serverVersion : operation.payload.serverVersion });
-      await offlineSessionQueue.updateOperation(operation.operationId, { status: "COMPLETED", syncedAt: new Date().toISOString(), lastError: null });
-      const local = await offlineSessionQueue.getSession(userId, studyGuideId);
-      if (local?.localSessionId === operation.payload.localSessionId) {
-        const remaining = (await offlineSessionQueue.getOperations(userId, studyGuideId)).some((item) => item.operationId !== operation.operationId && item.payload.localSessionId === operation.payload.localSessionId && ["PENDING", "SYNCING", "FAILED", "CONFLICT"].includes(item.status));
-        await offlineSessionQueue.putSession({ ...local, serverSessionId: serverSessionId ?? local.serverSessionId, serverVersion: typeof serverVersion === "number" ? serverVersion : local.serverVersion, pendingSync: remaining, updatedAt: new Date().toISOString() });
-      }
-    } catch (error) {
-      await offlineSessionQueue.updateOperation(operation.operationId, { status: "FAILED", lastError: error instanceof Error ? error.message : "Falha de conexão." });
-      break;
-    }
-  }
+  await synchronizeOfflineSessionQueue({ storage: offlineSessionQueue, userId, studyGuideId, transport: async (operation) => {
+    const response = await fetch("/api/offline/session-operations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(operation) });
+    return { status: response.status, data: await response.json().catch(() => ({})) };
+  } });
 }
 
 export async function refreshOfflineSnapshotFromServer() {
