@@ -39,6 +39,7 @@ export function expandOfflineEntry(
     ...entry,
     subject: {
       id: subject.id,
+      serverId: subject.serverId,
       name: subject.name,
       weight: subject.weight,
       notes: subject.notes,
@@ -46,6 +47,7 @@ export function expandOfflineEntry(
       active: subject.active,
       discipline: {
         id: discipline.id,
+        serverId: discipline.serverId,
         name: discipline.name,
         active: discipline.active,
       },

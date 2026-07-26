@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { refreshOfflineSnapshotFromServer, syncPendingOfflineSessions } from "@/lib/offline/sync";
 import { getOfflineSnapshot, subscribeOfflineStore } from "@/lib/offline/store";
+import { offlineSessionQueue, subscribeOfflineSessionQueue } from "@/lib/offline/active-session-queue";
 
 export function OfflineSyncBootstrap() {
   const pathname = usePathname();
@@ -12,16 +13,18 @@ export function OfflineSyncBootstrap() {
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    function updatePendingCount() {
+    async function updatePendingCount() {
       const snapshot = getOfflineSnapshot();
+      const activeOperations = snapshot.user?.id && snapshot.activeGuideId ? await offlineSessionQueue.getOperations(snapshot.user.id, snapshot.activeGuideId).catch(() => []) : [];
       setPendingCount(
         snapshot.sessions.filter((session) => session.syncStatus !== "synced").length +
-          snapshot.pendingOperations.length,
+          snapshot.pendingOperations.length + activeOperations.filter((item) => ["PENDING", "FAILED"].includes(item.status)).length,
       );
     }
 
     updatePendingCount();
-    return subscribeOfflineStore(updatePendingCount);
+    const unsubscribeStore = subscribeOfflineStore(updatePendingCount); const unsubscribeQueue = subscribeOfflineSessionQueue(updatePendingCount);
+    return () => { unsubscribeStore(); unsubscribeQueue(); };
   }, []);
 
   useEffect(() => {

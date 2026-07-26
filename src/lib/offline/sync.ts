@@ -8,8 +8,42 @@ import {
   markSessionSynced,
   removeOfflineSession,
 } from "@/lib/offline/store";
+import { offlineSessionQueue, type OfflineSessionOperation } from "@/lib/offline/active-session-queue";
 
 let syncPromise: Promise<void> | null = null;
+
+async function syncActiveSessionOperations(userId: string, studyGuideId: string) {
+  const operations = (await offlineSessionQueue.getOperations(userId, studyGuideId))
+    .filter((operation) => operation.status === "PENDING" || operation.status === "FAILED")
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  for (const queuedOperation of operations) {
+    const operation = (await offlineSessionQueue.getOperations(userId, studyGuideId)).find((item) => item.operationId === queuedOperation.operationId) ?? queuedOperation;
+    await offlineSessionQueue.updateOperation(operation.operationId, { status: "SYNCING", attempts: operation.attempts + 1, lastError: null });
+    try {
+      const response = await fetch("/api/offline/session-operations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(operation) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const status: OfflineSessionOperation["status"] = response.status === 409 ? "CONFLICT" : "FAILED";
+        await offlineSessionQueue.updateOperation(operation.operationId, { status, lastError: data.message ?? "Falha ao sincronizar a sessão." });
+        if (status === "CONFLICT") break;
+        continue;
+      }
+      const serverSessionId = data.session?.id ?? data.serverSessionId;
+      const serverVersion = data.session?.version ?? data.version;
+      if (serverSessionId) await offlineSessionQueue.updateOperationsForSession(operation.payload.localSessionId, { serverSessionId, serverVersion: typeof serverVersion === "number" ? serverVersion : operation.payload.serverVersion });
+      await offlineSessionQueue.updateOperation(operation.operationId, { status: "COMPLETED", syncedAt: new Date().toISOString(), lastError: null });
+      const local = await offlineSessionQueue.getSession(userId, studyGuideId);
+      if (local?.localSessionId === operation.payload.localSessionId) {
+        const remaining = (await offlineSessionQueue.getOperations(userId, studyGuideId)).some((item) => item.operationId !== operation.operationId && item.payload.localSessionId === operation.payload.localSessionId && ["PENDING", "SYNCING", "FAILED", "CONFLICT"].includes(item.status));
+        await offlineSessionQueue.putSession({ ...local, serverSessionId: serverSessionId ?? local.serverSessionId, serverVersion: typeof serverVersion === "number" ? serverVersion : local.serverVersion, pendingSync: remaining, updatedAt: new Date().toISOString() });
+      }
+    } catch (error) {
+      await offlineSessionQueue.updateOperation(operation.operationId, { status: "FAILED", lastError: error instanceof Error ? error.message : "Falha de conexão." });
+      break;
+    }
+  }
+}
 
 export async function refreshOfflineSnapshotFromServer() {
   const response = await fetch("/api/offline/bootstrap", {
@@ -44,7 +78,7 @@ async function syncStructureOperations() {
   await refreshOfflineSnapshotFromServer();
 }
 
-async function syncSingleSession(session: ReturnType<typeof getOfflineSnapshot>["sessions"][number]) {
+async function syncSingleSession(session: ReturnType<typeof getOfflineSnapshot>["sessions"][number], snapshot: ReturnType<typeof getOfflineSnapshot>) {
   if (session.syncStatus === "pending_delete") {
     if (!session.serverId) {
       removeOfflineSession(session.id);
@@ -66,9 +100,13 @@ async function syncSingleSession(session: ReturnType<typeof getOfflineSnapshot>[
     return;
   }
 
+  const legacyEntry = snapshot.cycleEntries.find((entry) => entry.id === session.cycleEntryId || entry.serverId === session.cycleEntryId);
+  const legacySubject = legacyEntry ? snapshot.subjects.find((subject) => subject.id === legacyEntry.subjectId) : null;
+  if (!legacySubject?.serverId) throw new Error("O registro offline legado não possui um assunto sincronizado e foi preservado neste dispositivo.");
   const payload = {
     id: session.serverId ?? undefined,
     cycleEntryId: session.cycleEntryId,
+    subjectId: legacySubject.serverId,
     date: new Intl.DateTimeFormat("sv-SE", {
       timeZone: "America/Sao_Paulo",
       year: "numeric",
@@ -108,13 +146,14 @@ export async function syncPendingOfflineSessions() {
     await syncStructureOperations();
 
     const snapshot = getOfflineSnapshot();
+    if (snapshot.user?.id && snapshot.activeGuideId) await syncActiveSessionOperations(snapshot.user.id, snapshot.activeGuideId);
     const pending = snapshot.sessions
       .filter((session) => session.syncStatus !== "synced")
       .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
 
     for (const session of pending) {
       try {
-        await syncSingleSession(session);
+        await syncSingleSession(session, snapshot);
       } catch (error) {
         markSessionError(
           session.id,

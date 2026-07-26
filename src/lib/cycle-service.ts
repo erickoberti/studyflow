@@ -64,8 +64,12 @@ export class CycleService {
     return active ? this.dto(prisma, active.id) : null;
   }
 
-  async start(userId: string, studyGuideId: string, input: { mode: "CYCLE" | "AVULSO"; disciplineId?: string; subjectId?: string }) {
+  async start(userId: string, studyGuideId: string, input: { mode: "CYCLE" | "AVULSO"; disciplineId?: string; subjectId?: string; operationId?: string }) {
     return prisma.$transaction(async (tx) => {
+      if (input.operationId) {
+        const processed = await tx.activeStudySession.findFirst({ where: { id: input.operationId, userId, studyGuideId }, select: { id: true } });
+        if (processed) return this.dto(tx, processed.id);
+      }
       const existing = await tx.activeStudySession.findFirst({ where: { userId, studyGuideId, status: { in: openStates } }, select: { id: true } });
       if (existing) return this.dto(tx, existing.id);
       let cycleEntryId: string | undefined; let disciplineId = input.disciplineId; let subjectId = input.subjectId;
@@ -75,7 +79,7 @@ export class CycleService {
       if (!subject) throw new Error("O assunto não pertence à disciplina ou está inativo.");
       if (!cycleEntryId) cycleEntryId = (await tx.cycleEntry.findFirst({ where: { userId, studyGuideId, active: true }, orderBy: { orderIndex: "asc" }, select: { id: true } }))?.id;
       if (!cycleEntryId) throw new Error("Crie ao menos uma posição de ciclo antes de registrar estudo.");
-      const active = await tx.activeStudySession.create({ data: { userId, studyGuideId, cycleEntryId, disciplineId, subjectId, mode: input.mode === "CYCLE" ? StudySessionMode.CYCLE : StudySessionMode.AVULSO, pausedAt: new Date() } });
+      const active = await tx.activeStudySession.create({ data: { ...(input.operationId ? { id: input.operationId } : {}), userId, studyGuideId, cycleEntryId, disciplineId, subjectId, mode: input.mode === "CYCLE" ? StudySessionMode.CYCLE : StudySessionMode.AVULSO, pausedAt: new Date() } });
       return this.dto(tx, active.id);
     });
   }
