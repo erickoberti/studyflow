@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { getOfflineAccess, getOfflineSnapshot, clearOfflineAccess, subscribeOfflineStore } from "@/lib/offline/store";
 import { syncPendingOfflineSessions } from "@/lib/offline/sync";
 import { cn } from "@/lib/cn";
+import { offlineSessionQueue, subscribeOfflineSessionQueue } from "@/lib/offline/active-session-queue";
 
 const links = [
   { href: "/offline/dashboard", label: "Painel", icon: LayoutDashboard },
@@ -25,6 +26,7 @@ export function OfflineShell({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [access, setAccess] = useState(getOfflineAccess());
+  const [activePending, setActivePending] = useState(0);
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -33,16 +35,21 @@ export function OfflineShell({ children }: { children: React.ReactNode }) {
       setIsOnline(navigator.onLine);
     }
 
+    async function refreshActivePending() { const value = getOfflineSnapshot(); if (!value.user?.id || !value.activeGuideId) return setActivePending(0); const operations = await offlineSessionQueue.getOperations(value.user.id, value.activeGuideId).catch(() => []); setActivePending(operations.filter((item) => ["PENDING", "SYNCING", "FAILED", "CONFLICT"].includes(item.status)).length); }
+    refreshActivePending();
     const unsubscribe = subscribeOfflineStore(() => {
       setSnapshot(getOfflineSnapshot());
       setAccess(getOfflineAccess());
+      refreshActivePending();
     });
+    const unsubscribeQueue = subscribeOfflineSessionQueue(refreshActivePending);
 
     window.addEventListener("online", handleOnlineState);
     window.addEventListener("offline", handleOnlineState);
 
     return () => {
       unsubscribe();
+      unsubscribeQueue();
       window.removeEventListener("online", handleOnlineState);
       window.removeEventListener("offline", handleOnlineState);
     };
@@ -72,7 +79,7 @@ export function OfflineShell({ children }: { children: React.ReactNode }) {
 
   const currentGuide = snapshot.guides.find((guide) => guide.id === snapshot.activeGuideId);
   const pendingCount =
-    snapshot.sessions.filter((session) => session.syncStatus !== "synced").length + snapshot.pendingOperations.length;
+    snapshot.sessions.filter((session) => session.syncStatus !== "synced").length + snapshot.pendingOperations.length + activePending;
 
   return (
     <div className="min-h-screen bg-backgroundLight text-slate-900 dark:bg-backgroundDark dark:text-slate-100">

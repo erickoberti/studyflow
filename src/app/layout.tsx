@@ -1,35 +1,26 @@
-﻿import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Lexend } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
-const lexend = Lexend({
-  subsets: ["latin"],
-  variable: "--font-lexend",
-});
+const lexend = Lexend({ subsets: ["latin"], variable: "--font-lexend" });
 
 export const metadata: Metadata = {
-  title: "StudyFlow Ciclos",
+  applicationName: "StudyFlow",
+  title: { default: "StudyFlow", template: "%s | StudyFlow" },
   description: "Sistema de gestão de ciclos de estudos com foco em evolução contínua",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/brand/studyflow-logo.png", sizes: "512x512", type: "image/png" }],
-    apple: [{ url: "/brand/studyflow-logo.png", sizes: "512x512", type: "image/png" }],
+    icon: [{ url: "/brand/studyflow-logo-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/brand/studyflow-logo-192.png", sizes: "192x192", type: "image/png" }],
     shortcut: "/brand/studyflow-logo.png",
   },
+  appleWebApp: { capable: true, title: "StudyFlow", statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${lexend.variable} font-sans antialiased`}>
-        <Providers>{children}</Providers>
-      </body>
-    </html>
-  );
-}
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#895af6", colorScheme: "light dark" };
 
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="pt-BR" suppressHydrationWarning><body className={`${lexend.variable} font-sans antialiased`}><Providers>{children}</Providers></body></html>;
+}

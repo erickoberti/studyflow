@@ -12,6 +12,13 @@ import { offlineSessionQueue } from "@/lib/offline/active-session-queue";
 import { synchronizeOfflineSessionQueue } from "@/lib/offline/session-sync-engine";
 
 let syncPromise: Promise<void> | null = null;
+const SYNC_RUNTIME_EVENT = "studyflow-sync-runtime";
+export type SyncRuntimeState = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
+let syncRuntimeState: SyncRuntimeState = "IDLE";
+
+function setSyncRuntimeState(state: SyncRuntimeState) { syncRuntimeState = state; if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(SYNC_RUNTIME_EVENT, { detail: state })); }
+export function getSyncRuntimeState() { return syncRuntimeState; }
+export function subscribeSyncRuntime(listener: (state: SyncRuntimeState) => void) { if (typeof window === "undefined") return () => undefined; const handler = (event: Event) => listener((event as CustomEvent<SyncRuntimeState>).detail); window.addEventListener(SYNC_RUNTIME_EVENT, handler); return () => window.removeEventListener(SYNC_RUNTIME_EVENT, handler); }
 
 async function syncActiveSessionOperations(userId: string, studyGuideId: string) {
   await synchronizeOfflineSessionQueue({ storage: offlineSessionQueue, userId, studyGuideId, transport: async (operation) => {
@@ -118,6 +125,8 @@ export async function syncPendingOfflineSessions() {
       return;
     }
 
+    setSyncRuntimeState("SYNCING");
+
     await syncStructureOperations();
 
     const snapshot = getOfflineSnapshot();
@@ -126,10 +135,12 @@ export async function syncPendingOfflineSessions() {
       .filter((session) => session.syncStatus !== "synced")
       .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
 
+    let hasErrors = false;
     for (const session of pending) {
       try {
         await syncSingleSession(session, snapshot);
       } catch (error) {
+        hasErrors = true;
         markSessionError(
           session.id,
           error instanceof Error ? error.message : "Nao foi possivel sincronizar agora.",
@@ -138,7 +149,11 @@ export async function syncPendingOfflineSessions() {
     }
 
     await refreshOfflineSnapshotFromServer();
-  })().finally(() => {
+    setSyncRuntimeState(hasErrors ? "ERROR" : "SUCCESS");
+  })().catch((error) => {
+    setSyncRuntimeState("ERROR");
+    throw error;
+  }).finally(() => {
     syncPromise = null;
   });
 

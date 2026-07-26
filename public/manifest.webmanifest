@@ -1,18 +1,22 @@
-﻿{
-  "name": "StudyFlow Ciclos",
-  "short_name": "STUDYFLOW",
+{
+  "id": "/",
+  "name": "StudyFlow",
+  "short_name": "StudyFlow",
   "description": "Gestão de ciclos de estudos com foco em evolução contínua",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#151022",
   "theme_color": "#895af6",
   "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
-    {
-      "src": "/brand/studyflow-logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/brand/studyflow-logo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/studyflow-logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/studyflow-logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

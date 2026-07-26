@@ -11,6 +11,9 @@ const publicPaths = [
   "/api/auth",
   "/manifest.webmanifest",
   "/icons",
+  "/brand",
+  "/sw.js",
+  "/workbox-",
   "/_next",
 ];
 
