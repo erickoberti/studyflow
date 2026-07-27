@@ -102,7 +102,7 @@ export default async function DashboardPage() {
             <span className="rounded-lg bg-primary/10 p-1.5 text-primary"><Clock3 size={16} /></span>
           </div>
           <p className="text-4xl font-black text-slate-900 dark:text-white">{(dashboard.totals.totalEstimatedMinutes / 60).toFixed(1)}h</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-500">+5%</p>
+          <p className="mt-1 text-sm font-semibold text-slate-400">Tempo acumulado</p>
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
             <span className="rounded-lg bg-primary/10 p-1.5 text-primary"><Library size={16} /></span>
           </div>
           <p className="text-4xl font-black text-slate-900 dark:text-white">{dashboard.disciplineStats.length}</p>
-          <p className="mt-1 text-sm font-semibold text-slate-400">Estável</p>
+          <p className="mt-1 text-sm font-semibold text-slate-400">Com histórico registrado</p>
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
             <span className="rounded-lg bg-orange-500/10 p-1.5 text-orange-500"><Flame size={16} /></span>
           </div>
           <p className="text-4xl font-black text-slate-900 dark:text-white">{streak} dias</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-500">+2%</p>
+          <p className="mt-1 text-sm font-semibold text-slate-400">Dias consecutivos</p>
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
             <span className="rounded-lg bg-primary/10 p-1.5 text-primary"><Target size={16} /></span>
           </div>
           <p className="text-4xl font-black text-slate-900 dark:text-white">{focusScore.toFixed(1)}%</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-500">+12%</p>
+          <p className="mt-1 text-sm font-semibold text-slate-400">Média de acertos</p>
         </article>
       </section>
 
@@ -227,7 +227,7 @@ export default async function DashboardPage() {
               <Link href="/registros" className="text-xs font-bold text-primary hover:underline">Ver todas</Link>
             </div>
             <div className="space-y-3">
-              {recentSessions.map((session) => (
+              {recentSessions.length ? recentSessions.map((session) => (
                 <div key={session.id} className="flex gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/40">
                   <div className="flex min-w-[52px] flex-col items-center justify-center rounded-lg border border-slate-200 bg-white py-1 dark:border-slate-700 dark:bg-slate-800">
                     <span className="text-[10px] font-bold uppercase text-slate-400">{format(session.date, "MMM")}</span>
@@ -238,7 +238,7 @@ export default async function DashboardPage() {
                     <p className="text-xs text-slate-500">{formatPtBrDay(session.date)} • {session.questions} questões</p>
                   </div>
                 </div>
-              ))}
+              )) : <p className="rounded-xl border border-dashed p-4 text-sm text-slate-500">Nenhuma sessão concluída neste guia.</p>}
             </div>
 
             <div className="mt-6 rounded-xl border border-primary/10 bg-primary/5 p-4">

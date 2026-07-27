@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BarChart3, CheckCircle2, Clock3, History, Scale, Send } from "lucide-react";
 import { distributeQuestionsByWeight } from "@/lib/phase-five";
@@ -10,7 +10,7 @@ type Exam = { id: string; title: string; takenAt: string; durationMinutes: numbe
 
 export function MockExamManager({ disciplines, exams }: { disciplines: Discipline[]; exams: Exam[] }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [submitting, setSubmitting] = useState(false);
   const [total, setTotal] = useState(100);
   const [rows, setRows] = useState(() => distributeQuestionsByWeight(100, disciplines).map((item) => ({ disciplineId: item.id, questions: item.questions, correct: 0 })));
   const [message, setMessage] = useState<string | null>(null);
@@ -26,11 +26,18 @@ export function MockExamManager({ disciplines, exams }: { disciplines: Disciplin
   async function submit(formData: FormData) {
     setMessage(null);
     if (!calculated.questions || rows.some((row) => row.correct > row.questions)) return setMessage("Informe questões válidas e acertos menores ou iguais ao total.");
-    const response = await fetch("/api/mock-exams", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: formData.get("title"), takenAt: formData.get("takenAt"), durationMinutes: formData.get("durationMinutes"), notes: formData.get("notes"), results: rows }) });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) return setMessage(data.message ?? "Não foi possível salvar o simulado.");
-    setMessage("Simulado salvo sem alterar o ciclo ou as sessões de estudo.");
-    startTransition(() => router.refresh());
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/mock-exams", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: formData.get("title"), takenAt: formData.get("takenAt"), durationMinutes: formData.get("durationMinutes"), notes: formData.get("notes"), results: rows }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) return setMessage(data.message ?? "Não foi possível salvar o simulado.");
+      setMessage("Simulado salvo sem alterar o ciclo ou as sessões de estudo.");
+      router.refresh();
+    } catch {
+      setMessage("Falha de conexão. O simulado não foi enviado; tente novamente.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return <div className="space-y-7">
@@ -45,7 +52,7 @@ export function MockExamManager({ disciplines, exams }: { disciplines: Disciplin
         </div>
         <div className="mt-6 overflow-x-auto rounded-2xl border"><table className="w-full min-w-[520px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900"><tr><th className="p-3">Disciplina</th><th className="p-3">Peso</th><th className="p-3">Questões</th><th className="p-3">Acertos</th><th className="p-3">%</th></tr></thead><tbody>{rows.map((row) => { const discipline = disciplines.find((item) => item.id === row.disciplineId)!; return <tr key={row.disciplineId} className="border-t"><td className="p-3 font-bold">{discipline.name}</td><td className="p-3">{discipline.weight}</td><td className="p-3"><input aria-label={`Questões de ${discipline.name}`} type="number" min="0" value={row.questions} onChange={(event) => update(row.disciplineId, "questions", Number(event.target.value))} className="w-20 rounded-lg border bg-transparent p-2" /></td><td className="p-3"><input aria-label={`Acertos de ${discipline.name}`} type="number" min="0" max={row.questions} value={row.correct} onChange={(event) => update(row.disciplineId, "correct", Number(event.target.value))} className="w-20 rounded-lg border bg-transparent p-2" /></td><td className="p-3 font-black">{row.questions ? (row.correct / row.questions * 100).toFixed(0) : 0}%</td></tr>; })}</tbody></table></div>
         <label className="mt-4 block"><span className="text-xs font-bold text-slate-500">Observações</span><textarea name="notes" placeholder="Pontos fortes, dificuldades e decisões para o próximo simulado." className="mt-1 min-h-24 w-full rounded-xl border bg-transparent p-3 outline-none focus:border-primary" /></label>
-        <div className="mt-5 flex flex-col gap-3 rounded-2xl bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-black">{calculated.questions} questões · {calculated.correct} acertos</p><p className="text-xs text-slate-500">{calculated.questions ? (calculated.correct / calculated.questions * 100).toFixed(1) : "0.0"}% de aproveitamento</p></div><button disabled={pending} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-black text-white disabled:opacity-60"><Send size={16} /> {pending ? "Salvando..." : "Salvar simulado"}</button></div>
+        <div className="mt-5 flex flex-col gap-3 rounded-2xl bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-black">{calculated.questions} questões · {calculated.correct} acertos</p><p className="text-xs text-slate-500">{calculated.questions ? (calculated.correct / calculated.questions * 100).toFixed(1) : "0.0"}% de aproveitamento</p></div><button disabled={submitting} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-black text-white disabled:opacity-60"><Send size={16} /> {submitting ? "Salvando..." : "Salvar simulado"}</button></div>
         {message ? <p role="status" className="mt-3 text-sm font-semibold text-primary">{message}</p> : null}
       </form>
       <aside className="space-y-4"><Metric icon={History} label="Simulados realizados" value={String(exams.length)} /><Metric icon={BarChart3} label="Média histórica" value={`${(exams.length ? exams.reduce((sum, exam) => sum + exam.percentage, 0) / exams.length : 0).toFixed(1)}%`} /><Metric icon={CheckCircle2} label="Melhor resultado" value={`${(exams.length ? Math.max(...exams.map((exam) => exam.percentage)) : 0).toFixed(1)}%`} /><div className="rounded-3xl border border-primary/20 bg-primary/5 p-5"><p className="text-sm font-black text-primary">Como a distribuição funciona</p><p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">O peso da disciplina é a soma dos pesos dos seus assuntos ativos. O arredondamento preserva exatamente o total planejado.</p></div></aside>

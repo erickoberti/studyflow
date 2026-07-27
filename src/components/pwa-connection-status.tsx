@@ -64,7 +64,7 @@ export function PwaConnectionStatus() {
 
   if (pathname.startsWith("/auth/")) return null;
   return <>
-    <button type="button" onClick={() => setOpen(true)} aria-label={`Estado da conexão: ${visual.label}`} className={cn("fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 z-[80] inline-flex min-h-11 max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full border px-4 py-2 text-xs font-black shadow-lg backdrop-blur sm:left-auto sm:right-4", visual.style)}>
+    <button type="button" onClick={() => setOpen(true)} aria-label={`Estado da conexão: ${visual.label}`} className={cn("fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 z-[80] inline-flex min-h-11 max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full border px-4 py-2 text-xs font-black shadow-lg backdrop-blur sm:left-auto sm:right-4 lg:bottom-[max(0.75rem,env(safe-area-inset-bottom))]", visual.style)}>
       <StatusIcon size={15} className={runtime === "SYNCING" ? "animate-spin" : ""} /><span className="truncate">{visual.label}</span>
     </button>
     {open ? <div className="fixed inset-0 z-[130] flex items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label="Sincronização e conflitos">

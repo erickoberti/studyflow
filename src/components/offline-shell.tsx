@@ -25,6 +25,7 @@ export function OfflineShell({ children }: { children: React.ReactNode }) {
   const [snapshot, setSnapshot] = useState(getOfflineSnapshot());
   const [isOnline, setIsOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [access, setAccess] = useState(getOfflineAccess());
   const [activePending, setActivePending] = useState(0);
 
@@ -65,8 +66,11 @@ export function OfflineShell({ children }: { children: React.ReactNode }) {
     if (!navigator.onLine) return;
     try {
       setSyncing(true);
+      setSyncError(null);
       await syncPendingOfflineSessions();
       setSnapshot(getOfflineSnapshot());
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : "Não foi possível sincronizar agora.");
     } finally {
       setSyncing(false);
     }
@@ -76,6 +80,8 @@ export function OfflineShell({ children }: { children: React.ReactNode }) {
     clearOfflineAccess();
     router.replace("/auth/login?mode=app");
   }
+
+  if (!access) return <main role="status" className="grid min-h-screen place-items-center bg-backgroundLight p-5 dark:bg-backgroundDark"><p className="rounded-2xl border bg-white p-5 font-bold dark:bg-slate-950">Validando acesso offline...</p></main>;
 
   const currentGuide = snapshot.guides.find((guide) => guide.id === snapshot.activeGuideId);
   const pendingCount =
@@ -132,7 +138,8 @@ export function OfflineShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <nav className="mt-4 flex flex-wrap gap-2">
+          {syncError ? <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">{syncError}</p> : null}
+          <nav className="mt-4 flex flex-wrap gap-2" aria-label="Navegação offline">
             {links.map((item) => {
               const Icon = item.icon;
               const active = pathname === item.href;

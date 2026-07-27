@@ -115,7 +115,7 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
   const totalEstimatedMinutes = sessions.reduce((sum, item) => sum + item.estimatedMinutes, 0);
   const overallPercentage = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
 
-  const byDay = new Map<string, { date: string; questions: number; percentage: number; correct: number }>();
+  const byDay = new Map<string, { date: string; questions: number; percentage: number; correct: number; estimatedMinutes: number }>();
   const byWeek = new Map<string, { week: string; questions: number; percentage: number; correct: number }>();
   const byDiscipline = new Map<string, { discipline: string; questions: number; correct: number; wrong: number; estimatedMinutes: number }>();
   const bySubject = new Map<string, { subject: string; discipline: string; questions: number; correct: number; weight: number; estimatedMinutes: number }>();
@@ -136,9 +136,10 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
       sessionsByActiveEntryRecent.set(session.cycleEntryId, (sessionsByActiveEntryRecent.get(session.cycleEntryId) ?? 0) + 1);
     }
 
-    const dayData = byDay.get(sessionDayKey) ?? { date: sessionDayKey, questions: 0, correct: 0, percentage: 0 };
+    const dayData = byDay.get(sessionDayKey) ?? { date: sessionDayKey, questions: 0, correct: 0, percentage: 0, estimatedMinutes: 0 };
     dayData.questions += session.questions;
     dayData.correct += session.correct;
+    dayData.estimatedMinutes += session.estimatedMinutes;
     dayData.percentage = dayData.questions > 0 ? (dayData.correct / dayData.questions) * 100 : 0;
     byDay.set(sessionDayKey, dayData);
 

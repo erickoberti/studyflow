@@ -19,6 +19,15 @@ body {
   overflow-x: hidden;
 }
 
+main,
+main :where(section, article, div) {
+  min-width: 0;
+}
+
+main :where(h1, h2, h3, p) {
+  overflow-wrap: anywhere;
+}
+
 body {
   font-size: 15px;
   line-height: 1.4;
@@ -34,5 +43,27 @@ body {
 
 .dark * {
   border-color: rgb(71 85 105 / 0.45);
+}
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid rgb(137 90 246 / 0.75);
+  outline-offset: 2px;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 

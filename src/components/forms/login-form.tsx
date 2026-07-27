@@ -159,11 +159,11 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-primary/20 dark:bg-primary/5 dark:text-slate-300 dark:hover:bg-primary/10">
+        <button type="button" disabled aria-label="Login com Google indisponível" title="Em breve" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-500 opacity-70 dark:border-primary/20 dark:bg-primary/5 dark:text-slate-400">
           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-bold text-slate-700">G</span>
           Google
         </button>
-        <button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-primary/20 dark:bg-primary/5 dark:text-slate-300 dark:hover:bg-primary/10">
+        <button type="button" disabled aria-label="Login com GitHub indisponível" title="Em breve" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-500 opacity-70 dark:border-primary/20 dark:bg-primary/5 dark:text-slate-400">
           <Github size={16} /> GitHub
         </button>
       </div>

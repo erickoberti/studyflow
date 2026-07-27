@@ -17,7 +17,6 @@ import {
   ClipboardCheck,
   LogOut,
   RefreshCcw,
-  Search,
   Settings,
   UserCircle2,
 } from "lucide-react";
@@ -83,6 +82,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-backgroundLight text-slate-900 dark:bg-backgroundDark dark:text-slate-100">
+      <a href="#main-content" className="sr-only z-[200] rounded-lg bg-primary px-4 py-2 font-bold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Pular para o conteúdo</a>
       <div className="mx-auto grid min-h-screen max-w-[1700px] grid-cols-1 lg:grid-cols-[275px_1fr]">
         <aside className="hidden border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-backgroundDark lg:flex lg:flex-col">
           <div className="p-6">
@@ -91,7 +91,7 @@ export function AppShell({
               <span className="text-3xl font-black tracking-tight">StudyFlow</span>
             </div>
 
-            <nav className="space-y-1">
+            <nav className="space-y-1" aria-label="Navegação principal">
               {links.map((item) => {
                 const Icon = item.icon;
                 const active = isActivePath(pathname, item.href);
@@ -144,7 +144,7 @@ export function AppShell({
                 <span className="text-lg font-black">StudyFlow</span>
               </div>
 
-              <nav className="hidden items-center gap-8 lg:flex">
+              <nav className="hidden items-center gap-8 lg:flex" aria-label="Atalhos principais">
                 {topNav.map((item) => {
                   const active = isActivePath(pathname, item.href);
                   return (
@@ -161,15 +161,6 @@ export function AppShell({
                   );
                 })}
               </nav>
-
-              <label className="hidden max-w-md flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 md:flex dark:border-slate-700 dark:bg-slate-900/60">
-                <Search size={16} className="text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Pesquisar tópicos, aulas ou materiais..."
-                  className="w-full border-none bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100"
-                />
-              </label>
 
               <div className="ml-auto flex items-center gap-2">
                 {currentGuide ? (
@@ -217,7 +208,7 @@ export function AppShell({
                     </div>
                   </details>
                 ) : null}
-                <button className="grid h-10 w-10 place-items-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <button type="button" disabled aria-label="Notificações indisponíveis" title="Notificações em breve" className="grid h-10 w-10 place-items-center rounded-lg bg-slate-100 text-slate-400 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-500">
                   <Bell size={16} />
                 </button>
                 <ThemeToggle />
@@ -239,11 +230,11 @@ export function AppShell({
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
+          <main id="main-content" tabIndex={-1} className="flex-1 px-4 py-6 pb-28 outline-none md:px-8 lg:pb-6">{children}</main>
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-6 border-t border-slate-200 bg-white/95 p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden dark:border-slate-800 dark:bg-backgroundDark/95">
+      <nav aria-label="Navegação móvel" className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-6 border-t border-slate-200 bg-white/95 p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden dark:border-slate-800 dark:bg-backgroundDark/95">
         {mobileLinks.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(pathname, item.href);

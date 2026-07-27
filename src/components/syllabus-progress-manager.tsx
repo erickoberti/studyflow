@@ -17,10 +17,15 @@ export function SyllabusProgressManager({ disciplines }: { disciplines: Discipli
   const visible = useMemo(() => disciplines.map((discipline) => ({ ...discipline, subjects: discipline.subjects.filter((subject) => `${discipline.name} ${subject.name}`.toLowerCase().includes(query.toLowerCase())) })).filter((discipline) => discipline.subjects.length), [disciplines, query]);
   async function update(subjectId: string, status: Status) {
     const before = local.get(subjectId) ?? "NOT_STARTED"; setLocal((current) => new Map(current).set(subjectId, status)); setPending(subjectId); setError(null);
-    const response = await fetch("/api/syllabus-progress", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subjectId, status }) });
-    if (!response.ok) { setLocal((current) => new Map(current).set(subjectId, before)); const data = await response.json().catch(() => ({})); setError(data.message ?? "Não foi possível atualizar o edital."); }
-    else router.refresh();
-    setPending(null);
+    try {
+      const response = await fetch("/api/syllabus-progress", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subjectId, status }) });
+      if (!response.ok) { setLocal((current) => new Map(current).set(subjectId, before)); const data = await response.json().catch(() => ({})); setError(data.message ?? "Não foi possível atualizar o edital."); }
+      else router.refresh();
+    } catch {
+      setLocal((current) => new Map(current).set(subjectId, before)); setError("Falha de conexão. O progresso não foi alterado.");
+    } finally {
+      setPending(null);
+    }
   }
   return <section className="rounded-3xl border bg-white p-5 dark:border-slate-800 dark:bg-panelDark sm:p-6">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Edital</p><h2 className="text-2xl font-black">Progresso por assunto</h2></div><label className="flex min-h-11 items-center gap-2 rounded-xl border px-3 sm:w-72"><Search size={16} className="text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar assunto" className="min-w-0 flex-1 bg-transparent text-sm outline-none" /></label></div>

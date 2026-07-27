@@ -1,117 +1,49 @@
-# StudyFlow Ciclos (PWA)
+# StudyFlow
 
-Sistema completo para gestão de ciclos de estudos, com foco em organização, acompanhamento e resolução de questões.
+Plataforma responsiva de estudos por ciclos, com guias independentes, sessões ativas, Weighted Round Robin, revisões, análises, simulados, planejamento e funcionamento offline como PWA.
 
 ## Stack
 
-- Next.js 14 (App Router) + TypeScript
-- Tailwind CSS
-- Prisma ORM + PostgreSQL
-- NextAuth (credentials)
-- Recharts (gráficos)
-- PWA (manifest + service worker via `next-pwa`)
+- Next.js 14, React 18 e TypeScript
+- Prisma e PostgreSQL
+- NextAuth com credenciais
+- Tailwind CSS e Recharts
+- IndexedDB, service worker e `next-pwa`
+- Node Test Runner e Playwright
 
-## Funcionalidades entregues
+## Arquitetura
 
-- Cadastro/login com sessão persistente
-- Recuperação de senha por token local
-- Cadastro-base de disciplinas e assuntos
-- Ciclo de estudos com:
-  - ordem sequencial persistente
-  - repetição de assuntos por entradas distintas (`cycleEntryId`)
-  - duplicar / mover (setas) / ativar / inativar / excluir
-- Registro diário de questões com cálculo automático:
-  - `questões = acertos + erros`
-  - `percentual = acertos / questões`
-  - disciplina e peso automáticos via assunto do ciclo
-- Sugestão confiável do próximo assunto:
-  - usa última sessão + `orderIndex`
-  - respeita repetição sem confundir nomes iguais
-- Dashboard e estatísticas:
-  - totais, evolução diária/semanal
-  - desempenho por disciplina e assunto
-  - fortes x fracos
-  - classificação por faixa (urgente/atenção/bom/forte)
-- Revisão e memória:
-  - recentes
-  - sem revisão
-  - maiores erros
-- Configurações:
-  - metas e viés de prioridade por peso
-- Bônus:
-  - export CSV
-  - backup JSON
-  - importação base CSV
-  - toasts de feedback
+- `CycleEntry.discipline` define a posição estática do ciclo.
+- `CycleService` seleciona dinamicamente o assunto e controla a sessão ativa.
+- `StudySession.subject` preserva o assunto efetivamente estudado.
+- Sessões offline usam fila persistente e idempotente por `operationId`.
+- Simulados permanecem separados das sessões comuns e do cursor.
+- Todo dado funcional é isolado por usuário e guia.
 
-## Estrutura principal
+Consulte [docs/architecture.md](docs/architecture.md), [docs/cycle.md](docs/cycle.md), [docs/offline.md](docs/offline.md) e [docs/stabilization.md](docs/stabilization.md).
 
-- `prisma/schema.prisma`: modelagem de dados
-- `prisma/seed.ts`: dados iniciais (inclui ciclo solicitado)
-- `src/lib/auth.ts`: autenticação
-- `src/lib/analytics.ts`: métricas, prioridade, próximo assunto
-- `src/app/(app)/*`: telas protegidas
-- `src/app/(auth)/*`: login/cadastro/recuperação
-- `src/app/api/*`: rotas para registro, export/import, backup
-
-## Modelagem resumida
-
-- `User`
-- `Discipline`
-- `Subject`
-- `CycleEntry` (ordem do ciclo; permite repetição)
-- `StudySession`
-- `UserSettings`
-- `PasswordResetToken`
-
-## Setup local
-
-1. Instalar dependências:
+## Desenvolvimento
 
 ```bash
 npm install
-```
-
-2. Criar `.env` com base no exemplo:
-
-```bash
-cp .env.example .env
-```
-
-3. Rodar migração e gerar cliente Prisma:
-
-```bash
-npm run prisma:generate
-npm run prisma:migrate
-```
-
-4. Popular com dados demo:
-
-```bash
-npm run prisma:seed
-```
-
-5. Subir aplicação:
-
-```bash
+npx prisma generate
+npx prisma migrate deploy
 npm run dev
 ```
 
-## Login demo
+Variáveis obrigatórias: `DATABASE_URL`, `NEXTAUTH_URL` e `NEXTAUTH_SECRET`.
 
-- Email: `demo@studyflow.com`
-- Senha: `123456`
+## Validação
 
-## Deploy recomendado
+```bash
+npm test
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
-- Frontend/API: Vercel
-- Banco Postgres: Neon, Supabase ou Railway
-- Variáveis obrigatórias:
-  - `DATABASE_URL`
-  - `NEXTAUTH_URL`
-  - `NEXTAUTH_SECRET`
+`npm test` executa testes unitários e E2E em Chrome nos perfis desktop, tablet e celular. Os cenários online são somente leitura; fluxos offline usam snapshot isolado no navegador.
 
-## Observação de PWA
+## Deploy
 
-- Em produção, `next-pwa` gera service worker automaticamente.
-- Instalação no iPad/iPhone: Safari > Compartilhar > Adicionar à Tela de Início.
+Execute `npx prisma migrate deploy` antes da nova versão da aplicação. O service worker é regenerado pelo build e nunca armazena respostas autenticadas de API ou HTML privado.

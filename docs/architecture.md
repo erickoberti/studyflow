@@ -15,3 +15,7 @@ O service worker nunca é fonte de dados autenticados. Ele guarda apenas shell p
 `MockExam` e `MockExamDisciplineResult` formam um domínio separado de `StudySession`. A API de simulados calcula agregados no servidor e não chama `CycleService`, não atualiza `SubjectProgress` e não move o cursor. O nome da disciplina é armazenado como snapshot, preservando o histórico se a base for reorganizada.
 
 `SyllabusProgress` registra a cobertura do edital por assunto. `phase-five.ts` contém funções puras para distribuição, planejamento e recomendações; `phase-five-service.ts` compõe os dados do guia para dashboard e telas. Todas as consultas são filtradas por `userId` e `studyGuideId`.
+
+## Resiliência
+
+O segmento autenticado possui boundaries de loading e erro. Falhas de renderização podem ser reenviadas, sem dados sensíveis, para `/api/client-errors`; o servidor registra eventos estruturados em JSON. A suíte Playwright cobre os fluxos principais em desktop, tablet e celular.

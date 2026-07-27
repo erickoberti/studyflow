@@ -82,6 +82,20 @@ export async function getPhaseFiveData(userId: string, studyGuideId: string) {
 }
 
 export async function getPhaseFiveDashboard(userId: string, studyGuideId: string) {
-  const data = await getPhaseFiveData(userId, studyGuideId);
-  return { summary: data.summary, plan: data.plan, recommendations: data.recommendations.slice(0, 3), latestExam: data.exams[0] ?? null };
+  const [examAggregate, latestExam, subjects, settings] = await Promise.all([
+    prisma.mockExam.aggregate({ where: { userId, studyGuideId }, _count: { id: true }, _avg: { percentage: true }, _max: { percentage: true } }),
+    prisma.mockExam.findFirst({ where: { userId, studyGuideId }, orderBy: [{ takenAt: "desc" }, { createdAt: "desc" }], select: { id: true, title: true, percentage: true, takenAt: true } }),
+    prisma.subject.findMany({ where: { userId, studyGuideId, active: true, discipline: { active: true } }, select: { id: true, name: true, weight: true, discipline: { select: { name: true } }, progress: { select: { averagePercentage: true, passages: true, lastStudiedAt: true } }, syllabusProgress: { select: { status: true } } } }),
+    getStudyGuideSettings(userId, studyGuideId),
+  ]);
+  const normalized = subjects.map((subject) => ({ subjectId: subject.id, subject: subject.name, discipline: subject.discipline.name, weight: subject.weight, status: subject.syllabusProgress?.status ?? "NOT_STARTED" as const, percentage: subject.progress?.averagePercentage ?? 0, passages: subject.progress?.passages ?? 0, lastStudiedAt: subject.progress?.lastStudiedAt ?? null }));
+  const completedSubjects = normalized.filter((item) => item.status === "COMPLETED").length;
+  const inProgressSubjects = normalized.filter((item) => item.status === "IN_PROGRESS").length;
+  const plan = buildExamPlan({ now: new Date(), examDate: settings.examDate, totalSubjects: normalized.length, completedSubjects, inProgressSubjects, weeklyQuestionsGoal: settings.weeklyQuestionsGoal, sessionMinutes: settings.sessionMinutes, questionsPerSession: settings.questionsPerSession });
+  return {
+    summary: { totalExams: examAggregate._count.id, averageExamScore: examAggregate._avg.percentage ?? 0, bestExamScore: examAggregate._max.percentage ?? 0, lastExamScore: latestExam?.percentage ?? null, completedSubjects, inProgressSubjects, totalSubjects: normalized.length },
+    plan,
+    recommendations: buildExplainableRecommendations(normalized, new Date(), 3),
+    latestExam,
+  };
 }

@@ -48,8 +48,11 @@ export default async function CicloPage({
 }) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  const weekStart = new Date();
+  weekStart.setUTCHours(0, 0, 0, 0);
+  weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7));
 
-  const [entries, subjects, aggregates, settings, cycleSuggestions] = await Promise.all([
+  const [entries, subjects, aggregates, settings, cycleSuggestions, cycleState, weeklyAggregate] = await Promise.all([
     prisma.cycleEntry.findMany({
       where: { userId: user.id, studyGuideId: guide.id },
       include: { subject: { include: { discipline: true } }, discipline: true },
@@ -67,6 +70,8 @@ export default async function CicloPage({
     }),
     getStudyGuideSettings(user.id, guide.id),
     getCyclePositionSuggestions(user.id, guide.id),
+    prisma.studyGuideCycleState.findUnique({ where: { studyGuideId: guide.id }, select: { currentOrderIndex: true, roundNumber: true } }),
+    prisma.studySession.aggregate({ where: { userId: user.id, studyGuideId: guide.id, date: { gte: weekStart } }, _sum: { questions: true } }),
   ]);
 
   const showAdd = searchParams?.novo === "1";
@@ -92,12 +97,13 @@ export default async function CicloPage({
     ]),
   );
 
-  const currentOrder = entries.find((entry) => entry.active)?.orderIndex ?? null;
+  const currentOrder = cycleState?.currentOrderIndex ?? entries.find((entry) => entry.active)?.orderIndex ?? null;
   const totalMinutes = aggregates.reduce((sum, aggregate) => sum + (aggregate._sum.estimatedMinutes ?? 0), 0);
   const totalQuestions = aggregates.reduce((sum, aggregate) => sum + (aggregate._sum.questions ?? 0), 0);
   const totalCorrect = aggregates.reduce((sum, aggregate) => sum + (aggregate._sum.correct ?? 0), 0);
   const weeklyGoal = Math.max(1, settings.weeklyQuestionsGoal);
-  const weeklyProgress = Math.min(100, (totalQuestions / weeklyGoal) * 100);
+  const weeklyQuestions = weeklyAggregate._sum.questions ?? 0;
+  const weeklyProgress = Math.min(100, (weeklyQuestions / weeklyGoal) * 100);
   const accuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
 
   return (
@@ -147,9 +153,9 @@ export default async function CicloPage({
             <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Horas Totais</span>
             <Clock3 size={16} className="text-primary" />
           </div>
-          <div className="flex items-end gap-2">
+          <div className="flex flex-wrap items-end gap-2">
             <p className="text-3xl font-black text-slate-900 dark:text-white">{(totalMinutes / 60).toFixed(1)}h</p>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-600">+12%</span>
+            <span className="text-xs font-bold text-slate-400">Acumulado</span>
           </div>
         </article>
 
@@ -158,20 +164,20 @@ export default async function CicloPage({
             <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Meta Semanal</span>
             <Target size={16} className="text-primary" />
           </div>
-          <div className="flex items-end gap-2">
+          <div className="flex flex-wrap items-end gap-2">
             <p className="text-3xl font-black text-slate-900 dark:text-white">{weeklyProgress.toFixed(0)}%</p>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-600">+5%</span>
+            <span className="text-xs font-bold text-slate-400">{weeklyQuestions}/{weeklyGoal} questões</span>
           </div>
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Ciclos Feitos</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Voltas concluídas</span>
             <GripVertical size={16} className="text-primary" />
           </div>
-          <div className="flex items-end gap-2">
-            <p className="text-3xl font-black text-slate-900 dark:text-white">{Math.max(1, Math.ceil(entries.length / 3))}</p>
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">-2%</span>
+          <div className="flex flex-wrap items-end gap-2">
+            <p className="text-3xl font-black text-slate-900 dark:text-white">{Math.max(0, (cycleState?.roundNumber ?? 1) - 1)}</p>
+            <span className="text-xs font-bold text-slate-400">Volta atual {cycleState?.roundNumber ?? 1}</span>
           </div>
         </article>
       </section>
