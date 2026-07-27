@@ -6,6 +6,7 @@ import { signOut, useSession } from "next-auth/react";
 import {
   BarChart3,
   Bell,
+  CalendarClock,
   ChevronDown,
   BookOpen,
   BookOpenCheck,
@@ -13,6 +14,7 @@ import {
   History,
   LayoutDashboard,
   ListChecks,
+  ClipboardCheck,
   LogOut,
   RefreshCcw,
   Search,
@@ -34,6 +36,8 @@ const links = [
   { href: "/guias", label: "Guias", icon: FolderKanban },
   { href: "/estatisticas", label: "Estatísticas", icon: BarChart3 },
   { href: "/revisao", label: "Revisão", icon: History },
+  { href: "/simulados", label: "Simulados", icon: ClipboardCheck },
+  { href: "/planejamento", label: "Planejamento", icon: CalendarClock },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
@@ -42,9 +46,10 @@ const topNav = [
   { href: "/ciclo", label: "Ciclo" },
   { href: "/base", label: "Matérias" },
   { href: "/estatisticas", label: "Relatórios" },
+  { href: "/simulados", label: "Simulados" },
 ];
 
-const mobileLinks = [links[0], links[1], links[3], links[5], links[8]];
+const mobileLinks = [links[0], links[1], links[3], links[5], links[8], links[9]];
 
 function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -238,7 +243,7 @@ export function AppShell({
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5 border-t border-slate-200 bg-white/95 p-1 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-backgroundDark/95">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-6 border-t border-slate-200 bg-white/95 p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden dark:border-slate-800 dark:bg-backgroundDark/95">
         {mobileLinks.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(pathname, item.href);

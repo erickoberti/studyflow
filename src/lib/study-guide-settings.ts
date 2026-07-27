@@ -9,6 +9,8 @@ type GuideSettingsShape = {
   weeklyQuestionsGoal: number;
   weightPriorityBias: number;
   questionsPerSession: number;
+  sessionMinutes: number;
+  examDate: Date | null;
 };
 
 function legacyDefaults(legacy?: {
@@ -23,6 +25,8 @@ function legacyDefaults(legacy?: {
     weeklyQuestionsGoal: legacy?.weeklyQuestionsGoal ?? 200,
     weightPriorityBias: legacy?.weightPriorityBias ?? 1.25,
     questionsPerSession: 20,
+    sessionMinutes: 60,
+    examDate: null,
   };
 }
 
@@ -73,6 +77,9 @@ export async function upsertStudyGuideSettings(
     dailyQuestionsGoal: number;
     weeklyQuestionsGoal: number;
     weightPriorityBias: number;
+    examDate?: Date | null;
+    sessionMinutes?: number;
+    questionsPerSession?: number;
   },
 ) {
   const delegate = getGuideSettingsDelegate();

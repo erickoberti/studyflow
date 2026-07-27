@@ -38,6 +38,9 @@ export default async function ConfiguracoesPage() {
   const weeklyGoal = settings?.weeklyQuestionsGoal ?? 200;
   const target = settings?.targetPercentage ?? 80;
   const bias = settings?.weightPriorityBias ?? 1.25;
+  const sessionMinutes = settings?.sessionMinutes ?? 60;
+  const questionsPerSession = settings?.questionsPerSession ?? 20;
+  const examDate = settings?.examDate ? settings.examDate.toISOString().slice(0, 10) : "";
 
   return (
     <div className="space-y-5 pb-10">
@@ -91,6 +94,16 @@ export default async function ConfiguracoesPage() {
             </div>
 
             <div className="space-y-3">
+              <label className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarRange className="h-4 w-4" /></span><div><p className="text-sm font-black text-slate-900 dark:text-white">Data da prova</p><p className="text-xs text-slate-500 dark:text-slate-400">Base do planejamento até o edital</p></div></div>
+                <input name="examDate" type="date" defaultValue={examDate} className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-black outline-none focus:border-primary dark:border-slate-600 dark:bg-[#120e20]" />
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"><span className="text-xs font-bold text-slate-500">Minutos/sessão</span><input name="sessionMinutes" type="number" min={1} defaultValue={sessionMinutes} className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black dark:border-slate-600 dark:bg-[#120e20]" /></label>
+                <label className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"><span className="text-xs font-bold text-slate-500">Questões/sessão</span><input name="questionsPerSession" type="number" min={1} defaultValue={questionsPerSession} className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black dark:border-slate-600 dark:bg-[#120e20]" /></label>
+              </div>
+
               <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">

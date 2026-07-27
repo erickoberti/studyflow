@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "tsx --test tests/cycle-engine.test.ts tests/cycle-validator.test.ts tests/offline-active-session-queue.test.ts tests/offline-synchronization.test.ts tests/pwa.test.ts",
+    "test": "tsx --test tests/cycle-engine.test.ts tests/cycle-validator.test.ts tests/offline-active-session-queue.test.ts tests/offline-synchronization.test.ts tests/pwa.test.ts tests/phase-five.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts"

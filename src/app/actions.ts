@@ -710,11 +710,16 @@ export async function updateSettings(formData: FormData) {
 
   await ensureStudyGuideSettings(user.id, guide.id);
 
+  const examDateValue = String(formData.get("examDate") ?? "");
+  const examDate = examDateValue ? new Date(`${examDateValue}T12:00:00.000Z`) : null;
   await upsertStudyGuideSettings(user.id, guide.id, {
     targetPercentage: Number(formData.get("targetPercentage") ?? 80),
     dailyQuestionsGoal: Number(formData.get("dailyQuestionsGoal") ?? 30),
     weeklyQuestionsGoal: Number(formData.get("weeklyQuestionsGoal") ?? 200),
     weightPriorityBias: Number(formData.get("weightPriorityBias") ?? 1.25),
+    examDate: examDate && !Number.isNaN(examDate.getTime()) ? examDate : null,
+    sessionMinutes: Math.max(1, Number(formData.get("sessionMinutes") ?? 60)),
+    questionsPerSession: Math.max(1, Number(formData.get("questionsPerSession") ?? 20)),
   });
 
   await prisma.userSettings.upsert({
@@ -738,6 +743,7 @@ export async function updateSettings(formData: FormData) {
 
   revalidatePath("/configuracoes");
   revalidatePath("/dashboard");
+  revalidatePath("/planejamento");
 }
 
 export async function ensureAuthenticated() {

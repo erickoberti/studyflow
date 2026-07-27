@@ -2,6 +2,8 @@
 import { format } from "date-fns";
 import {
   Clock3,
+  CalendarClock,
+  ClipboardCheck,
   Flame,
   Library,
   Play,
@@ -14,6 +16,7 @@ import { getDashboardData, getNextCycleSuggestion } from "@/lib/analytics";
 import { prisma } from "@/lib/prisma";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { cycleService } from "@/lib/cycle-service";
+import { getPhaseFiveDashboard } from "@/lib/phase-five-service";
 
 function dayKeyInSaoPaulo(date: Date) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -38,7 +41,7 @@ export default async function DashboardPage() {
   const guide = await requireActiveStudyGuide(user.id);
 
   const todayKey = dayKeyInSaoPaulo(new Date());
-  const [dashboard, suggestion, recentSessions, activeStudy] = await Promise.all([
+  const [dashboard, suggestion, recentSessions, activeStudy, phaseFive] = await Promise.all([
     getDashboardData(user.id, guide.id),
     getNextCycleSuggestion(user.id, guide.id),
     prisma.studySession.findMany({
@@ -51,6 +54,7 @@ export default async function DashboardPage() {
       },
     }),
     cycleService.getActive(user.id, guide.id),
+    getPhaseFiveDashboard(user.id, guide.id),
   ]);
 
   const byDayMap = new Map(dashboard.byDay.map((d) => [d.date, d.questions]));
@@ -127,6 +131,15 @@ export default async function DashboardPage() {
           <p className="text-4xl font-black text-slate-900 dark:text-white">{focusScore.toFixed(1)}%</p>
           <p className="mt-1 text-sm font-semibold text-emerald-500">+12%</p>
         </article>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <Link href="/simulados" className="group rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-primary/40 dark:border-slate-800 dark:bg-panelDark">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Simulados</p><h2 className="mt-1 text-xl font-black">{phaseFive.summary.totalExams ? `${phaseFive.summary.averageExamScore.toFixed(1)}% de média` : "Registre seu primeiro simulado"}</h2><p className="mt-2 text-sm text-slate-500">{phaseFive.summary.totalExams} realizado{phaseFive.summary.totalExams === 1 ? "" : "s"} · histórico separado das sessões comuns</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><ClipboardCheck /></span></div>
+        </Link>
+        <Link href="/planejamento" className="group rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-primary/40 dark:border-slate-800 dark:bg-panelDark">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Até a prova</p><h2 className="mt-1 text-xl font-black">{phaseFive.plan.daysRemaining === null ? "Defina a data da prova" : `${phaseFive.plan.daysRemaining} dias restantes`}</h2><p className="mt-2 text-sm text-slate-500">{phaseFive.summary.completedSubjects}/{phaseFive.summary.totalSubjects} assuntos do edital concluídos</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><CalendarClock /></span></div>
+        </Link>
       </section>
 
       <section className="grid grid-cols-1 gap-8 xl:grid-cols-3">

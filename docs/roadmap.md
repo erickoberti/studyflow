@@ -2,6 +2,8 @@
 
 As Fases 1 e 2 consolidaram sessão, revisões, metas e desempenho. A Fase 3 adicionou simulação, diagnóstico, exportação e análises usando o mesmo motor do ciclo.
 
-A Fase 4 está concluída: `ActiveStudySession` funciona offline, a fila IndexedDB é idempotente, conflitos são preservados, a reconexão sincroniza automaticamente e o PWA possui cache seguro, atualização controlada, instalação e estado visual responsivo. A compatibilidade de leitura com snapshots antigos permanece, mas novas sessões não usam o fluxo legado.
+A Fase 4 consolidou `ActiveStudySession` offline, fila IndexedDB idempotente, conflitos preservados, reconexão automática e PWA com cache seguro.
 
-A Fase 5 não foi iniciada.
+A Fase 5 está concluída. Simulados são persistidos em domínio próprio, com distribuição proporcional por peso e histórico sem efeitos no ciclo. O planejamento combina data da prova, metas e cobertura do edital; recomendações determinísticas explicam peso, domínio, tempo sem estudo e status de cada assunto.
+
+Fases futuras permanecem fora do escopo desta entrega.
