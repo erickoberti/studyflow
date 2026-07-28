@@ -16,10 +16,10 @@ export function hashOfflineOperation(value: unknown) {
 
 export function canonicalSessionOperationPayload(input: {
   type: string; mode?: string; disciplineId?: string; subjectId?: string; sessionId?: string | null;
-  version?: number | null; questions?: number; correct?: number; minutes?: number; notes?: string;
+  version?: number | null; questions?: number; correct?: number; minutes?: number; notes?: string; date?: string;
 }) {
   if (input.type === "START_SESSION") return input.mode === "AVULSO" ? { mode: input.mode, disciplineId: input.disciplineId, subjectId: input.subjectId } : { mode: "CYCLE" };
-  if (input.type === "CREATE_STANDALONE_SESSION") return { mode: "AVULSO", disciplineId: input.disciplineId, subjectId: input.subjectId, questions: input.questions, correct: input.correct, minutes: input.minutes, notes: input.notes };
+  if (input.type === "CREATE_STANDALONE_SESSION") return { mode: "AVULSO", disciplineId: input.disciplineId, subjectId: input.subjectId, questions: input.questions, correct: input.correct, minutes: input.minutes, notes: input.notes, date: input.date };
   return { sessionId: input.sessionId, version: input.version, ...(input.type === "FINISH_SESSION" ? { questions: input.questions, correct: input.correct, minutes: input.minutes, notes: input.notes } : {}) };
 }
 

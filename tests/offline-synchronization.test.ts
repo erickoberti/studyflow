@@ -56,6 +56,12 @@ test("payload canônico faz o retry online e offline representar a mesma finaliz
   assert.deepEqual(online, offline);
 });
 
+test("payload idempotente do estudo avulso inclui a data histórica", () => {
+  const first = canonicalSessionOperationPayload({ type: "CREATE_STANDALONE_SESSION", disciplineId: "discipline", subjectId: "subject", questions: 10, correct: 8, minutes: 20, date: "2026-07-20T13:30:00.000Z" });
+  const otherDate = canonicalSessionOperationPayload({ type: "CREATE_STANDALONE_SESSION", disciplineId: "discipline", subjectId: "subject", questions: 10, correct: 8, minutes: 20, date: "2026-07-21T13:30:00.000Z" });
+  assert.notEqual(hashOfflineOperation(first), hashOfflineOperation(otherDate));
+});
+
 test("operação inválida é cancelada e não entra em retry infinito", async () => {
   const storage = new MemoryOfflineSessionQueue(); await storage.putOperation(operation("invalid"));
   await synchronizeOfflineSessionQueue({ storage, userId: "user", studyGuideId: "guide", transport: async () => ({ status: 422, data: { message: "inválida" } }), wait: async () => undefined });

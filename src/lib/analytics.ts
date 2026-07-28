@@ -67,7 +67,7 @@ export async function getNextCycleSuggestion(userId: string, studyGuideId: strin
   }
 
   const lastSession = await prisma.studySession.findFirst({
-    where: { userId, studyGuideId },
+    where: { userId, studyGuideId, cyclePosition: { not: null } },
     include: { cycleEntry: { include: { subject: { include: { discipline: true } } } } },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
@@ -132,7 +132,7 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
     const subjectName = studiedSubject.name;
 
     const dayDistance = diffCalendarDaysUTC(todayKey, sessionDayKey);
-    if (dayDistance >= 0 && dayDistance <= 29) {
+    if (session.cyclePosition !== null && dayDistance >= 0 && dayDistance <= 29) {
       sessionsByActiveEntryRecent.set(session.cycleEntryId, (sessionsByActiveEntryRecent.get(session.cycleEntryId) ?? 0) + 1);
     }
 
