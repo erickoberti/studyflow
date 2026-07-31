@@ -33,6 +33,18 @@ test("troca de disciplina filtra assuntos e limpa a escolha anterior", async ({ 
   await page.goto("/registro?novo=1");
   await expect(page.getByRole("heading", { name: "Registrar estudo realizado" })).toBeVisible();
   await expect(page.getByLabel("Assunto", { exact: true })).toBeDisabled();
+  const discipline = page.getByLabel("Disciplina", { exact: true });
+  const disciplineOptions = await discipline.locator("option:not([value=''])").evaluateAll((items) => items.map((item) => ({ value: (item as HTMLOptionElement).value, label: item.textContent ?? "" })));
+  if (disciplineOptions.length > 8) {
+    const first = disciplineOptions[0];
+    const queryWithoutAccents = first.label.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+    await page.getByPlaceholder("Pesquisar disciplina").fill(queryWithoutAccents);
+    const result = page.locator("#standalone-discipline-results").getByRole("option", { name: first.label, exact: true });
+    await expect(result).toBeVisible();
+    await result.click();
+    await expect(discipline).toHaveValue(first.value);
+    await expect(page.getByLabel("Assunto", { exact: true })).toBeEnabled();
+  }
   const selected = await selectContent(page);
   if (selected.disciplineOptions.length > 1) {
     await selected.discipline.selectOption(selected.disciplineOptions[1].value);

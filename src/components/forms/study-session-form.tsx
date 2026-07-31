@@ -25,6 +25,14 @@ type RecentSession = {
 
 const DEFAULT_DIFFICULTY = "Média" as const;
 
+function normalizeSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
 function dateKey(date: Date) {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
@@ -56,6 +64,8 @@ export function StudySessionForm({
   const [subjectId, setSubjectId] = useState("");
   const [disciplineSearch, setDisciplineSearch] = useState("");
   const [subjectSearch, setSubjectSearch] = useState("");
+  const [disciplineSearchOpen, setDisciplineSearchOpen] = useState(false);
+  const [subjectSearchOpen, setSubjectSearchOpen] = useState(false);
   const [date, setDate] = useState(() => dateKey(new Date()));
   const [time, setTime] = useState(() => timeKey(new Date()));
   const [estimatedMinutes, setEstimatedMinutes] = useState(60);
@@ -69,10 +79,12 @@ export function StudySessionForm({
 
   const selectedGuide = guides.find((guide) => guide.id === studyGuideId);
   const disciplines = selectedGuide?.disciplines ?? [];
-  const filteredDisciplines = disciplines.filter((item) => item.name.toLocaleLowerCase("pt-BR").includes(disciplineSearch.toLocaleLowerCase("pt-BR")));
+  const normalizedDisciplineSearch = normalizeSearch(disciplineSearch);
+  const filteredDisciplines = disciplines.filter((item) => normalizeSearch(item.name).includes(normalizedDisciplineSearch));
   const selectedDiscipline = disciplines.find((item) => item.id === disciplineId);
   const subjects = selectedDiscipline?.subjects ?? [];
-  const filteredSubjects = subjects.filter((item) => item.name.toLocaleLowerCase("pt-BR").includes(subjectSearch.toLocaleLowerCase("pt-BR")));
+  const normalizedSubjectSearch = normalizeSearch(subjectSearch);
+  const filteredSubjects = subjects.filter((item) => normalizeSearch(item.name).includes(normalizedSubjectSearch));
   const correctNumber = Number(correct) || 0;
   const wrongNumber = Number(wrong) || 0;
   const questions = correctNumber + wrongNumber;
@@ -93,6 +105,8 @@ export function StudySessionForm({
     setSubjectId("");
     setDisciplineSearch("");
     setSubjectSearch("");
+    setDisciplineSearchOpen(false);
+    setSubjectSearchOpen(false);
     setDate(dateKey(now));
     setTime(timeKey(now));
     setEstimatedMinutes(60);
@@ -108,6 +122,8 @@ export function StudySessionForm({
     setSubjectId("");
     setDisciplineSearch("");
     setSubjectSearch("");
+    setDisciplineSearchOpen(false);
+    setSubjectSearchOpen(false);
     setStatus(null);
   }
 
@@ -115,6 +131,8 @@ export function StudySessionForm({
     setDisciplineId(value);
     setSubjectId("");
     setSubjectSearch("");
+    setDisciplineSearchOpen(false);
+    setSubjectSearchOpen(false);
     setStatus(null);
   }
 
@@ -196,16 +214,16 @@ export function StudySessionForm({
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="text-sm font-bold" htmlFor="standalone-discipline">Disciplina</label>
-                {disciplines.length > 8 ? <label className="relative mt-1.5 block"><span className="sr-only">Pesquisar disciplina</span><Search aria-hidden size={16} className="absolute left-3 top-3.5 text-slate-400" /><input type="search" placeholder="Pesquisar disciplina" value={disciplineSearch} onChange={(event) => setDisciplineSearch(event.target.value)} className="h-11 w-full rounded-t-xl border border-b-0 border-slate-300 bg-white pl-10 pr-3 outline-none dark:border-slate-700 dark:bg-slate-900" /></label> : null}
+                {disciplines.length > 8 ? <div className="relative mt-1.5"><label className="relative block"><span className="sr-only">Pesquisar disciplina</span><Search aria-hidden size={16} className="absolute left-3 top-3.5 text-slate-400" /><input type="search" role="combobox" aria-expanded={disciplineSearchOpen && Boolean(normalizedDisciplineSearch)} aria-controls="standalone-discipline-results" autoComplete="off" placeholder="Pesquisar disciplina" value={disciplineSearch} onFocus={() => setDisciplineSearchOpen(true)} onBlur={() => setDisciplineSearchOpen(false)} onChange={(event) => { setDisciplineSearch(event.target.value); setDisciplineSearchOpen(true); }} onKeyDown={(event) => { if (event.key === "Enter" && filteredDisciplines.length === 1) { event.preventDefault(); changeDiscipline(filteredDisciplines[0].id); } }} className="h-11 w-full rounded-t-xl border border-b-0 border-slate-300 bg-white pl-10 pr-3 outline-none dark:border-slate-700 dark:bg-slate-900" /></label>{disciplineSearchOpen && normalizedDisciplineSearch ? <div id="standalone-discipline-results" role="listbox" className="absolute z-20 max-h-60 w-full overflow-y-auto rounded-b-xl border border-slate-300 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">{filteredDisciplines.length ? filteredDisciplines.map((item) => <button key={item.id} type="button" role="option" aria-selected={disciplineId === item.id} onMouseDown={(event) => event.preventDefault()} onClick={() => changeDiscipline(item.id)} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-primary/10 focus:bg-primary/10 focus:outline-none">{item.name}</button>) : <p role="status" className="px-3 py-2 text-sm text-slate-500">Nenhuma disciplina encontrada.</p>}</div> : null}</div> : null}
                 <select id="standalone-discipline" aria-label="Disciplina" value={disciplineId} onChange={(event) => changeDiscipline(event.target.value)} disabled={!studyGuideId || disciplines.length === 0} className={`h-12 w-full border border-slate-300 bg-white px-3 outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:disabled:bg-slate-800 ${disciplines.length > 8 ? "rounded-b-xl" : "mt-1.5 rounded-xl"}`}>
-                  <option value="">{disciplines.length ? "Selecione uma disciplina" : "Nenhuma disciplina ativa"}</option>{filteredDisciplines.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  <option value="">{disciplines.length ? "Selecione uma disciplina" : "Nenhuma disciplina ativa"}</option>{disciplines.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
               </div>
               <div aria-busy={subjectLoading}>
                 <label className="text-sm font-bold" htmlFor="standalone-subject">Assunto</label>
-                {subjects.length > 8 ? <label className="relative mt-1.5 block"><span className="sr-only">Pesquisar assunto</span><Search aria-hidden size={16} className="absolute left-3 top-3.5 text-slate-400" /><input type="search" placeholder="Pesquisar assunto" value={subjectSearch} onChange={(event) => setSubjectSearch(event.target.value)} className="h-11 w-full rounded-t-xl border border-b-0 border-slate-300 bg-white pl-10 pr-3 outline-none dark:border-slate-700 dark:bg-slate-900" /></label> : null}
+                {subjects.length > 8 ? <div className="relative mt-1.5"><label className="relative block"><span className="sr-only">Pesquisar assunto</span><Search aria-hidden size={16} className="absolute left-3 top-3.5 text-slate-400" /><input type="search" role="combobox" aria-expanded={subjectSearchOpen && Boolean(normalizedSubjectSearch)} aria-controls="standalone-subject-results" autoComplete="off" placeholder="Pesquisar assunto" value={subjectSearch} onFocus={() => setSubjectSearchOpen(true)} onBlur={() => setSubjectSearchOpen(false)} onChange={(event) => { setSubjectSearch(event.target.value); setSubjectSearchOpen(true); }} onKeyDown={(event) => { if (event.key === "Enter" && filteredSubjects.length === 1) { event.preventDefault(); setSubjectId(filteredSubjects[0].id); setSubjectSearch(""); setSubjectSearchOpen(false); } }} className="h-11 w-full rounded-t-xl border border-b-0 border-slate-300 bg-white pl-10 pr-3 outline-none dark:border-slate-700 dark:bg-slate-900" /></label>{subjectSearchOpen && normalizedSubjectSearch ? <div id="standalone-subject-results" role="listbox" className="absolute z-20 max-h-60 w-full overflow-y-auto rounded-b-xl border border-slate-300 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">{filteredSubjects.length ? filteredSubjects.map((item) => <button key={item.id} type="button" role="option" aria-selected={subjectId === item.id} onMouseDown={(event) => event.preventDefault()} onClick={() => { setSubjectId(item.id); setSubjectSearch(""); setSubjectSearchOpen(false); setStatus(null); }} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-primary/10 focus:bg-primary/10 focus:outline-none">{item.name} · peso {item.weight}</button>) : <p role="status" className="px-3 py-2 text-sm text-slate-500">Nenhum assunto encontrado.</p>}</div> : null}</div> : null}
                 <select id="standalone-subject" aria-label="Assunto" value={subjectId} onChange={(event) => setSubjectId(event.target.value)} disabled={!disciplineId || subjectLoading || subjects.length === 0} className={`h-12 w-full border border-slate-300 bg-white px-3 outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:disabled:bg-slate-800 ${subjects.length > 8 ? "rounded-b-xl" : "mt-1.5 rounded-xl"}`}>
-                  <option value="">{subjectLoading ? "Carregando assuntos..." : !disciplineId ? "Escolha uma disciplina primeiro" : subjects.length ? "Selecione um assunto" : "Nenhum assunto ativo nesta disciplina"}</option>{!subjectLoading ? filteredSubjects.map((item) => <option key={item.id} value={item.id}>{item.name} · peso {item.weight}</option>) : null}
+                  <option value="">{subjectLoading ? "Carregando assuntos..." : !disciplineId ? "Escolha uma disciplina primeiro" : subjects.length ? "Selecione um assunto" : "Nenhum assunto ativo nesta disciplina"}</option>{!subjectLoading ? subjects.map((item) => <option key={item.id} value={item.id}>{item.name} · peso {item.weight}</option>) : null}
                 </select>
                 {disciplineId && !subjectLoading && subjects.length === 0 ? <p role="status" className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300">Esta disciplina não possui assuntos ativos.</p> : null}
               </div>
