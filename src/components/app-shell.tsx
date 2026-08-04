@@ -14,10 +14,12 @@ import {
   History,
   LayoutDashboard,
   ListChecks,
+  Menu,
   ClipboardCheck,
   LogOut,
   RefreshCcw,
   Settings,
+  Target,
   UserCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -37,18 +39,20 @@ const links = [
   { href: "/revisao", label: "Revisão", icon: History },
   { href: "/simulados", label: "Simulados", icon: ClipboardCheck },
   { href: "/planejamento", label: "Planejamento", icon: CalendarClock },
+  { href: "/metas", label: "Metas", icon: Target },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 const topNav = [
   { href: "/dashboard", label: "Painel" },
+  { href: "/metas", label: "Metas" },
   { href: "/ciclo", label: "Ciclo" },
   { href: "/base", label: "Matérias" },
   { href: "/estatisticas", label: "Relatórios" },
   { href: "/simulados", label: "Simulados" },
 ];
 
-const mobileLinks = [links[0], links[1], links[3], links[5], links[8], links[9]];
+const mobileLinks = [links[0], links[1], links[3], links[5], links[8], { href: "/mais", label: "Mais", icon: Menu }];
 
 function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);

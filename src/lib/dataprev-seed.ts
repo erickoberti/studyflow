@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { DATAPREV_2026_CYCLE, DATAPREV_2026_SUBJECTS, defaultQuestionGoal } from "@/lib/dataprev-2026";
 import { prisma } from "@/lib/prisma";
+import { DATAPREV_TARGETS } from "@/lib/daily-goals";
 
 /** Creates or reconciles the DATAPREV guide without touching other guides. */
 export async function ensureDataprev2026Guide(userId: string) {
@@ -41,6 +42,7 @@ export async function ensureDataprev2026Guide(userId: string) {
       update: { organizer: "DATAPREV", role: "Tecnologia da Informação", cycleAlgorithm: "weighted_round_robin" },
     });
     await tx.studyGuideCycleState.upsert({ where: { studyGuideId: guide.id }, create: { userId, studyGuideId: guide.id }, update: {} });
+    await tx.dailyGoalSettings.upsert({ where: { studyGuideId: guide.id }, create: { userId, studyGuideId: guide.id, weekdayTargets: DATAPREV_TARGETS as unknown as Prisma.InputJsonValue }, update: {} });
     return guide;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

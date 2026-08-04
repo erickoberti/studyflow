@@ -31,6 +31,10 @@ model User {
   offlineOperations   OfflineOperation[]
   mockExams           MockExam[]
   syllabusProgress    SyllabusProgress[]
+  dailyGoalSettings   DailyGoalSettings[]
+  manualDailyGoals    ManualDailyGoal[]
+  manualGoalChecks    ManualDailyGoalCheck[]
+  dailyReflections    DailyReflection[]
 }
 
 model StudyGuide {
@@ -56,6 +60,10 @@ model StudyGuide {
   offlineOperations   OfflineOperation[]
   mockExams           MockExam[]
   syllabusProgress    SyllabusProgress[]
+  dailyGoalSettings   DailyGoalSettings?
+  manualDailyGoals    ManualDailyGoal[]
+  manualGoalChecks    ManualDailyGoalCheck[]
+  dailyReflections    DailyReflection[]
 
   @@unique([userId, name])
   @@index([userId])
@@ -428,4 +436,76 @@ model SyllabusProgress {
   subject      Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@index([userId, studyGuideId, status])
+}
+
+/// Configuration only. Daily totals are derived from source records.
+model DailyGoalSettings {
+  id                    String     @id @default(cuid())
+  userId                String
+  studyGuideId          String     @unique
+  timeZone               String     @default("America/Sao_Paulo")
+  activeWeekdays         Int[]      @default([1, 2, 3, 4, 5, 6])
+  plannedRestWeekdays    Int[]      @default([])
+  enabledMetrics         String[]   @default(["minutes", "questions", "sessions", "reviews", "cyclePosition"])
+  weekdayTargets         Json
+  saturdayTargets        Json?
+  sundayTargets          Json?
+  firstStudyDeadline     String?
+  includeMockExams       Boolean    @default(false)
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  user                   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide             StudyGuide @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, studyGuideId])
+  @@index([userId])
+}
+
+model ManualDailyGoal {
+  id             String                 @id @default(cuid())
+  userId         String
+  studyGuideId   String
+  title          String
+  tier           String                 @default("MAIN")
+  active         Boolean                @default(true)
+  activeWeekdays Int[]                  @default([1, 2, 3, 4, 5, 6, 7])
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide     StudyGuide             @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  checks         ManualDailyGoalCheck[]
+
+  @@index([userId, studyGuideId, active])
+}
+
+model ManualDailyGoalCheck {
+  id             String          @id @default(cuid())
+  userId         String
+  studyGuideId   String
+  manualGoalId   String
+  dayKey         String
+  completedAt    DateTime        @default(now())
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide     StudyGuide      @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  manualGoal     ManualDailyGoal @relation(fields: [manualGoalId], references: [id], onDelete: Cascade)
+
+  @@unique([manualGoalId, dayKey])
+  @@index([userId, studyGuideId, dayKey])
+}
+
+model DailyReflection {
+  id             String     @id @default(cuid())
+  userId         String
+  studyGuideId   String
+  dayKey         String
+  mood           String?
+  whatWorked     String?
+  adjustTomorrow String?
+  closedAt       DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide     StudyGuide @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, studyGuideId, dayKey])
+  @@index([userId, studyGuideId, dayKey])
 }

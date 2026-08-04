@@ -70,7 +70,7 @@ test("áreas online principais carregam sem alterar dados", async ({ page, conte
   test.skip(!user, "Nenhum usuário com guia ativo disponível para auditoria somente leitura");
   const token = await encode({ secret: process.env.NEXTAUTH_SECRET!, token: { id: user!.id, sub: user!.id, name: user!.name, email: user!.email }, maxAge: 3600 });
   await context.addCookies([{ name: "next-auth.session-token", value: token, domain: "127.0.0.1", path: "/", httpOnly: true, sameSite: "Lax" }]);
-  for (const [path, heading] of [["/dashboard", "Painel de Estudos"], ["/ciclo", "Meu Ciclo de Estudos"], ["/registro", "Estudar"], ["/simulados", "Simulados"], ["/planejamento", "Planejamento e edital"]] as const) {
+  for (const [path, heading] of [["/dashboard", "Painel de Estudos"], ["/metas", "Metas"], ["/ciclo", "Meu Ciclo de Estudos"], ["/registro", "Estudar"], ["/simulados", "Simulados"], ["/planejamento", "Planejamento e edital"]] as const) {
     await page.goto(path);
     await expect(page).toHaveURL(new RegExp(`${path.replace("/", "\\/")}$`));
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();

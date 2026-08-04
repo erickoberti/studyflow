@@ -17,6 +17,8 @@ import { prisma } from "@/lib/prisma";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { cycleService } from "@/lib/cycle-service";
 import { getPhaseFiveDashboard } from "@/lib/phase-five-service";
+import { getDailyGoalsData } from "@/lib/daily-goals-service";
+import { DailyGoalsCard } from "@/components/daily-goals-card";
 
 function dayKeyInSaoPaulo(date: Date) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -41,7 +43,7 @@ export default async function DashboardPage() {
   const guide = await requireActiveStudyGuide(user.id);
 
   const todayKey = dayKeyInSaoPaulo(new Date());
-  const [dashboard, suggestion, recentSessions, activeStudy, phaseFive] = await Promise.all([
+  const [dashboard, suggestion, recentSessions, activeStudy, phaseFive, dailyGoals] = await Promise.all([
     getDashboardData(user.id, guide.id),
     getNextCycleSuggestion(user.id, guide.id),
     prisma.studySession.findMany({
@@ -55,6 +57,7 @@ export default async function DashboardPage() {
     }),
     cycleService.getActive(user.id, guide.id),
     getPhaseFiveDashboard(user.id, guide.id),
+    getDailyGoalsData(user.id, guide.id),
   ]);
 
   const byDayMap = new Map(dashboard.byDay.map((d) => [d.date, d.questions]));
@@ -94,6 +97,8 @@ export default async function DashboardPage() {
           <Zap size={16} /> Iniciar Sessão
         </Link>
       </section>
+
+      <DailyGoalsCard data={dailyGoals} compact />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
