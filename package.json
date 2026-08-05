@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "npm run test:unit && npm run test:e2e",
-    "test:unit": "tsx --test tests/cycle-engine.test.ts tests/cycle-validator.test.ts tests/daily-goals.test.ts tests/offline-active-session-queue.test.ts tests/offline-synchronization.test.ts tests/pwa.test.ts tests/phase-five.test.ts tests/stabilization.test.ts tests/standalone-study-session.test.ts",
+    "test:unit": "tsx --test tests/base-import.test.ts tests/cycle-engine.test.ts tests/cycle-validator.test.ts tests/daily-goals.test.ts tests/offline-active-session-queue.test.ts tests/offline-synchronization.test.ts tests/pwa.test.ts tests/phase-five.test.ts tests/stabilization.test.ts tests/standalone-study-session.test.ts",
     "test:e2e": "playwright test",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

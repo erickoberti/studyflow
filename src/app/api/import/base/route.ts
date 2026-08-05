@@ -106,8 +106,11 @@ export async function POST(request: Request) {
   }
 
   let importedRows = 0;
+  const subjectOrderByDiscipline = new Map<string, number>();
 
   for (const item of ordered) {
+    const subjectSortOrder = (subjectOrderByDiscipline.get(item.disciplina) ?? 0) + 1;
+    subjectOrderByDiscipline.set(item.disciplina, subjectSortOrder);
     const discipline = await prisma.discipline.upsert({
       where: {
         userId_studyGuideId_name: {
@@ -140,6 +143,7 @@ export async function POST(request: Request) {
         weight: item.peso,
         tecReference: item.tec || null,
         groupName: null,
+        sortOrder: subjectSortOrder,
       },
       create: {
         userId: session.user.id,
@@ -149,6 +153,7 @@ export async function POST(request: Request) {
         weight: item.peso,
         tecReference: item.tec || null,
         groupName: null,
+        sortOrder: subjectSortOrder,
         active: true,
       },
     });
@@ -163,12 +168,14 @@ export async function POST(request: Request) {
       },
       update: {
         subjectId: subject.id,
+        disciplineId: discipline.id,
         active: true,
       },
       create: {
         userId: session.user.id,
         studyGuideId: guide.id,
         subjectId: subject.id,
+        disciplineId: discipline.id,
         orderIndex: item.seq as number,
         active: true,
       },
