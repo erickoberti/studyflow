@@ -30,30 +30,35 @@ export class CycleService {
   async getCurrent(userId: string, studyGuideId: string) {
     const [state, entries] = await Promise.all([
       prisma.studyGuideCycleState.upsert({ where: { studyGuideId }, create: { userId, studyGuideId }, update: {} }),
-      prisma.cycleEntry.findMany({ where: { userId, studyGuideId, active: true, discipline: { is: { active: true } } }, include: { discipline: true }, orderBy: { orderIndex: "asc" } }),
+      prisma.cycleEntry.findMany({ where: { userId, studyGuideId, active: true }, include: { discipline: true, subject: { include: { discipline: true } } }, orderBy: { orderIndex: "asc" } }),
     ]);
-    const entry = entries.find((item) => item.orderIndex >= state.currentOrderIndex) ?? entries[0];
-    if (!entry?.discipline) return null;
-    const subjects = await prisma.subject.findMany({ where: { userId, studyGuideId, disciplineId: entry.disciplineId!, active: true }, include: { progress: true }, orderBy: { sortOrder: "asc" } });
+    const eligibleEntries = entries.filter((item) => (item.discipline ?? item.subject?.discipline)?.active);
+    const entry = eligibleEntries.find((item) => item.orderIndex >= state.currentOrderIndex) ?? eligibleEntries[0];
+    const discipline = entry?.discipline ?? entry?.subject?.discipline;
+    if (!entry || !discipline) return null;
+    const subjects = await prisma.subject.findMany({ where: { userId, studyGuideId, disciplineId: discipline.id, active: true }, include: { progress: true }, orderBy: { sortOrder: "asc" } });
     const selected = selectWeightedSubject(subjects.map(toEngine));
     if (!selected) return null;
-    return { entry: { id: entry.id, orderIndex: entry.orderIndex, discipline: { id: entry.discipline.id, name: entry.discipline.name, questionGoal: entry.discipline.questionGoal } }, subject: { id: selected.id, name: selected.name, weight: selected.weight, sortOrder: selected.sortOrder, tecReference: null }, roundNumber: state.roundNumber };
+    return { entry: { id: entry.id, orderIndex: entry.orderIndex, discipline: { id: discipline.id, name: discipline.name, questionGoal: discipline.questionGoal } }, subject: { id: selected.id, name: selected.name, weight: selected.weight, sortOrder: selected.sortOrder, tecReference: null }, roundNumber: state.roundNumber };
   }
 
   async preview(userId: string, studyGuideId: string, count = 5) {
     const current = await this.getCurrent(userId, studyGuideId);
     if (!current) return [];
-    const entries = await prisma.cycleEntry.findMany({ where: { userId, studyGuideId, active: true, discipline: { is: { active: true } } }, include: { discipline: true }, orderBy: { orderIndex: "asc" } });
+    const rawEntries = await prisma.cycleEntry.findMany({ where: { userId, studyGuideId, active: true }, include: { discipline: true, subject: { include: { discipline: true } } }, orderBy: { orderIndex: "asc" } });
+    const entries = rawEntries
+      .map((entry) => ({ ...entry, effectiveDiscipline: entry.discipline ?? entry.subject?.discipline ?? null }))
+      .filter((entry) => entry.effectiveDiscipline?.active);
     const subjects = await prisma.subject.findMany({ where: { userId, studyGuideId, active: true }, include: { progress: true }, orderBy: { sortOrder: "asc" } });
     let virtual = subjects.map(toEngine); const lastByDiscipline = new Map<string, string>();
     const start = Math.max(0, entries.findIndex((entry) => entry.id === current.entry.id));
     return Array.from({ length: Math.min(count, entries.length) }, (_, offset) => {
-      const entry = entries[(start + offset) % entries.length]; const candidates = virtual.filter((subject) => subject.disciplineId === entry.disciplineId);
-      const chosen = selectWeightedSubject(candidates, lastByDiscipline.get(entry.disciplineId!));
-      if (!chosen || !entry.discipline) return null;
+      const entry = entries[(start + offset) % entries.length]; const discipline = entry.effectiveDiscipline; const candidates = virtual.filter((subject) => subject.disciplineId === discipline?.id);
+      const chosen = selectWeightedSubject(candidates, discipline ? lastByDiscipline.get(discipline.id) : undefined);
+      if (!chosen || !discipline) return null;
       const updated = new Map(advanceWeightedState(candidates, chosen.id).map((subject) => [subject.id, subject]));
-      virtual = virtual.map((subject) => updated.get(subject.id) ?? subject); lastByDiscipline.set(entry.disciplineId!, chosen.id);
-      return { entryId: entry.id, orderIndex: entry.orderIndex, roundNumber: current.roundNumber + Math.floor((start + offset) / entries.length), discipline: { id: entry.discipline.id, name: entry.discipline.name, questionGoal: entry.discipline.questionGoal }, subject: { id: chosen.id, name: chosen.name, weight: chosen.weight } };
+      virtual = virtual.map((subject) => updated.get(subject.id) ?? subject); lastByDiscipline.set(discipline.id, chosen.id);
+      return { entryId: entry.id, orderIndex: entry.orderIndex, roundNumber: current.roundNumber + Math.floor((start + offset) / entries.length), discipline: { id: discipline.id, name: discipline.name, questionGoal: discipline.questionGoal }, subject: { id: chosen.id, name: chosen.name, weight: chosen.weight } };
     }).filter((item): item is NonNullable<typeof item> => Boolean(item));
   }
 
@@ -90,11 +95,12 @@ export class CycleService {
 
   private async currentInTransaction(tx: Prisma.TransactionClient, userId: string, studyGuideId: string) {
     const state = await tx.studyGuideCycleState.upsert({ where: { studyGuideId }, create: { userId, studyGuideId }, update: {} });
-    const entries = await tx.cycleEntry.findMany({ where: { userId, studyGuideId, active: true, discipline: { is: { active: true } } }, include: { discipline: true }, orderBy: { orderIndex: "asc" } });
-    const entry = entries.find((value) => value.orderIndex >= state.currentOrderIndex) ?? entries[0]; if (!entry?.discipline) return null;
-    const subjects = await tx.subject.findMany({ where: { userId, studyGuideId, disciplineId: entry.discipline.id, active: true }, include: { progress: true }, orderBy: { sortOrder: "asc" } });
+    const entries = await tx.cycleEntry.findMany({ where: { userId, studyGuideId, active: true }, include: { discipline: true, subject: { include: { discipline: true } } }, orderBy: { orderIndex: "asc" } });
+    const eligibleEntries = entries.filter((value) => (value.discipline ?? value.subject?.discipline)?.active);
+    const entry = eligibleEntries.find((value) => value.orderIndex >= state.currentOrderIndex) ?? eligibleEntries[0]; const discipline = entry?.discipline ?? entry?.subject?.discipline; if (!entry || !discipline) return null;
+    const subjects = await tx.subject.findMany({ where: { userId, studyGuideId, disciplineId: discipline.id, active: true }, include: { progress: true }, orderBy: { sortOrder: "asc" } });
     const selected = selectWeightedSubject(subjects.map(toEngine));
-    return selected ? { entry, subject: selected } : null;
+    return selected ? { entry: { ...entry, disciplineId: discipline.id, discipline }, subject: selected } : null;
   }
 
   async pause(userId: string, studyGuideId: string, id: string, version: number) { return this.transition(userId, studyGuideId, id, version, ActiveStudySessionStatus.ACTIVE, ActiveStudySessionStatus.PAUSED); }

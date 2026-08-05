@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 import { format } from "date-fns";
 import {
+  ArrowRight,
   Clock3,
   CalendarClock,
   ClipboardCheck,
@@ -80,6 +81,7 @@ export default async function DashboardPage() {
   const nextSubject = suggestion.next?.subject?.name ?? "Sem tópico definido";
   const nextDiscipline = suggestion.next?.subject?.discipline.name ?? "Organize seu ciclo";
   const nextNotes = suggestion.next?.subject?.notes ?? "Adicione notas no ciclo para uma sugestão mais precisa.";
+  const hasCycleSuggestion = Boolean(suggestion.next);
 
   return (
     <div className="space-y-8 pb-10">
@@ -150,10 +152,13 @@ export default async function DashboardPage() {
       <section className="grid grid-cols-1 gap-8 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
           <article className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
-            <p className="text-xs font-bold uppercase tracking-wider text-primary">{activeStudy ? "Sessão em andamento" : "O que estudar agora"}</p>
-            <h2 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{activeStudy ? `${activeStudy.discipline.name} → ${activeStudy.subject.name}` : `${nextDiscipline} → ${nextSubject}`}</h2>
-            <p className="mt-1 text-sm text-slate-500">{activeStudy ? `${activeStudy.status === "PAUSED" ? "Pausada" : "Em andamento"} · ${activeStudy.accumulatedSeconds >= 60 ? `${Math.floor(activeStudy.accumulatedSeconds / 60)} min` : "iniciada agora"}` : "Sugestão calculada pela estratégia do ciclo"}</p>
-            <Link href="/registro" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white"><Play size={15} /> {activeStudy ? "Retomar sessão" : "Iniciar sessão"}</Link>
+            <p className="text-xs font-bold uppercase tracking-wider text-primary">{activeStudy ? "Sessão em andamento" : hasCycleSuggestion ? "O que estudar agora" : "Comece por aqui"}</p>
+            <h2 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{activeStudy ? `${activeStudy.discipline.name} → ${activeStudy.subject.name}` : hasCycleSuggestion ? `${nextDiscipline} → ${nextSubject}` : "Seu ciclo ainda não está pronto"}</h2>
+            <p className="mt-1 text-sm text-slate-500">{activeStudy ? `${activeStudy.status === "PAUSED" ? "Pausada" : "Em andamento"} · ${activeStudy.accumulatedSeconds >= 60 ? `${Math.floor(activeStudy.accumulatedSeconds / 60)} min` : "iniciada agora"}` : hasCycleSuggestion ? "Sugestão calculada pela estratégia do ciclo" : "Importe sua base ou abra o ciclo para escolher de onde continuar."}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {activeStudy || hasCycleSuggestion ? <Link href="/registro" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white"><Play size={15} /> {activeStudy ? "Retomar sessão" : "Iniciar sessão"}</Link> : <><Link href="/base" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white">Importar matérias</Link><Link href="/ciclo" className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-white px-4 py-2.5 text-sm font-bold text-primary dark:bg-panelDark">Ver ciclo</Link></>}
+              {hasCycleSuggestion && !activeStudy ? <Link href="/ciclo" className="inline-flex items-center rounded-xl border border-primary/30 px-4 py-2.5 text-sm font-bold text-primary">Ajustar ponto do ciclo</Link> : null}
+            </div>
           </article>
           <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
             <div className="mb-5 flex items-center justify-between">
@@ -253,7 +258,7 @@ export default async function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-slate-900 dark:text-white">Dica de IA</p>
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Foque em {nextDiscipline} e revise o tópico {nextSubject.toLowerCase()}.</p>
+                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{hasCycleSuggestion ? `Foque em ${nextDiscipline} e revise o tópico ${nextSubject.toLowerCase()}.` : "Organize o ciclo uma vez; depois o StudyFlow mostrará automaticamente o próximo estudo."}</p>
                 </div>
               </div>
             </div>
@@ -261,10 +266,10 @@ export default async function DashboardPage() {
 
           <article className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary to-primarySoft p-5 text-white shadow-soft">
             <p className="text-xs font-bold uppercase tracking-[0.12em] opacity-90">Próximo Tópico</p>
-            <h4 className="mt-2 text-xl font-black">{nextSubject}</h4>
-            <p className="mt-2 text-sm text-white/85">{nextNotes}</p>
-            <Link href="/registro" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-primary">
-              <Play size={14} /> Iniciar agora
+            <h4 className="mt-2 text-xl font-black">{hasCycleSuggestion ? nextSubject : "Defina seu ponto de partida"}</h4>
+            <p className="mt-2 text-sm text-white/85">{hasCycleSuggestion ? nextNotes : "Escolha a matéria em que você está e continue sem refazer o que já estudou."}</p>
+            <Link href={hasCycleSuggestion ? "/registro" : "/ciclo"} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-primary">
+              {hasCycleSuggestion ? <Play size={14} /> : <ArrowRight size={14} />} {hasCycleSuggestion ? "Iniciar agora" : "Configurar ciclo"}
             </Link>
           </article>
         </aside>

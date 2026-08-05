@@ -5,6 +5,7 @@ import {
   deleteCycleEntry,
   duplicateCycleEntry,
   moveCycleEntry,
+  setCyclePosition,
   toggleCycleEntry,
 } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
@@ -12,7 +13,10 @@ import { prisma } from "@/lib/prisma";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 import { getCyclePositionSuggestions } from "@/lib/cycle-strategy";
+import { cycleService } from "@/lib/cycle-service";
 import {
+  ArrowRight,
+  BookOpen,
   CalendarDays,
   Clock3,
   GripVertical,
@@ -44,7 +48,7 @@ function statusChip(status: string) {
 export default async function CicloPage({
   searchParams,
 }: {
-  searchParams?: { novo?: string };
+  searchParams?: { novo?: string; ajuste?: string };
 }) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
@@ -52,7 +56,7 @@ export default async function CicloPage({
   weekStart.setUTCHours(0, 0, 0, 0);
   weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7));
 
-  const [entries, subjects, aggregates, settings, cycleSuggestions, cycleState, weeklyAggregate] = await Promise.all([
+  const [entries, subjects, aggregates, settings, cycleSuggestions, cycleState, weeklyAggregate, currentCycle] = await Promise.all([
     prisma.cycleEntry.findMany({
       where: { userId: user.id, studyGuideId: guide.id },
       include: { subject: { include: { discipline: true } }, discipline: true },
@@ -72,6 +76,7 @@ export default async function CicloPage({
     getCyclePositionSuggestions(user.id, guide.id),
     prisma.studyGuideCycleState.findUnique({ where: { studyGuideId: guide.id }, select: { currentOrderIndex: true, roundNumber: true } }),
     prisma.studySession.aggregate({ where: { userId: user.id, studyGuideId: guide.id, date: { gte: weekStart } }, _sum: { questions: true } }),
+    cycleService.getCurrent(user.id, guide.id),
   ]);
 
   const showAdd = searchParams?.novo === "1";
@@ -97,7 +102,16 @@ export default async function CicloPage({
     ]),
   );
 
-  const currentOrder = cycleState?.currentOrderIndex ?? entries.find((entry) => entry.active)?.orderIndex ?? null;
+  const currentOrder = currentCycle?.entry.orderIndex ?? cycleState?.currentOrderIndex ?? entries.find((entry) => entry.active)?.orderIndex ?? null;
+  const activeEntries = displayEntries.filter((entry) => entry.active);
+  const adjustmentMessage =
+    searchParams?.ajuste === "ok"
+      ? "Ponto do ciclo atualizado. A próxima sessão começará daqui."
+      : searchParams?.ajuste === "sessao-ativa"
+        ? "Finalize ou cancele a sessão em andamento antes de mudar o ponto do ciclo."
+        : searchParams?.ajuste === "invalido"
+          ? "Essa posição não está disponível neste guia."
+          : null;
   const totalMinutes = aggregates.reduce((sum, aggregate) => sum + (aggregate._sum.estimatedMinutes ?? 0), 0);
   const totalQuestions = aggregates.reduce((sum, aggregate) => sum + (aggregate._sum.questions ?? 0), 0);
   const totalCorrect = aggregates.reduce((sum, aggregate) => sum + (aggregate._sum.correct ?? 0), 0);
@@ -144,6 +158,80 @@ export default async function CicloPage({
               Adicionar
             </button>
           </form>
+        </section>
+      ) : null}
+
+      {adjustmentMessage ? (
+        <p
+          role="status"
+          className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
+            searchParams?.ajuste === "ok"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+              : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+          }`}
+        >
+          {adjustmentMessage}
+        </p>
+      ) : null}
+
+      {currentCycle ? (
+        <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Continue seu ciclo</p>
+              <h2 className="mt-2 text-2xl font-black text-slate-950 dark:text-white">
+                {currentCycle.entry.discipline.name} <span className="text-slate-300 dark:text-slate-600">→</span>{" "}
+                {currentCycle.subject.name}
+              </h2>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                Posição #{currentCycle.entry.orderIndex} · volta {currentCycle.roundNumber}. O StudyFlow continuará deste ponto.
+              </p>
+            </div>
+            <Link
+              href="/registro"
+              className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-black text-white shadow-soft"
+            >
+              <Play size={17} fill="currentColor" /> Estudar agora
+            </Link>
+          </div>
+
+          <details className="mt-5 rounded-xl border border-primary/15 bg-white/70 p-4 dark:bg-slate-900/40">
+            <summary className="cursor-pointer list-none text-sm font-black text-primary">
+              Já comecei este ciclo — escolher de onde continuar
+            </summary>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Use isto se você já estudou algumas matérias antes de entrar no StudyFlow. O ajuste não cria sessões nem altera suas estatísticas.
+            </p>
+            <form action={setCyclePosition} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="min-w-0 flex-1 text-sm font-bold text-slate-700 dark:text-slate-200">
+                Próxima matéria a estudar
+                <select
+                  name="entryId"
+                  defaultValue={currentCycle.entry.id}
+                  className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900"
+                >
+                  {activeEntries.map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      #{entry.orderIndex} — {entry.subject.discipline.name} / {entry.subject.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-5 text-sm font-black text-primary">
+                <ArrowRight size={16} /> Continuar daqui
+              </button>
+            </form>
+          </details>
+        </section>
+      ) : entries.length > 0 ? (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-500/30 dark:bg-amber-500/10">
+          <h2 className="text-lg font-black text-amber-900 dark:text-amber-100">O ciclo precisa de uma matéria ativa</h2>
+          <p className="mt-1 text-sm text-amber-800/80 dark:text-amber-200/80">
+            Verifique se as disciplinas e os assuntos deste guia estão ativos. Depois, volte aqui para continuar.
+          </p>
+          <Link href="/base" className="mt-4 inline-flex rounded-xl bg-amber-900 px-4 py-2.5 text-sm font-black text-white dark:bg-amber-200 dark:text-amber-950">
+            Ver matérias
+          </Link>
         </section>
       ) : null}
 
@@ -200,7 +288,48 @@ export default async function CicloPage({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {displayEntries.length > 0 ? (
+          <div className="divide-y divide-slate-200 dark:divide-slate-800 md:hidden">
+            {displayEntries.map((entry) => {
+              const isCurrent = entry.active && entry.orderIndex === currentOrder;
+              return (
+                <article key={entry.id} className={`p-4 ${isCurrent ? "bg-primary/5" : ""}`}>
+                  <div className="flex items-start gap-3">
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-black ${isCurrent ? "bg-primary text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800"}`}>
+                      {entry.orderIndex}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-slate-950 dark:text-white">{entry.subject.discipline.name}</p>
+                      <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{entry.subject.name}</p>
+                    </div>
+                    {isCurrent ? <span className="rounded-lg bg-primary/15 px-2 py-1 text-[10px] font-black uppercase text-primary">Agora</span> : null}
+                  </div>
+                  <form action={setCyclePosition} className="mt-3">
+                    <input type="hidden" name="entryId" value={entry.id} />
+                    <button
+                      disabled={!entry.active || isCurrent}
+                      className="min-h-11 w-full rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-black text-primary disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:border-slate-700 dark:disabled:bg-slate-800"
+                    >
+                      {isCurrent ? "Você continua daqui" : entry.active ? "Continuar daqui" : "Posição pausada"}
+                    </button>
+                  </form>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-8 text-center">
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary"><BookOpen size={21} /></span>
+            <h4 className="mt-4 text-lg font-black">Seu ciclo ainda está vazio</h4>
+            <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">Importe sua planilha para criar matérias, assuntos e a ordem do ciclo de uma vez.</p>
+            <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
+              <Link href="/base" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-white">Importar planilha</Link>
+              <Link href="/ciclo?novo=1" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-black dark:border-slate-700">Adicionar manualmente</Link>
+            </div>
+          </div>
+        )}
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-800/50">
               <tr>
@@ -262,6 +391,16 @@ export default async function CicloPage({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
+                        <form action={setCyclePosition}>
+                          <input type="hidden" name="entryId" value={entry.id} />
+                          <button
+                            disabled={!entry.active || entry.orderIndex === currentOrder}
+                            className="rounded-lg border border-primary/25 bg-primary/10 px-3 py-2 text-xs font-black text-primary disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:border-slate-700 dark:disabled:bg-slate-800"
+                            title="Definir como próxima posição do ciclo"
+                          >
+                            {entry.orderIndex === currentOrder ? "Atual" : "Continuar daqui"}
+                          </button>
+                        </form>
                         <form action={moveCycleEntry}>
                           <input type="hidden" name="entryId" value={entry.id} />
                           <input type="hidden" name="direction" value="up" />
@@ -295,13 +434,6 @@ export default async function CicloPage({
                   </tr>
                 );
               })}
-              {entries.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-                    Nenhum ciclo cadastrado no guia atual.
-                  </td>
-                </tr>
-              ) : null}
             </tbody>
           </table>
         </div>

@@ -1,6 +1,6 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
+import { ActiveStudySessionStatus, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -554,7 +554,7 @@ export async function addCycleEntry(formData: FormData) {
 
   const subject = await prisma.subject.findFirst({
     where: { id: subjectId, userId: user.id, studyGuideId: guide.id },
-    select: { id: true },
+    select: { id: true, disciplineId: true },
   });
   if (!subject) return;
 
@@ -568,6 +568,7 @@ export async function addCycleEntry(formData: FormData) {
       userId: user.id,
       studyGuideId: guide.id,
       subjectId,
+      disciplineId: subject.disciplineId,
       orderIndex: (last?.orderIndex ?? 0) + 1,
       active: true,
     },
@@ -583,7 +584,10 @@ export async function duplicateCycleEntry(formData: FormData) {
   const entryId = String(formData.get("entryId") ?? "");
   if (!entryId) return;
 
-  const entry = await prisma.cycleEntry.findFirst({ where: { id: entryId, userId: user.id, studyGuideId: guide.id } });
+  const entry = await prisma.cycleEntry.findFirst({
+    where: { id: entryId, userId: user.id, studyGuideId: guide.id },
+    include: { subject: { select: { disciplineId: true } } },
+  });
   if (!entry) return;
 
   await prisma.$transaction(async (tx) => {
@@ -597,6 +601,7 @@ export async function duplicateCycleEntry(formData: FormData) {
         userId: user.id,
         studyGuideId: guide.id,
         subjectId: entry.subjectId,
+        disciplineId: entry.disciplineId ?? entry.subject?.disciplineId,
         orderIndex: entry.orderIndex + 1,
         active: entry.active,
       },
@@ -685,6 +690,68 @@ export async function deleteCycleEntry(formData: FormData) {
 
   revalidatePath("/ciclo");
   revalidatePath("/registro");
+}
+
+export async function setCyclePosition(formData: FormData) {
+  const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
+  const entryId = String(formData.get("entryId") ?? "");
+
+  const openSession = await prisma.activeStudySession.findFirst({
+    where: {
+      userId: user.id,
+      studyGuideId: guide.id,
+      status: {
+        in: [
+          ActiveStudySessionStatus.ACTIVE,
+          ActiveStudySessionStatus.PAUSED,
+          ActiveStudySessionStatus.FINISHING,
+        ],
+      },
+    },
+    select: { id: true },
+  });
+
+  if (openSession) {
+    redirect("/ciclo?ajuste=sessao-ativa");
+  }
+
+  const entry = await prisma.cycleEntry.findFirst({
+    where: { id: entryId, userId: user.id, studyGuideId: guide.id, active: true },
+    include: { subject: { select: { disciplineId: true } } },
+  });
+
+  const disciplineId = entry?.disciplineId ?? entry?.subject?.disciplineId;
+  if (!entry || !disciplineId) {
+    redirect("/ciclo?ajuste=invalido");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (!entry.disciplineId) {
+      await tx.cycleEntry.update({
+        where: { id: entry.id },
+        data: { disciplineId },
+      });
+    }
+
+    await tx.studyGuideCycleState.upsert({
+      where: { studyGuideId: guide.id },
+      create: {
+        userId: user.id,
+        studyGuideId: guide.id,
+        currentOrderIndex: entry.orderIndex,
+      },
+      update: {
+        currentOrderIndex: entry.orderIndex,
+        version: { increment: 1 },
+      },
+    });
+  });
+
+  revalidatePath("/ciclo");
+  revalidatePath("/registro");
+  revalidatePath("/dashboard");
+  redirect("/ciclo?ajuste=ok");
 }
 
 export async function deleteAllCycleEntries() {

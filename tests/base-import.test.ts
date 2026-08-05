@@ -23,3 +23,23 @@ test("posições intercaladas com pesos iguais percorrem os assuntos na ordem", 
   const positions = ["p", "s", "m", "p", "s", "m"].map((disciplineId, index) => ({ disciplineId, discipline: disciplineId, orderIndex: index + 1, questionGoal: 20, targetMinutes: 60 }));
   assert.deepEqual(simulateWeightedCycle(positions, subjects, 6).map((row) => row.subjectId), ["p1", "s1", "m1", "p2", "s2", "m2"]);
 });
+
+test("ciclo manual persiste a disciplina e permite escolher de onde continuar", () => {
+  const actions = readFileSync(resolve(process.cwd(), "src/app/actions.ts"), "utf8");
+  const cyclePage = readFileSync(resolve(process.cwd(), "src/app/(app)/ciclo/page.tsx"), "utf8");
+
+  assert.match(actions, /disciplineId: subject\.disciplineId/);
+  assert.match(actions, /export async function setCyclePosition/);
+  assert.match(actions, /currentOrderIndex: entry\.orderIndex/);
+  assert.match(actions, /ActiveStudySessionStatus\.FINISHING/);
+  assert.match(cyclePage, /Já comecei este ciclo — escolher de onde continuar/);
+  assert.match(cyclePage, /Continuar daqui/);
+  assert.match(cyclePage, /O ajuste não cria sessões nem altera suas estatísticas/);
+});
+
+test("serviço aceita ciclos antigos cujo vínculo da disciplina está no assunto", () => {
+  const service = readFileSync(resolve(process.cwd(), "src/lib/cycle-service.ts"), "utf8");
+
+  assert.ok((service.match(/subject\?\.discipline/g) ?? []).length >= 3);
+  assert.match(service, /eligibleEntries/);
+});
