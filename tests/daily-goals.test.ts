@@ -35,6 +35,12 @@ test("estudo avulso conta métricas, mas somente sessão de ciclo conclui posiç
   assert.equal(source.sessions, 2);
 });
 
+test("aula sem questões soma tempo, conta sessão e conclui a posição do ciclo", () => {
+  const source = emptyDaySource();
+  applyStudySession(source, { estimatedMinutes: 45, correct: 0, wrong: 0, cyclePosition: 3 });
+  assert.deepEqual({ minutes: source.minutes, questions: source.questions, sessions: source.sessions, cyclePosition: source.cyclePosition }, { minutes: 45, questions: 0, sessions: 1, cyclePosition: 1 });
+});
+
 test("classifica mínimo, meta principal e dia excelente sem punir progresso parcial", () => {
   const minimum = emptyDaySource(); Object.assign(minimum, { minutes: 60, questions: 20, sessions: 1 });
   assert.equal(summary("2026-08-03", minimum).status, "MINIMUM");

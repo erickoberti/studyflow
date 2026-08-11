@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, Check, Clock3, Focus, Pause, Play, RotateCcw, Square, X } from "lucide-react";
+import { BarChart3, BookOpenCheck, Check, Clock3, Focus, ListChecks, Pause, Play, RotateCcw, Square, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   offlineSessionQueue,
@@ -34,6 +34,7 @@ type Suggestion = {
 } | null;
 
 type Summary = { todayMinutes: number; todayQuestions: number; dailyGoal: number; streak: number };
+type StudyActivity = "QUESTIONS" | "CLASS";
 
 function duration(value: number) {
   return `${String(Math.floor(value / 3600)).padStart(2, "0")}:${String(Math.floor(value / 60) % 60).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
@@ -115,6 +116,7 @@ export function ActiveStudyPanel({
   const [busy, setBusy] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [studyActivity, setStudyActivity] = useState<StudyActivity>("QUESTIONS");
   const [studyMinutes, setStudyMinutes] = useState(defaultMinutes);
   const [questions, setQuestions] = useState(0);
   const [correct, setCorrect] = useState(0);
@@ -124,6 +126,7 @@ export function ActiveStudyPanel({
   const [completion, setCompletion] = useState<{ percentage: number } | null>(null);
 
   const clearFinishForm = useCallback(() => {
+    setStudyActivity("QUESTIONS");
     setStudyMinutes(defaultMinutes);
     setQuestions(0);
     setCorrect(0);
@@ -206,6 +209,7 @@ export function ActiveStudyPanel({
     const type = operationTypes[action];
     if (!type) throw new Error("Operação offline inválida.");
     if (type === "FINISH_SESSION") {
+      const isClass = Number(body.questions ?? 0) === 0;
       local = {
         ...local,
         accumulatedSeconds: Number(body.minutes ?? 0) * 60,
@@ -213,7 +217,7 @@ export function ActiveStudyPanel({
         correct: Number(body.correct ?? 0),
         wrong: Number(body.questions ?? 0) - Number(body.correct ?? 0),
         difficulty: difficulty as "Fácil" | "Média" | "Difícil",
-        notes: notes.trim() || null,
+        notes: `${isClass ? "[Aula] " : ""}${notes.trim()}`.trim() || null,
       };
     }
     const queued = await queueOfflineSessionOperation({
@@ -224,7 +228,7 @@ export function ActiveStudyPanel({
       operationId: typeof body.operationId === "string" ? body.operationId : undefined,
     });
     if (type === "FINISH_SESSION") {
-      setCompletion({ percentage: queued.session.questions ? queued.session.correct / queued.session.questions * 100 : 0 });
+      setCompletion({ percentage: queued.session.questions ? queued.session.correct / queued.session.questions * 100 : -1 });
       setFinishOpen(false);
       setFocusMode(false);
       setActive(null);
@@ -257,7 +261,7 @@ export function ActiveStudyPanel({
         await persistServerActiveSession({ userId, studyGuideId, session: data.session });
         if (options?.openFinish) openFinish(data.session, elapsed);
       } else if (data.sessionId) {
-        setCompletion({ percentage: questions ? correct / questions * 100 : 0 });
+        setCompletion({ percentage: studyActivity === "CLASS" ? -1 : questions ? correct / questions * 100 : 0 });
         toast.success(data.idempotent ? "Sessão já havia sido finalizada." : "Sessão concluída; ciclo atualizado.");
         setFinishOpen(false);
         setFocusMode(false);
@@ -310,7 +314,8 @@ export function ActiveStudyPanel({
 
   const studying = Boolean(active);
   const percentage = questions ? correct / questions * 100 : 0;
-  const validResults = questions > 0 && correct >= 0 && wrong >= 0 && correct + wrong === questions;
+  const isClass = studyActivity === "CLASS";
+  const validResults = isClass || (questions > 0 && correct >= 0 && wrong >= 0 && correct + wrong === questions);
   const validMinutes = Number.isInteger(studyMinutes) && studyMinutes > 0;
   const goalProgress = Math.min(100, summary.dailyGoal ? summary.todayQuestions / summary.dailyGoal * 100 : 0);
 
@@ -363,21 +368,23 @@ export function ActiveStudyPanel({
 
     {finishOpen && active ? <div role="dialog" aria-modal="true" aria-labelledby="finish-title" className="fixed inset-0 z-[110] flex items-end bg-slate-950/50 p-0 sm:items-center sm:justify-center sm:p-6"><section className="max-h-[95vh] w-full overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-panelDark sm:max-w-xl sm:rounded-3xl"><div className="flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-wider text-primary">Finalizar sessão</p><h3 id="finish-title" className="mt-1 text-2xl font-black">Registre o que foi estudado</h3></div><button aria-label="Fechar" onClick={() => setFinishOpen(false)} className="rounded-lg p-2"><X /></button></div><p className="mt-2 text-sm text-slate-500">{current.discipline} · {current.subject}</p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-bold sm:col-span-2">Tempo líquido estudado (min)<span className="relative mt-1.5 block"><Clock3 aria-hidden size={16} className="absolute left-3 top-4 text-slate-400" /><input aria-label="Tempo líquido estudado em minutos" inputMode="numeric" type="number" min={1} step={1} value={studyMinutes} onChange={(event) => setStudyMinutes(Math.max(0, Number(event.target.value) || 0))} className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-lg font-black dark:border-slate-700 dark:bg-slate-900" /></span><span className="mt-1 block text-xs font-normal text-slate-500">{seconds > 0 ? `Cronômetro: ${duration(seconds)}. Você pode corrigir o valor acima.` : "Informe o tempo real, mesmo que não tenha usado o cronômetro."}</span></label>
-        <label className="text-sm font-bold">Questões realizadas<input aria-label="Questões realizadas" inputMode="numeric" type="number" min={1} value={questions} onChange={(event) => setQuestions(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" /></label>
-        <div className="grid grid-cols-2 gap-3"><label className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Acertos<input aria-label="Acertos" inputMode="numeric" type="number" min={0} value={correct} onChange={(event) => setCorrect(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" /></label><label className="text-sm font-bold text-rose-700 dark:text-rose-300">Erros<input aria-label="Erros" inputMode="numeric" type="number" min={0} value={wrong} onChange={(event) => setWrong(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" /></label></div>
+      <div className="mt-6"><p className="text-sm font-bold">O que você estudou?</p><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" aria-pressed={!isClass} onClick={() => setStudyActivity("QUESTIONS")} className={`inline-flex min-h-16 items-center justify-center gap-2 rounded-xl border px-3 font-bold ${!isClass ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><ListChecks size={20} /> Questões</button><button type="button" aria-pressed={isClass} onClick={() => { setStudyActivity("CLASS"); setQuestions(0); setCorrect(0); setWrong(0); }} className={`inline-flex min-h-16 items-center justify-center gap-2 rounded-xl border px-3 font-bold ${isClass ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><BookOpenCheck size={20} /> Aula assistida</button></div></div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <label className="text-sm font-bold sm:col-span-2">{isClass ? "Tempo da aula assistida (min)" : "Tempo líquido estudado (min)"}<span className="relative mt-1.5 block"><Clock3 aria-hidden size={16} className="absolute left-3 top-4 text-slate-400" /><input aria-label={isClass ? "Tempo da aula assistida em minutos" : "Tempo líquido estudado em minutos"} inputMode="numeric" type="number" min={1} step={1} value={studyMinutes} onChange={(event) => setStudyMinutes(Math.max(0, Number(event.target.value) || 0))} className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-lg font-black dark:border-slate-700 dark:bg-slate-900" /></span><span className="mt-1 block text-xs font-normal text-slate-500">{seconds > 0 ? `Cronômetro: ${duration(seconds)}. Você pode corrigir o valor acima.` : isClass ? "Informe quantos minutos da aula foram assistidos." : "Informe o tempo real, mesmo que não tenha usado o cronômetro."}</span></label>
+        {!isClass ? <><label className="text-sm font-bold">Questões realizadas<input aria-label="Questões realizadas" inputMode="numeric" type="number" min={1} value={questions} onChange={(event) => setQuestions(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" /></label>
+        <div className="grid grid-cols-2 gap-3"><label className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Acertos<input aria-label="Acertos" inputMode="numeric" type="number" min={0} value={correct} onChange={(event) => setCorrect(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" /></label><label className="text-sm font-bold text-rose-700 dark:text-rose-300">Erros<input aria-label="Erros" inputMode="numeric" type="number" min={0} value={wrong} onChange={(event) => setWrong(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" /></label></div></> : <div className="sm:col-span-2 rounded-xl bg-primary/5 p-4 text-sm font-semibold text-slate-600 dark:text-slate-300">A aula contará como uma sessão, somará o tempo informado e concluirá esta posição do ciclo.</div>}
       </div>
 
-      <div className="mt-4 rounded-xl bg-slate-100 p-4 text-sm dark:bg-slate-800"><div className="flex justify-between"><span>Conferência</span><b>{correct} + {wrong} = {questions} questões</b></div><div className="mt-2 flex justify-between"><span>Percentual de acertos</span><b>{questions ? `${percentage.toFixed(0)}%` : "—"}</b></div></div>
+      {!isClass ? <div className="mt-4 rounded-xl bg-slate-100 p-4 text-sm dark:bg-slate-800"><div className="flex justify-between"><span>Conferência</span><b>{correct} + {wrong} = {questions} questões</b></div><div className="mt-2 flex justify-between"><span>Percentual de acertos</span><b>{questions ? `${percentage.toFixed(0)}%` : "—"}</b></div></div> : null}
       {!validMinutes ? <p role="alert" className="mt-3 text-sm font-semibold text-rose-600 dark:text-rose-300">Informe ao menos 1 minuto de estudo.</p> : null}
       {!validResults ? <p role="alert" className="mt-3 text-sm font-semibold text-rose-600 dark:text-rose-300">Informe as questões e confira se acertos + erros correspondem ao total.</p> : null}
 
       <div className="mt-4"><p className="text-sm font-bold">Dificuldade</p><div className="mt-2 grid grid-cols-3 gap-2">{([['Fácil', '🙂'], ['Média', '😐'], ['Difícil', '😓']] as const).map(([value, icon]) => <button key={value} type="button" aria-pressed={difficulty === value} onClick={() => setDifficulty(value)} className={`min-h-16 rounded-xl border px-2 text-sm font-bold ${difficulty === value ? "border-primary bg-primary/10 text-primary" : "border-slate-200 dark:border-slate-700"}`}><span aria-hidden className="block text-xl">{icon}</span>{value}</button>)}</div></div>
       <label className="mt-4 block text-sm font-bold">Observação <span className="font-normal text-slate-400">(opcional)</span><textarea aria-label="Observação" value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900" placeholder="O que revisar ou lembrar na próxima sessão?" /></label>
-      <button disabled={busy || !validMinutes || !validResults} onClick={() => act({ command: "finish", id: active.id, version: active.version, questions, correct, minutes: studyMinutes, notes: `[${difficulty}] ${notes.trim()}`.trim() })} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-black text-white disabled:opacity-50"><Square size={17} /> Salvar e concluir</button>
+      <button disabled={busy || !validMinutes || !validResults} onClick={() => act({ command: "finish", id: active.id, version: active.version, questions: isClass ? 0 : questions, correct: isClass ? 0 : correct, minutes: studyMinutes, notes: `${isClass ? "[Aula] " : ""}[${difficulty}] ${notes.trim()}`.trim() })} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-black text-white disabled:opacity-50"><Square size={17} /> {isClass ? "Salvar aula e avançar" : "Salvar e concluir"}</button>
     </section></div> : null}
 
-    {completion ? <div role="status" className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-5"><section className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl dark:bg-panelDark"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary"><Check size={28} /></span><h3 className="mt-4 text-2xl font-black">Estudo registrado</h3><p className="mt-2 text-sm text-slate-500">Aproveitamento de {completion.percentage.toFixed(0)}%. Ciclo, metas e estatísticas foram atualizados.</p><button onClick={() => setCompletion(null)} className="mt-6 min-h-11 w-full rounded-xl bg-primary px-5 font-black text-white">Continuar</button></section></div> : null}
+    {completion ? <div role="status" className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-5"><section className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl dark:bg-panelDark"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary"><Check size={28} /></span><h3 className="mt-4 text-2xl font-black">{completion.percentage < 0 ? "Aula registrada" : "Estudo registrado"}</h3><p className="mt-2 text-sm text-slate-500">{completion.percentage < 0 ? "O tempo da aula foi somado e o ciclo avançou para a próxima posição." : `Aproveitamento de ${completion.percentage.toFixed(0)}%. Ciclo, metas e estatísticas foram atualizados.`}</p><button onClick={() => setCompletion(null)} className="mt-6 min-h-11 w-full rounded-xl bg-primary px-5 font-black text-white">Continuar</button></section></div> : null}
   </>;
 }

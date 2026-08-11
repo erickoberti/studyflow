@@ -6,7 +6,7 @@ import { CycleConflictError, cycleService } from "@/lib/cycle-service";
 import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 import { canonicalSessionOperationPayload, claimOfflineOperation, completeOfflineOperation, failOfflineOperation } from "@/lib/offline-operation-ledger";
 
-const commandSchema = z.object({ command: z.enum(["start", "pause", "resume", "cancel", "finish"]), operationId: z.string().min(1).optional(), id: z.string().optional(), version: z.number().int().optional(), mode: z.enum(["CYCLE", "AVULSO"]).optional(), disciplineId: z.string().optional(), subjectId: z.string().optional(), timerRunning: z.boolean().optional(), questions: z.number().int().min(1).optional(), correct: z.number().int().min(0).optional(), minutes: z.number().int().min(1).optional(), notes: z.string().max(4000).optional() });
+const commandSchema = z.object({ command: z.enum(["start", "pause", "resume", "cancel", "finish"]), operationId: z.string().min(1).optional(), id: z.string().optional(), version: z.number().int().optional(), mode: z.enum(["CYCLE", "AVULSO"]).optional(), disciplineId: z.string().optional(), subjectId: z.string().optional(), timerRunning: z.boolean().optional(), questions: z.number().int().min(0).optional(), correct: z.number().int().min(0).optional(), minutes: z.number().int().min(1).optional(), notes: z.string().max(4000).optional() });
 
 async function context() { const session = await getServerSession(authOptions); if (!session?.user?.id) return null; const guide = await getActiveStudyGuideForUser(session.user.id); return guide ? { userId: session.user.id, guideId: guide.id } : null; }
 
@@ -18,7 +18,7 @@ async function execute(userId: string, guideId: string, body: z.infer<typeof com
   if (body.command === "pause") return { session: await cycleService.pause(userId, guideId, body.id, body.version) };
   if (body.command === "resume") return { session: await cycleService.resume(userId, guideId, body.id, body.version) };
   if (body.command === "cancel") return cycleService.cancel(userId, guideId, body.id, body.version);
-  if (body.questions === undefined || body.correct === undefined) throw new Error("Informe acertos e erros.");
+  if (body.questions === undefined || body.correct === undefined) throw new Error("Informe os dados da atividade estudada.");
   return cycleService.finish(userId, guideId, body.id, body.version, { questions: body.questions, correct: body.correct, minutes: body.minutes, notes: body.notes });
 }
 
