@@ -228,6 +228,7 @@ export function createOfflineSession(input: {
   correct: number;
   wrong: number;
   estimatedMinutes: number;
+  activityType?: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
   notes: string | null;
 }) {
   const snapshot = getOfflineSnapshot();
@@ -242,6 +243,7 @@ export function createOfflineSession(input: {
     wrong: input.wrong,
     percentage: input.questions > 0 ? (input.correct / input.questions) * 100 : 0,
     estimatedMinutes: input.estimatedMinutes,
+    activityType: input.activityType ?? "QUESTIONS",
     notes: input.notes,
     createdAt: now,
     updatedAt: now,
@@ -266,6 +268,7 @@ export function updateOfflineSession(
     correct: number;
     wrong: number;
     estimatedMinutes: number;
+    activityType?: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
     notes: string | null;
   },
 ) {
@@ -282,6 +285,7 @@ export function updateOfflineSession(
       wrong: input.wrong,
       percentage: input.questions > 0 ? (input.correct / input.questions) * 100 : 0,
       estimatedMinutes: input.estimatedMinutes,
+      activityType: input.activityType ?? session.activityType ?? "QUESTIONS",
       notes: input.notes,
       updatedAt,
       syncStatus: session.serverId ? ("pending_update" as const) : ("pending_create" as const),
@@ -343,6 +347,7 @@ export function hydrateOfflineSessionsFromServer(input: {
     wrong: number;
     percentage: number;
     estimatedMinutes: number;
+    activityType?: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
     notes: string | null;
     createdAt: string;
     updatedAt: string;

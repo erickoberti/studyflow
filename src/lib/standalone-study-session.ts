@@ -12,6 +12,7 @@ export type StandaloneStudyInput = {
   correct: number;
   wrong: number;
   estimatedMinutes: number;
+  activityType?: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
   difficulty: "Fácil" | "Média" | "Difícil";
   notes?: string | null;
 };
@@ -75,7 +76,8 @@ export async function createStandaloneStudySession(
   now = new Date(),
 ) {
   const questions = input.correct + input.wrong;
-  if (questions <= 0) throw new Error("Informe ao menos um acerto ou erro.");
+  const activityType = input.activityType ?? "QUESTIONS";
+  if (activityType === "QUESTIONS" && questions <= 0) throw new Error("Informe ao menos um acerto ou erro.");
   if (input.correct < 0 || input.wrong < 0) throw new Error("Acertos e erros não podem ser negativos.");
   if (!Number.isInteger(input.estimatedMinutes) || input.estimatedMinutes <= 0) throw new Error("Informe uma duração válida em minutos.");
 
@@ -109,8 +111,9 @@ export async function createStandaloneStudySession(
       questions,
       correct: input.correct,
       wrong: input.wrong,
-      percentage: (input.correct / questions) * 100,
+      percentage: questions ? (input.correct / questions) * 100 : 0,
       estimatedMinutes: input.estimatedMinutes,
+      activityType,
       notes: formatStandaloneNotes(input.difficulty, input.notes),
     },
     include: { subject: { include: { discipline: true } } },

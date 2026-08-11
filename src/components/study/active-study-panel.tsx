@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BarChart3, BookOpenCheck, Check, Clock3, Focus, ListChecks, Pause, Play, RotateCcw, Square, X } from "lucide-react";
 import { toast } from "sonner";
@@ -100,6 +101,7 @@ export function ActiveStudyPanel({
   suggestion,
   nextSuggestion,
   defaultMinutes,
+  preferredActivity = "QUESTIONS",
   summary,
 }: {
   userId: string;
@@ -108,6 +110,7 @@ export function ActiveStudyPanel({
   suggestion: Suggestion;
   nextSuggestion?: { discipline: string; subject: string } | null;
   defaultMinutes: number;
+  preferredActivity?: StudyActivity;
   summary: Summary;
 }) {
   const router = useRouter();
@@ -116,26 +119,29 @@ export function ActiveStudyPanel({
   const [busy, setBusy] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [studyActivity, setStudyActivity] = useState<StudyActivity>("QUESTIONS");
+  const [studyActivity, setStudyActivity] = useState<StudyActivity>(preferredActivity);
+  const [advanceCycle, setAdvanceCycle] = useState(true);
   const [studyMinutes, setStudyMinutes] = useState(defaultMinutes);
   const [questions, setQuestions] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
   const [difficulty, setDifficulty] = useState("Média");
   const [notes, setNotes] = useState("");
-  const [completion, setCompletion] = useState<{ percentage: number } | null>(null);
+  const [completion, setCompletion] = useState<{ percentage: number; advanced: boolean } | null>(null);
 
   const clearFinishForm = useCallback(() => {
-    setStudyActivity("QUESTIONS");
+    setStudyActivity(preferredActivity);
+    setAdvanceCycle(true);
     setStudyMinutes(defaultMinutes);
     setQuestions(0);
     setCorrect(0);
     setWrong(0);
     setDifficulty("Média");
     setNotes("");
-  }, [defaultMinutes]);
+  }, [defaultMinutes, preferredActivity]);
 
-  const openFinish = useCallback((session: Active, elapsed = calculateElapsedSeconds(session)) => {
+  const openFinish = useCallback((session: Active, elapsed = calculateElapsedSeconds(session), activity?: StudyActivity) => {
+    if (activity) setStudyActivity(activity);
     setStudyMinutes(elapsed > 0 ? Math.max(1, Math.round(elapsed / 60)) : defaultMinutes);
     setFinishOpen(true);
   }, [defaultMinutes]);
@@ -175,7 +181,7 @@ export function ActiveStudyPanel({
     };
   }, [active]);
 
-  async function actOffline(body: Record<string, unknown>, shouldOpenFinish = false) {
+  async function actOffline(body: Record<string, unknown>, shouldOpenFinish = false, activity?: StudyActivity) {
     const action = String(body.command);
     let local = await offlineSessionQueue.getSession(userId, studyGuideId);
     if (action === "start") {
@@ -195,7 +201,7 @@ export function ActiveStudyPanel({
       const restored = localToActive(result.session, null, suggestion);
       setActive(restored);
       setSeconds(0);
-      if (shouldOpenFinish) openFinish(restored, 0);
+      if (shouldOpenFinish) openFinish(restored, 0, activity);
       toast.success(body.timerRunning === false ? "Registro pronto para preencher." : "Cronômetro iniciado e preservado neste dispositivo.");
       return;
     }
@@ -217,7 +223,9 @@ export function ActiveStudyPanel({
         correct: Number(body.correct ?? 0),
         wrong: Number(body.questions ?? 0) - Number(body.correct ?? 0),
         difficulty: difficulty as "Fácil" | "Média" | "Difícil",
-        notes: `${isClass ? "[Aula] " : ""}${notes.trim()}`.trim() || null,
+        activityType: isClass ? "CLASS" : "QUESTIONS",
+        advanceCycle,
+        notes: notes.trim() || null,
       };
     }
     const queued = await queueOfflineSessionOperation({
@@ -228,7 +236,7 @@ export function ActiveStudyPanel({
       operationId: typeof body.operationId === "string" ? body.operationId : undefined,
     });
     if (type === "FINISH_SESSION") {
-      setCompletion({ percentage: queued.session.questions ? queued.session.correct / queued.session.questions * 100 : -1 });
+      setCompletion({ percentage: queued.session.questions ? queued.session.correct / queued.session.questions * 100 : -1, advanced: queued.session.advanceCycle !== false });
       setFinishOpen(false);
       setFocusMode(false);
       setActive(null);
@@ -248,7 +256,7 @@ export function ActiveStudyPanel({
     setSeconds(calculateElapsedSeconds(restored));
   }
 
-  async function act(body: Record<string, unknown>, options?: { openFinish?: boolean }) {
+  async function act(body: Record<string, unknown>, options?: { openFinish?: boolean; activity?: StudyActivity }) {
     const operationBody = { ...body, operationId: crypto.randomUUID() };
     try {
       setBusy(true);
@@ -259,9 +267,9 @@ export function ActiveStudyPanel({
         const elapsed = calculateElapsedSeconds(data.session);
         setSeconds(elapsed);
         await persistServerActiveSession({ userId, studyGuideId, session: data.session });
-        if (options?.openFinish) openFinish(data.session, elapsed);
+        if (options?.openFinish) openFinish(data.session, elapsed, options.activity);
       } else if (data.sessionId) {
-        setCompletion({ percentage: studyActivity === "CLASS" ? -1 : questions ? correct / questions * 100 : 0 });
+        setCompletion({ percentage: studyActivity === "CLASS" ? -1 : questions ? correct / questions * 100 : 0, advanced: advanceCycle });
         toast.success(data.idempotent ? "Sessão já havia sido finalizada." : "Sessão concluída; ciclo atualizado.");
         setFinishOpen(false);
         setFocusMode(false);
@@ -278,7 +286,7 @@ export function ActiveStudyPanel({
     } catch (error) {
       if (!navigator.onLine || error instanceof TypeError) {
         try {
-          await actOffline(operationBody, options?.openFinish);
+          await actOffline(operationBody, options?.openFinish, options?.activity);
         } catch (offlineError) {
           toast.error(offlineError instanceof Error ? offlineError.message : "Erro ao salvar offline.");
         }
@@ -310,7 +318,7 @@ export function ActiveStudyPanel({
     last: null,
   } : null;
 
-  if (!current) return <section className="rounded-3xl border border-amber-300 bg-amber-50 p-6 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">Configure posições de ciclo com disciplinas e assuntos ativos para registrar um estudo.</section>;
+  if (!current) return <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 to-white p-7 text-center dark:to-panelDark"><BookOpenCheck className="mx-auto text-primary" size={34} /><h2 className="mt-4 text-2xl font-black">Prepare seu primeiro estudo</h2><p className="mx-auto mt-2 max-w-lg text-sm text-slate-500">Adicione as disciplinas e escolha o ponto atual do ciclo. Depois disso, o StudyFlow sempre mostrará o próximo assunto automaticamente.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><Link href="/base?import=1" className="rounded-xl bg-primary px-5 py-3 text-sm font-black text-white">Importar ou adicionar disciplinas</Link><Link href="/ciclo" className="rounded-xl border border-primary/25 px-5 py-3 text-sm font-black text-primary">Configurar ciclo</Link></div></section>;
 
   const studying = Boolean(active);
   const percentage = questions ? correct / questions * 100 : 0;
@@ -342,7 +350,8 @@ export function ActiveStudyPanel({
 
           {!studying ? (
             <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <button disabled={busy} onClick={() => act({ command: "start", mode: "CYCLE", timerRunning: false }, { openFinish: true })} className="inline-flex min-h-14 items-center gap-2 rounded-2xl bg-primary px-7 py-4 text-base font-black text-white shadow-lg shadow-primary/25 disabled:opacity-60"><Check size={19} /> Registrar estudo</button>
+              <button disabled={busy} onClick={() => act({ command: "start", mode: "CYCLE", timerRunning: false }, { openFinish: true, activity: "QUESTIONS" })} className="inline-flex min-h-14 items-center gap-2 rounded-2xl bg-primary px-6 py-4 text-base font-black text-white shadow-lg shadow-primary/25 disabled:opacity-60"><ListChecks size={19} /> Registrar questões</button>
+              <button disabled={busy} onClick={() => act({ command: "start", mode: "CYCLE", timerRunning: false }, { openFinish: true, activity: "CLASS" })} className="inline-flex min-h-14 items-center gap-2 rounded-2xl border border-primary/30 bg-white px-6 py-4 text-base font-black text-primary disabled:opacity-60 dark:bg-slate-900"><BookOpenCheck size={19} /> Registrar aula</button>
               <button disabled={busy} onClick={() => act({ command: "start", mode: "CYCLE", timerRunning: true })} className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-primary/30 bg-white px-5 py-3 font-black text-primary disabled:opacity-60 dark:bg-slate-900"><Play size={17} fill="currentColor" /> Iniciar cronômetro</button>
             </div>
           ) : (
@@ -381,10 +390,11 @@ export function ActiveStudyPanel({
       {!validResults ? <p role="alert" className="mt-3 text-sm font-semibold text-rose-600 dark:text-rose-300">Informe as questões e confira se acertos + erros correspondem ao total.</p> : null}
 
       <div className="mt-4"><p className="text-sm font-bold">Dificuldade</p><div className="mt-2 grid grid-cols-3 gap-2">{([['Fácil', '🙂'], ['Média', '😐'], ['Difícil', '😓']] as const).map(([value, icon]) => <button key={value} type="button" aria-pressed={difficulty === value} onClick={() => setDifficulty(value)} className={`min-h-16 rounded-xl border px-2 text-sm font-bold ${difficulty === value ? "border-primary bg-primary/10 text-primary" : "border-slate-200 dark:border-slate-700"}`}><span aria-hidden className="block text-xl">{icon}</span>{value}</button>)}</div></div>
+      <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700"><input type="checkbox" checked={advanceCycle} onChange={(event) => setAdvanceCycle(event.target.checked)} className="mt-1 h-4 w-4 accent-primary" /><span><span className="block text-sm font-black">Avançar para a próxima posição</span><span className="mt-0.5 block text-xs text-slate-500">Desmarque se ainda vai continuar neste mesmo assunto.</span></span></label>
       <label className="mt-4 block text-sm font-bold">Observação <span className="font-normal text-slate-400">(opcional)</span><textarea aria-label="Observação" value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900" placeholder="O que revisar ou lembrar na próxima sessão?" /></label>
-      <button disabled={busy || !validMinutes || !validResults} onClick={() => act({ command: "finish", id: active.id, version: active.version, questions: isClass ? 0 : questions, correct: isClass ? 0 : correct, minutes: studyMinutes, notes: `${isClass ? "[Aula] " : ""}[${difficulty}] ${notes.trim()}`.trim() })} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-black text-white disabled:opacity-50"><Square size={17} /> {isClass ? "Salvar aula e avançar" : "Salvar e concluir"}</button>
+      <button disabled={busy || !validMinutes || !validResults} onClick={() => act({ command: "finish", id: active.id, version: active.version, questions: isClass ? 0 : questions, correct: isClass ? 0 : correct, minutes: studyMinutes, activityType: isClass ? "CLASS" : "QUESTIONS", advanceCycle, notes: `[${difficulty}] ${notes.trim()}`.trim() })} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-black text-white disabled:opacity-50"><Square size={17} /> {advanceCycle ? isClass ? "Salvar aula e avançar" : "Salvar e concluir" : "Salvar e continuar no assunto"}</button>
     </section></div> : null}
 
-    {completion ? <div role="status" className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-5"><section className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl dark:bg-panelDark"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary"><Check size={28} /></span><h3 className="mt-4 text-2xl font-black">{completion.percentage < 0 ? "Aula registrada" : "Estudo registrado"}</h3><p className="mt-2 text-sm text-slate-500">{completion.percentage < 0 ? "O tempo da aula foi somado e o ciclo avançou para a próxima posição." : `Aproveitamento de ${completion.percentage.toFixed(0)}%. Ciclo, metas e estatísticas foram atualizados.`}</p><button onClick={() => setCompletion(null)} className="mt-6 min-h-11 w-full rounded-xl bg-primary px-5 font-black text-white">Continuar</button></section></div> : null}
+    {completion ? <div role="status" className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-5"><section className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl dark:bg-panelDark"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary"><Check size={28} /></span><h3 className="mt-4 text-2xl font-black">{completion.percentage < 0 ? "Aula registrada" : "Estudo registrado"}</h3><p className="mt-2 text-sm text-slate-500">{completion.percentage < 0 ? completion.advanced ? "O tempo da aula foi somado e o ciclo avançou para a próxima posição." : "O tempo da aula foi somado e este assunto continuará como a próxima atividade." : `Aproveitamento de ${completion.percentage.toFixed(0)}%. ${completion.advanced ? "O ciclo avançou." : "Você continuará neste assunto."}`}</p><button onClick={() => setCompletion(null)} className="mt-6 min-h-11 w-full rounded-xl bg-primary px-5 font-black text-white">Continuar</button></section></div> : null}
   </>;
 }

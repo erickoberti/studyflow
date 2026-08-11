@@ -16,7 +16,7 @@ export default async function RegistrosPage() {
   ]);
   const safeSessions = sessions.map((item) => ({
     id: item.id, cycleEntryId: item.cycleEntryId, date: item.date.toISOString(), questions: item.questions, correct: item.correct, wrong: item.wrong,
-    percentage: item.percentage, estimatedMinutes: item.estimatedMinutes, notes: item.notes ?? "",
+    percentage: item.percentage, estimatedMinutes: item.estimatedMinutes, activityType: item.activityType, notes: item.notes ?? "",
     subjectName: item.subject?.name ?? item.cycleEntry.subject?.name ?? "Assunto legado indisponível",
     disciplineName: item.subject?.discipline.name ?? item.cycleEntry.discipline?.name ?? item.cycleEntry.subject?.discipline.name ?? "Disciplina",
   }));

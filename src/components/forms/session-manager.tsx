@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Search } from "lucide-react";
+import { BookOpenCheck, ListChecks, Pencil, Search } from "lucide-react";
 import { toast } from "sonner";
 
 type SessionItem = {
@@ -14,6 +14,7 @@ type SessionItem = {
   wrong: number;
   percentage: number;
   estimatedMinutes: number;
+  activityType: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
   notes: string;
   subjectName: string;
   disciplineName: string;
@@ -64,6 +65,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
     questions: 0,
     correct: 0,
     estimatedMinutes: 60,
+    activityType: "QUESTIONS" as SessionItem["activityType"],
     notes: "",
   });
 
@@ -96,6 +98,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
       questions: item.questions,
       correct: item.correct,
       estimatedMinutes: item.estimatedMinutes,
+      activityType: item.activityType,
       notes: item.notes,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -142,14 +145,16 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
       return;
     }
 
-    if (!form.cycleEntryId || form.questions <= 0 || form.correct > form.questions) {
+    if (!form.cycleEntryId || form.estimatedMinutes <= 0 || (form.activityType === "QUESTIONS" && (form.questions <= 0 || form.correct > form.questions))) {
       toast.error("Preencha os dados corretamente.");
       return;
     }
 
     try {
       setSaving(true);
-      const wrong = Math.max(0, form.questions - form.correct);
+      const questions = form.activityType === "QUESTIONS" ? form.questions : 0;
+      const correct = form.activityType === "QUESTIONS" ? form.correct : 0;
+      const wrong = Math.max(0, questions - correct);
       const response = await fetch("/api/study-sessions", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -157,9 +162,10 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
           id: form.id,
           cycleEntryId: form.cycleEntryId,
           date: form.date,
-          questions: form.questions,
-          correct: form.correct,
+          questions,
+          correct,
           wrong,
+          activityType: form.activityType,
           estimatedMinutes: form.estimatedMinutes,
           notes: form.notes,
         }),
@@ -173,7 +179,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
 
       const selectedEntry = cycleEntries.find((entry) => entry.id === form.cycleEntryId);
       const updatedDate = new Date(`${form.date}T12:00:00-03:00`).toISOString();
-      const percentage = form.questions > 0 ? (form.correct / form.questions) * 100 : 0;
+      const percentage = questions > 0 ? (correct / questions) * 100 : 0;
 
       setLocalSessions((current) =>
         [...current]
@@ -183,10 +189,11 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                   ...item,
                   cycleEntryId: form.cycleEntryId,
                   date: updatedDate,
-                  questions: form.questions,
-                  correct: form.correct,
+                  questions,
+                  correct,
                   wrong,
                   percentage,
+                  activityType: form.activityType,
                   estimatedMinutes: form.estimatedMinutes,
                   notes: form.notes,
                   subjectName: selectedEntry?.subjectName ?? item.subjectName,
@@ -220,6 +227,10 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
             <label className="text-xs font-semibold text-slate-500">
+              Atividade
+              <select value={form.activityType} onChange={(event) => setForm((value) => ({ ...value, activityType: event.target.value as SessionItem["activityType"], questions: event.target.value === "QUESTIONS" ? value.questions : 0, correct: event.target.value === "QUESTIONS" ? value.correct : 0 }))} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-primary/30 dark:bg-[#120e20]"><option value="QUESTIONS">Questões</option><option value="CLASS">Aula</option><option value="READING">Leitura</option><option value="REVIEW">Revisão</option></select>
+            </label>
+            <label className="text-xs font-semibold text-slate-500">
               Data
               <input
                 type="date"
@@ -242,7 +253,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                 ))}
               </select>
             </label>
-            <label className="text-xs font-semibold text-slate-500">
+            {form.activityType === "QUESTIONS" ? <label className="text-xs font-semibold text-slate-500">
               Questoes
               <input
                 type="number"
@@ -251,8 +262,8 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                 onChange={(event) => setForm((value) => ({ ...value, questions: Number(event.target.value) || 0 }))}
                 className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-primary/30 dark:bg-[#120e20]"
               />
-            </label>
-            <label className="text-xs font-semibold text-slate-500">
+            </label> : null}
+            {form.activityType === "QUESTIONS" ? <label className="text-xs font-semibold text-slate-500">
               Acertos
               <input
                 type="number"
@@ -262,7 +273,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                 onChange={(event) => setForm((value) => ({ ...value, correct: Number(event.target.value) || 0 }))}
                 className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-primary/30 dark:bg-[#120e20]"
               />
-            </label>
+            </label> : null}
           </div>
 
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[180px_1fr]">
@@ -343,6 +354,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                 <th className="py-2">Data</th>
                 <th className="py-2">Disciplina</th>
                 <th className="py-2">Assunto</th>
+                <th className="py-2">Atividade</th>
                 <th className="py-2 text-right">Questoes</th>
                 <th className="py-2 text-right">Acertos</th>
                 <th className="py-2 text-right">%</th>
@@ -355,9 +367,10 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                   <td className="py-2.5 text-slate-600 dark:text-slate-300">{formatPtBr(item.date)}</td>
                   <td className="py-2.5 font-medium">{item.disciplineName}</td>
                   <td className="py-2.5">{item.subjectName}</td>
-                  <td className="py-2.5 text-right">{item.questions}</td>
-                  <td className="py-2.5 text-right">{item.correct}</td>
-                  <td className="py-2.5 text-right">{item.percentage.toFixed(1)}%</td>
+                  <td className="py-2.5"><span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{item.activityType === "CLASS" ? <BookOpenCheck size={13} /> : <ListChecks size={13} />}{item.activityType === "CLASS" ? "Aula" : item.activityType === "READING" ? "Leitura" : item.activityType === "REVIEW" ? "Revisão" : "Questões"}</span></td>
+                  <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" ? item.questions : "—"}</td>
+                  <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" ? item.correct : "—"}</td>
+                  <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" ? `${item.percentage.toFixed(1)}%` : `${item.estimatedMinutes} min`}</td>
                   <td className="py-2.5 text-right">
                     <button
                       type="button"

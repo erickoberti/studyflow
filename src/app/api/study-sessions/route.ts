@@ -15,6 +15,7 @@ const standaloneCreateSchema = z.object({
   correct: z.number().int().min(0),
   wrong: z.number().int().min(0),
   estimatedMinutes: z.number().int().min(1),
+  activityType: z.enum(["QUESTIONS", "CLASS", "READING", "REVIEW"]).optional(),
   difficulty: z.enum(["Fácil", "Média", "Difícil"]),
   notes: z.string().max(4000).optional().nullable(),
 });
@@ -23,11 +24,12 @@ const legacySessionSchema = z.object({
   date: z.string(),
   cycleEntryId: z.string().min(1),
   subjectId: z.string().min(1).optional(),
-  questions: z.number().int().min(1),
+  questions: z.number().int().min(0),
   correct: z.number().int().min(0),
   wrong: z.number().int().min(0),
   notes: z.string().optional().nullable(),
   estimatedMinutes: z.number().int().min(0).optional(),
+  activityType: z.enum(["QUESTIONS", "CLASS", "READING", "REVIEW"]).optional(),
 });
 
 const updateSchema = legacySessionSchema.extend({
@@ -90,13 +92,13 @@ export async function POST(request: Request) {
   if (!legacy.success) return NextResponse.json({ message: "Preencha guia, disciplina, assunto, data, horário e resultados corretamente.", issues: parsed.error.flatten() }, { status: 400 });
   const guide = await getActiveStudyGuideForUser(session.user.id);
   if (!guide) return NextResponse.json({ message: "Selecione um guia ativo" }, { status: 409 });
-  const { date, cycleEntryId, subjectId, questions, correct, wrong, notes, estimatedMinutes } = legacy.data;
+  const { date, cycleEntryId, subjectId, questions, correct, wrong, notes, estimatedMinutes, activityType } = legacy.data;
   if (correct + wrong !== questions) return NextResponse.json({ message: "Questões deve ser acertos + erros" }, { status: 400 });
   const entry = await prisma.cycleEntry.findFirst({ where: { id: cycleEntryId, userId: session.user.id, studyGuideId: guide.id } });
   if (!entry || !subjectId) return NextResponse.json({ message: "O registro offline legado não possui posição ou assunto válido." }, { status: 400 });
   const subject = await prisma.subject.findFirst({ where: { id: subjectId, userId: session.user.id, studyGuideId: guide.id, disciplineId: entry.disciplineId ?? undefined, active: true } });
   if (!subject) return NextResponse.json({ message: "O assunto do registro offline não pertence ao guia ativo." }, { status: 400 });
-  const created = await prisma.studySession.create({ data: { userId: session.user.id, studyGuideId: guide.id, cycleEntryId: entry.id, subjectId: subject.id, cyclePosition: null, cycleRound: null, date: new Date(`${date}T12:00:00-03:00`), questions, correct, wrong, percentage: questions ? correct / questions * 100 : 0, estimatedMinutes: estimatedMinutes ?? Math.round(questions * 1.5), notes } });
+  const created = await prisma.studySession.create({ data: { userId: session.user.id, studyGuideId: guide.id, cycleEntryId: entry.id, subjectId: subject.id, cyclePosition: null, cycleRound: null, date: new Date(`${date}T12:00:00-03:00`), questions, correct, wrong, percentage: questions ? correct / questions * 100 : 0, estimatedMinutes: estimatedMinutes ?? Math.max(1, Math.round(questions * 1.5)), activityType: activityType ?? "QUESTIONS", notes } });
   return NextResponse.json(created, { status: 201 });
 }
 
@@ -116,7 +118,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ message: "Dados invalidos" }, { status: 400 });
   }
 
-  const { id, date, cycleEntryId, questions, correct, wrong, notes, estimatedMinutes } = parsed.data;
+  const { id, date, cycleEntryId, questions, correct, wrong, notes, estimatedMinutes, activityType } = parsed.data;
 
   if (correct + wrong !== questions) {
     return NextResponse.json({ message: "Questoes deve ser acertos + erros" }, { status: 400 });
@@ -152,6 +154,7 @@ export async function PUT(request: Request) {
       wrong,
       percentage: questions > 0 ? (correct / questions) * 100 : 0,
       estimatedMinutes: estimatedMinutes ?? Math.round(questions * 1.5),
+      activityType: activityType ?? existing.activityType,
       notes,
     },
   });

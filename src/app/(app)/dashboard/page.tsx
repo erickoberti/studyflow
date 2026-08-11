@@ -92,12 +92,7 @@ export default async function DashboardPage() {
             Bem-vindo de volta, {user.name?.split(" ")[0] ?? "Aluno"}. Sequência atual de {streak} dias.
           </p>
         </div>
-        <Link
-          href="/registro"
-          className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-soft"
-        >
-          <Zap size={16} /> Iniciar Sessão
-        </Link>
+        <div className="flex flex-wrap gap-2"><Link href="/registro?tipo=questoes" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-soft"><Zap size={16} /> Registrar questões</Link><Link href="/registro?tipo=aula" className="inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-white px-5 py-2.5 text-sm font-bold text-primary dark:bg-panelDark"><Library size={16} /> Registrar aula</Link></div>
       </section>
 
       <DailyGoalsCard data={dailyGoals} compact />
@@ -233,7 +228,7 @@ export default async function DashboardPage() {
         <aside className="space-y-6">
           <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Próximas Tarefas</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Últimos estudos</h3>
               <Link href="/registros" className="text-xs font-bold text-primary hover:underline">Ver todas</Link>
             </div>
             <div className="space-y-3">
@@ -245,7 +240,7 @@ export default async function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white">{session.subject?.name ?? session.cycleEntry.subject?.name ?? "Assunto"}</p>
-                    <p className="text-xs text-slate-500">{formatPtBrDay(session.date)} • {session.questions} questões</p>
+                    <p className="text-xs text-slate-500">{formatPtBrDay(session.date)} • {session.activityType === "CLASS" ? `Aula · ${session.estimatedMinutes} min` : session.activityType === "READING" ? `Leitura · ${session.estimatedMinutes} min` : session.activityType === "REVIEW" ? `Revisão · ${session.estimatedMinutes} min` : `${session.questions} questões`}</p>
                   </div>
                 </div>
               )) : <p className="rounded-xl border border-dashed p-4 text-sm text-slate-500">Nenhuma sessão concluída neste guia.</p>}

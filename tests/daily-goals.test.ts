@@ -41,6 +41,12 @@ test("aula sem questões soma tempo, conta sessão e conclui a posição do cicl
   assert.deepEqual({ minutes: source.minutes, questions: source.questions, sessions: source.sessions, cyclePosition: source.cyclePosition }, { minutes: 45, questions: 0, sessions: 1, cyclePosition: 1 });
 });
 
+test("meta principal aceita tempo, questões ou sessões como caminhos alternativos", () => {
+  const source = emptyDaySource();
+  Object.assign(source, { minutes: 120, questions: 0, sessions: 1, reviews: 1, cyclePosition: 1 });
+  assert.equal(summary("2026-08-03", source).targetMet, true);
+});
+
 test("classifica mínimo, meta principal e dia excelente sem punir progresso parcial", () => {
   const minimum = emptyDaySource(); Object.assign(minimum, { minutes: 60, questions: 20, sessions: 1 });
   assert.equal(summary("2026-08-03", minimum).status, "MINIMUM");
@@ -93,7 +99,7 @@ test("meta de primeiro estudo usa o início real e o horário local", () => {
 test("sábado e domingo aceitam metas diferentes", () => {
   const saturday: GoalTargets = { minimum: { ...DATAPREV_TARGETS.minimum, minutes: 30 }, target: { ...DATAPREV_TARGETS.target, minutes: 60 }, excellent: DATAPREV_TARGETS.excellent };
   const sunday: GoalTargets = { minimum: { ...DATAPREV_TARGETS.minimum, minutes: 15 }, target: { ...DATAPREV_TARGETS.target, minutes: 30 }, excellent: DATAPREV_TARGETS.excellent };
-  const source = emptyDaySource(); Object.assign(source, { minutes: 30, questions: 40, sessions: 2, reviews: 1, cyclePosition: 1 });
+  const source = emptyDaySource(); Object.assign(source, { minutes: 30, questions: 0, sessions: 0, reviews: 1, cyclePosition: 1 });
   assert.equal(summary("2026-08-01", structuredClone(source), saturday).targetMet, false);
   assert.equal(summary("2026-08-02", structuredClone(source), sunday).targetMet, true);
 });

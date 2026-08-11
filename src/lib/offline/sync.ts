@@ -99,6 +99,7 @@ async function syncSingleSession(session: ReturnType<typeof getOfflineSnapshot>[
     correct: session.correct,
     wrong: session.wrong,
     estimatedMinutes: session.estimatedMinutes,
+    activityType: session.activityType ?? "QUESTIONS",
     notes: session.notes,
   };
 

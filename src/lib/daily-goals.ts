@@ -109,7 +109,10 @@ export function parseTargets(value: unknown, fallback: GoalTargets): GoalTargets
 function reached(tier: GoalTier, enabled: DailyGoalMetric[], actual: GoalTier, firstStudyMet: boolean) {
   const applicable = enabled.filter((metric) => tier[metric] > 0);
   if (!applicable.length) return false;
-  return applicable.every((metric) => metric === "firstStudy" ? firstStudyMet : actual[metric] >= tier[metric]);
+  const flexible = applicable.filter((metric) => metric === "minutes" || metric === "questions" || metric === "sessions");
+  const required = applicable.filter((metric) => !flexible.some((item) => item === metric));
+  const flexibleMet = !flexible.length || flexible.some((metric) => actual[metric] >= tier[metric]);
+  return flexibleMet && required.every((metric) => metric === "firstStudy" ? firstStudyMet : actual[metric] >= tier[metric]);
 }
 
 export function buildDaySummary(input: {
@@ -142,16 +145,20 @@ export function buildDaySummary(input: {
   const targetMet = automaticTarget && minimumMet && input.source.manualTargetDone >= input.source.manualTargetTotal;
   const excellentMet = automaticExcellent && targetMet;
   const mainItems = input.enabledMetrics.filter((metric) => input.targets.target[metric] > 0);
-  const ratios = mainItems.map((metric) => {
+  const flexibleItems = mainItems.filter((metric) => metric === "minutes" || metric === "questions" || metric === "sessions");
+  const requiredItems = mainItems.filter((metric) => !flexibleItems.some((item) => item === metric));
+  const ratio = (metric: DailyGoalMetric) => {
     if (metric === "firstStudy") return firstStudyMet ? 1 : 0;
     return Math.min(1, actual[metric] / input.targets.target[metric]);
-  });
+  };
+  const ratios = [...(flexibleItems.length ? [Math.max(...flexibleItems.map(ratio))] : []), ...requiredItems.map(ratio)];
   if (input.source.manualTargetTotal) ratios.push(Math.min(1, input.source.manualTargetDone / input.source.manualTargetTotal));
   const percentage = ratios.length ? Math.round(ratios.reduce((sum, value) => sum + value, 0) / ratios.length * 100) : 0;
   const hasActivity = actual.minutes > 0 || actual.questions > 0 || actual.sessions > 0 || actual.reviews > 0 || input.source.mockExams > 0 || input.source.manualMinimumDone + input.source.manualTargetDone > 0;
   const status: DayStatus = plannedRest ? "REST" : excellentMet ? "EXCELLENT" : targetMet ? "TARGET" : minimumMet ? "MINIMUM" : input.isToday ? "IN_PROGRESS" : hasActivity ? "IN_PROGRESS" : "NO_ACTIVITY";
 
-  const missing = mainItems.find((metric) => metric === "firstStudy" ? !firstStudyMet : actual[metric] < input.targets.target[metric]);
+  const flexibleMet = flexibleItems.some((metric) => actual[metric] >= input.targets.target[metric]);
+  const missing = requiredItems.find((metric) => metric === "firstStudy" ? !firstStudyMet : actual[metric] < input.targets.target[metric]);
   const labels: Record<DailyGoalMetric, string> = {
     minutes: `Estude mais ${Math.max(0, input.targets.target.minutes - actual.minutes)} min para concluir sua meta.`,
     questions: `Resolva mais ${Math.max(0, input.targets.target.questions - actual.questions)} questões.`,
@@ -160,7 +167,8 @@ export function buildDaySummary(input: {
     cyclePosition: "Faça mais uma sessão do ciclo para concluir sua meta.",
     firstStudy: input.firstStudyDeadline ? `Inicie o primeiro estudo até ${input.firstStudyDeadline}.` : "Inicie seu primeiro estudo.",
   };
-  const nextAction = plannedRest ? "Descanso planejado. O ciclo continua no próximo dia ativo." : excellentMet ? "Dia excelente. Pode encerrar sem culpa." : targetMet ? "Meta diária concluída." : missing ? labels[missing] : input.source.manualTargetDone < input.source.manualTargetTotal ? "Conclua sua meta manual de hoje." : "Você avançou. Amanhã o ciclo continua.";
+  const flexibleAction = flexibleItems.length && !flexibleMet ? flexibleItems.map((metric) => metric === "minutes" ? `${Math.max(0, input.targets.target.minutes - actual.minutes)} min` : metric === "questions" ? `${Math.max(0, input.targets.target.questions - actual.questions)} questões` : `${Math.max(0, input.targets.target.sessions - actual.sessions)} sessão(ões)`).join(" ou ") : null;
+  const nextAction = plannedRest ? "Descanso planejado. O ciclo continua no próximo dia ativo." : excellentMet ? "Dia excelente. Pode encerrar sem culpa." : targetMet ? "Meta diária concluída." : flexibleAction ? `Complete ${flexibleAction}.` : missing ? labels[missing] : input.source.manualTargetDone < input.source.manualTargetTotal ? "Conclua sua meta manual de hoje." : "Você avançou. Amanhã o ciclo continua.";
   return { ...input.source, dayKey: input.dayKey, weekday, plannedRest, status, percentage, minimumMet, targetMet, excellentMet, nextAction };
 }
 

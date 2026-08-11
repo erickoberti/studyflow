@@ -33,6 +33,7 @@ export function OfflineSessionManager() {
     questions: 0,
     correct: 0,
     estimatedMinutes: 60,
+    activityType: "QUESTIONS" as "QUESTIONS" | "CLASS" | "READING" | "REVIEW",
     notes: "",
   });
 
@@ -82,13 +83,14 @@ export function OfflineSessionManager() {
       questions: session.questions,
       correct: session.correct,
       estimatedMinutes: session.estimatedMinutes,
+      activityType: session.activityType ?? "QUESTIONS",
       notes: session.notes ?? "",
     });
   }
 
   function save() {
     if (!editingId) return;
-    if (!form.cycleEntryId || form.questions <= 0 || form.correct > form.questions) {
+    if (!form.cycleEntryId || form.estimatedMinutes <= 0 || (form.activityType === "QUESTIONS" && (form.questions <= 0 || form.correct > form.questions))) {
       toast.error("Preencha os dados corretamente.");
       return;
     }
@@ -96,10 +98,11 @@ export function OfflineSessionManager() {
     updateOfflineSession(editingId, {
       cycleEntryId: form.cycleEntryId,
       date: form.date,
-      questions: form.questions,
-      correct: form.correct,
-      wrong: Math.max(0, form.questions - form.correct),
+      questions: form.activityType === "QUESTIONS" ? form.questions : 0,
+      correct: form.activityType === "QUESTIONS" ? form.correct : 0,
+      wrong: form.activityType === "QUESTIONS" ? Math.max(0, form.questions - form.correct) : 0,
       estimatedMinutes: form.estimatedMinutes,
+      activityType: form.activityType,
       notes: form.notes.trim() || null,
     });
 
@@ -121,7 +124,8 @@ export function OfflineSessionManager() {
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
           <h2 className="text-lg font-black">Editar registro local</h2>
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="text-sm font-semibold">
+            <label className="text-sm font-semibold">Atividade<select value={form.activityType} onChange={(event) => setForm((current) => ({ ...current, activityType: event.target.value as typeof current.activityType }))} className="mt-1.5 h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"><option value="QUESTIONS">Questões</option><option value="CLASS">Aula</option><option value="READING">Leitura</option><option value="REVIEW">Revisão</option></select></label>
+            {form.activityType === "QUESTIONS" ? <label className="text-sm font-semibold">
               Data
               <input
                 type="date"
@@ -129,8 +133,8 @@ export function OfflineSessionManager() {
                 onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
                 className="mt-1.5 h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
               />
-            </label>
-            <label className="text-sm font-semibold">
+            </label> : null}
+            {form.activityType === "QUESTIONS" ? <label className="text-sm font-semibold">
               Assunto
               <select
                 value={form.cycleEntryId}
@@ -143,7 +147,7 @@ export function OfflineSessionManager() {
                   </option>
                 ))}
               </select>
-            </label>
+            </label> : null}
             <label className="text-sm font-semibold">
               Questoes
               <input
@@ -211,6 +215,7 @@ export function OfflineSessionManager() {
                 <th className="py-2">Data</th>
                 <th className="py-2">Disciplina</th>
                 <th className="py-2">Assunto</th>
+                <th className="py-2">Atividade</th>
                 <th className="py-2 text-right">Questoes</th>
                 <th className="py-2 text-right">% </th>
                 <th className="py-2">Status</th>
@@ -225,8 +230,9 @@ export function OfflineSessionManager() {
                     <td className="py-3">{formatPtBr(session.date)}</td>
                     <td className="py-3 font-medium">{entry?.subject.discipline.name ?? "-"}</td>
                     <td className="py-3">{entry?.subject.name ?? "-"}</td>
-                    <td className="py-3 text-right">{session.questions}</td>
-                    <td className="py-3 text-right">{session.percentage.toFixed(1)}%</td>
+                    <td className="py-3 font-semibold text-primary">{session.activityType === "CLASS" ? "Aula" : session.activityType === "READING" ? "Leitura" : session.activityType === "REVIEW" ? "Revisão" : "Questões"}</td>
+                    <td className="py-3 text-right">{session.activityType && session.activityType !== "QUESTIONS" ? "—" : session.questions}</td>
+                    <td className="py-3 text-right">{session.activityType && session.activityType !== "QUESTIONS" ? `${session.estimatedMinutes} min` : `${session.percentage.toFixed(1)}%`}</td>
                     <td className="py-3">
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                         {session.syncStatus}

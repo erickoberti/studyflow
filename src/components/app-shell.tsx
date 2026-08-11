@@ -4,22 +4,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import {
-  BarChart3,
   Bell,
-  CalendarClock,
   ChevronDown,
   BookOpen,
   BookOpenCheck,
-  FolderKanban,
-  History,
   LayoutDashboard,
   ListChecks,
   Menu,
-  ClipboardCheck,
   LogOut,
   RefreshCcw,
   Settings,
-  Target,
   UserCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -30,29 +24,21 @@ import { selectStudyGuideAction } from "@/app/actions";
 
 const links = [
   { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
-  { href: "/registro", label: "Registrar Estudo", icon: BookOpenCheck },
-  { href: "/registros", label: "Sessões", icon: ListChecks },
+  { href: "/registro", label: "Estudar", icon: BookOpenCheck },
   { href: "/ciclo", label: "Ciclo", icon: RefreshCcw },
   { href: "/base", label: "Disciplinas", icon: BookOpen },
-  { href: "/guias", label: "Guias", icon: FolderKanban },
-  { href: "/estatisticas", label: "Estatísticas", icon: BarChart3 },
-  { href: "/revisao", label: "Revisão", icon: History },
-  { href: "/simulados", label: "Simulados", icon: ClipboardCheck },
-  { href: "/planejamento", label: "Planejamento", icon: CalendarClock },
-  { href: "/metas", label: "Metas", icon: Target },
-  { href: "/configuracoes", label: "Configurações", icon: Settings },
+  { href: "/registros", label: "Histórico", icon: ListChecks },
+  { href: "/mais", label: "Mais recursos", icon: Menu },
 ];
 
 const topNav = [
-  { href: "/dashboard", label: "Painel" },
-  { href: "/metas", label: "Metas" },
+  { href: "/dashboard", label: "Hoje" },
+  { href: "/registro", label: "Estudar" },
   { href: "/ciclo", label: "Ciclo" },
-  { href: "/base", label: "Matérias" },
-  { href: "/estatisticas", label: "Relatórios" },
-  { href: "/simulados", label: "Simulados" },
+  { href: "/registros", label: "Histórico" },
 ];
 
-const mobileLinks = [links[0], links[1], links[3], links[5], links[8], { href: "/mais", label: "Mais", icon: Menu }];
+const mobileLinks = [links[0], links[1], links[2], links[4], links[5]];
 
 function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -238,7 +224,7 @@ export function AppShell({
         </div>
       </div>
 
-      <nav aria-label="Navegação móvel" className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-6 border-t border-slate-200 bg-white/95 p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden dark:border-slate-800 dark:bg-backgroundDark/95">
+      <nav aria-label="Navegação móvel" className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5 border-t border-slate-200 bg-white/95 p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden dark:border-slate-800 dark:bg-backgroundDark/95">
         {mobileLinks.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(pathname, item.href);

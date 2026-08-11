@@ -1,4 +1,4 @@
-import { ActiveStudySessionStatus, Prisma, StudySessionMode } from "@prisma/client";
+import { ActiveStudySessionStatus, Prisma, StudyActivityType, StudySessionMode } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { advanceWeightedState, selectWeightedSubject, type CycleEngineSubject } from "@/lib/cycle-engine";
 import { calculateElapsedSeconds } from "@/lib/study-timer";
@@ -122,23 +122,25 @@ export class CycleService {
     if (!result.count) throw new CycleConflictError("Sessão desatualizada ou já encerrada.", "SESSION_VERSION_CHANGED"); return { cancelled: true };
   }
 
-  async finish(userId: string, studyGuideId: string, id: string, version: number, input: { questions: number; correct: number; minutes?: number; notes?: string }) {
+  async finish(userId: string, studyGuideId: string, id: string, version: number, input: { questions: number; correct: number; minutes?: number; notes?: string; activityType?: StudyActivityType; advanceCycle?: boolean }) {
     if (input.questions < 0 || input.correct > input.questions || input.correct < 0) throw new Error("Informe valores válidos para a atividade estudada.");
     return prisma.$transaction(async (tx) => {
       const active = await tx.activeStudySession.findFirst({ where: { id, userId, studyGuideId } , include: { completedSession: true } });
       if (!active) throw new Error("Sessão não encontrada.");
       if (active.completedSession) {
-        const sameResult = active.completedSession.questions === input.questions && active.completedSession.correct === input.correct && (input.minutes === undefined || active.completedSession.estimatedMinutes === input.minutes) && (input.notes === undefined || active.completedSession.notes === input.notes);
+        const sameResult = active.completedSession.questions === input.questions && active.completedSession.correct === input.correct && (input.minutes === undefined || active.completedSession.estimatedMinutes === input.minutes) && (input.notes === undefined || active.completedSession.notes === input.notes) && (input.activityType === undefined || active.completedSession.activityType === input.activityType);
         if (!sameResult) throw new CycleConflictError("Esta sessão já foi finalizada em outro dispositivo com dados diferentes.", "SESSION_FINISHED_WITH_DIFFERENT_DATA");
         return { sessionId: active.completedSession.id, idempotent: true };
       }
       if (!([ActiveStudySessionStatus.ACTIVE, ActiveStudySessionStatus.PAUSED] as ActiveStudySessionStatus[]).includes(active.status) || active.version !== version) throw new CycleConflictError("A sessão já foi processada ou possui uma versão mais recente.", "SESSION_VERSION_CHANGED");
       const locked = await tx.activeStudySession.updateMany({ where: { id, version, status: active.status }, data: { status: ActiveStudySessionStatus.FINISHING, version: { increment: 1 } } }); if (!locked.count) throw new CycleConflictError("Outra finalização venceu a concorrência.", "CONCURRENT_FINISH");
       const wrong = input.questions - input.correct; const minutes = input.minutes ?? Math.max(1, Math.round(elapsedSeconds(active) / 60));
-      const created = await tx.studySession.create({ data: { userId, studyGuideId, cycleEntryId: active.cycleEntryId!, subjectId: active.subjectId, cyclePosition: active.mode === StudySessionMode.CYCLE ? active.cycleEntryId ? (await tx.cycleEntry.findUnique({ where: { id: active.cycleEntryId }, select: { orderIndex: true } }))?.orderIndex : null : null, date: new Date(), questions: input.questions, correct: input.correct, wrong, percentage: input.questions ? (input.correct / input.questions) * 100 : 0, estimatedMinutes: minutes, notes: input.notes, activeStudySessionId: active.id } });
-      await this.updateProgress(tx, userId, studyGuideId, active.subjectId, input.questions, input.correct, wrong, active.mode === StudySessionMode.CYCLE);
+      const shouldAdvance = active.mode === StudySessionMode.CYCLE && input.advanceCycle !== false;
+      const cyclePosition = shouldAdvance && active.cycleEntryId ? (await tx.cycleEntry.findUnique({ where: { id: active.cycleEntryId }, select: { orderIndex: true } }))?.orderIndex : null;
+      const created = await tx.studySession.create({ data: { userId, studyGuideId, cycleEntryId: active.cycleEntryId!, subjectId: active.subjectId, cyclePosition, date: new Date(), questions: input.questions, correct: input.correct, wrong, percentage: input.questions ? (input.correct / input.questions) * 100 : 0, estimatedMinutes: minutes, activityType: input.activityType ?? StudyActivityType.QUESTIONS, notes: input.notes, activeStudySessionId: active.id } });
+      await this.updateProgress(tx, userId, studyGuideId, active.subjectId, input.questions, input.correct, wrong, shouldAdvance);
       await tx.reviewSchedule.createMany({ data: [1, 7, 30].map((intervalDays) => ({ userId, studyGuideId, subjectId: active.subjectId, sourceSessionId: created.id, intervalDays, dueAt: new Date(Date.now() + intervalDays * 86_400_000) })) });
-      if (active.mode === StudySessionMode.CYCLE) await this.advanceCursor(tx, userId, studyGuideId, active.cycleEntryId!);
+      if (shouldAdvance) await this.advanceCursor(tx, userId, studyGuideId, active.cycleEntryId!);
       await tx.activeStudySession.update({ where: { id }, data: { status: ActiveStudySessionStatus.FINISHED, completedAt: new Date(), accumulatedSeconds: Math.max(active.accumulatedSeconds, minutes * 60), pausedAt: null, version: { increment: 1 } } });
       return { sessionId: created.id, idempotent: false };
     });

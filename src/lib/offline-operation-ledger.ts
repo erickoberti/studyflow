@@ -16,11 +16,11 @@ export function hashOfflineOperation(value: unknown) {
 
 export function canonicalSessionOperationPayload(input: {
   type: string; mode?: string; disciplineId?: string; subjectId?: string; sessionId?: string | null;
-  version?: number | null; timerRunning?: boolean; questions?: number; correct?: number; minutes?: number; notes?: string; date?: string;
+  version?: number | null; timerRunning?: boolean; questions?: number; correct?: number; minutes?: number; activityType?: string; advanceCycle?: boolean; notes?: string; date?: string;
 }) {
   if (input.type === "START_SESSION") return input.mode === "AVULSO" ? { mode: input.mode, disciplineId: input.disciplineId, subjectId: input.subjectId, timerRunning: input.timerRunning ?? true } : { mode: "CYCLE", timerRunning: input.timerRunning ?? true };
   if (input.type === "CREATE_STANDALONE_SESSION") return { mode: "AVULSO", disciplineId: input.disciplineId, subjectId: input.subjectId, questions: input.questions, correct: input.correct, minutes: input.minutes, notes: input.notes, date: input.date };
-  return { sessionId: input.sessionId, version: input.version, ...(input.type === "FINISH_SESSION" ? { questions: input.questions, correct: input.correct, minutes: input.minutes, notes: input.notes } : {}) };
+  return { sessionId: input.sessionId, version: input.version, ...(input.type === "FINISH_SESSION" ? { questions: input.questions, correct: input.correct, minutes: input.minutes, activityType: input.activityType ?? "QUESTIONS", advanceCycle: input.advanceCycle ?? true, notes: input.notes } : {}) };
 }
 
 export type OperationClaim =

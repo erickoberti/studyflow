@@ -22,6 +22,7 @@ export type OfflineSessionOperationStatus =
 
 export type OfflineStudyMode = "CYCLE" | "AVULSO";
 export type OfflineDifficulty = "Fácil" | "Média" | "Difícil" | null;
+export type OfflineActivityType = "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
 
 export type OfflineSessionPayload = {
   localSessionId: string;
@@ -40,6 +41,8 @@ export type OfflineSessionPayload = {
   questions: number;
   correct: number;
   wrong: number;
+  activityType?: OfflineActivityType;
+  advanceCycle?: boolean;
   difficulty: OfflineDifficulty;
   notes: string | null;
   date: string;

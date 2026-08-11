@@ -6,7 +6,7 @@ import { CycleConflictError, cycleService } from "@/lib/cycle-service";
 import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 import { canonicalSessionOperationPayload, claimOfflineOperation, completeOfflineOperation, failOfflineOperation } from "@/lib/offline-operation-ledger";
 
-const commandSchema = z.object({ command: z.enum(["start", "pause", "resume", "cancel", "finish"]), operationId: z.string().min(1).optional(), id: z.string().optional(), version: z.number().int().optional(), mode: z.enum(["CYCLE", "AVULSO"]).optional(), disciplineId: z.string().optional(), subjectId: z.string().optional(), timerRunning: z.boolean().optional(), questions: z.number().int().min(0).optional(), correct: z.number().int().min(0).optional(), minutes: z.number().int().min(1).optional(), notes: z.string().max(4000).optional() });
+const commandSchema = z.object({ command: z.enum(["start", "pause", "resume", "cancel", "finish"]), operationId: z.string().min(1).optional(), id: z.string().optional(), version: z.number().int().optional(), mode: z.enum(["CYCLE", "AVULSO"]).optional(), disciplineId: z.string().optional(), subjectId: z.string().optional(), timerRunning: z.boolean().optional(), questions: z.number().int().min(0).optional(), correct: z.number().int().min(0).optional(), minutes: z.number().int().min(1).optional(), activityType: z.enum(["QUESTIONS", "CLASS", "READING", "REVIEW"]).optional(), advanceCycle: z.boolean().optional(), notes: z.string().max(4000).optional() });
 
 async function context() { const session = await getServerSession(authOptions); if (!session?.user?.id) return null; const guide = await getActiveStudyGuideForUser(session.user.id); return guide ? { userId: session.user.id, guideId: guide.id } : null; }
 
@@ -19,7 +19,7 @@ async function execute(userId: string, guideId: string, body: z.infer<typeof com
   if (body.command === "resume") return { session: await cycleService.resume(userId, guideId, body.id, body.version) };
   if (body.command === "cancel") return cycleService.cancel(userId, guideId, body.id, body.version);
   if (body.questions === undefined || body.correct === undefined) throw new Error("Informe os dados da atividade estudada.");
-  return cycleService.finish(userId, guideId, body.id, body.version, { questions: body.questions, correct: body.correct, minutes: body.minutes, notes: body.notes });
+  return cycleService.finish(userId, guideId, body.id, body.version, { questions: body.questions, correct: body.correct, minutes: body.minutes, activityType: body.activityType, advanceCycle: body.advanceCycle, notes: body.notes });
 }
 
 export async function GET() { const value = await context(); if (!value) return NextResponse.json({ message: "Selecione um guia ativo." }, { status: 409 }); return NextResponse.json({ session: await cycleService.getActive(value.userId, value.guideId), suggestion: await cycleService.getCurrent(value.userId, value.guideId) }); }
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : "Não foi possível concluir a operação." }, { status: error instanceof CycleConflictError ? 409 : 400 }); }
   }
   const type = operationType(body.command);
-  const canonicalPayload = canonicalSessionOperationPayload({ type, mode: body.mode ?? "CYCLE", disciplineId: body.disciplineId, subjectId: body.subjectId, timerRunning: body.timerRunning, sessionId: body.id, version: body.version, questions: body.questions, correct: body.correct, minutes: body.minutes, notes: body.notes });
+  const canonicalPayload = canonicalSessionOperationPayload({ type, mode: body.mode ?? "CYCLE", disciplineId: body.disciplineId, subjectId: body.subjectId, timerRunning: body.timerRunning, sessionId: body.id, version: body.version, questions: body.questions, correct: body.correct, minutes: body.minutes, activityType: body.activityType, advanceCycle: body.advanceCycle, notes: body.notes });
   const claim = await claimOfflineOperation({ operationId: body.operationId, userId: value.userId, studyGuideId: value.guideId, type, payload: canonicalPayload });
   if (claim.kind === "REPLAY") return NextResponse.json({ ...(claim.response as object), idempotentReplay: true });
   if (claim.kind === "PENDING") return NextResponse.json({ operationId: body.operationId, pending: true }, { status: 202 });

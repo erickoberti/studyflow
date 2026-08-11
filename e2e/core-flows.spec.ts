@@ -41,6 +41,11 @@ test("login offline retoma guia, ciclo e registro local", async ({ page }) => {
   await expect(page).toHaveURL(/\/offline\/ciclo/);
   await page.getByRole("link", { name: "Registrar" }).click();
   await expect(page).toHaveURL(/\/offline\/registro/);
+  await page.getByRole("button", { name: "Aula", exact: true }).click();
+  await expect(page.getByLabel("Acertos")).toHaveCount(0);
+  await expect(page.getByLabel("Erros")).toHaveCount(0);
+  await expect(page.getByText("Tempo (min)")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Salvar aula localmente" })).toBeEnabled();
   await expectNoHorizontalOverflow(page);
 });
 

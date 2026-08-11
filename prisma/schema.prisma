@@ -7,6 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum StudyActivityType {
+  QUESTIONS
+  CLASS
+  READING
+  REVIEW
+}
+
 model User {
   id                  String                 @id @default(cuid())
   name                String
@@ -172,6 +179,7 @@ model StudySession {
   wrong                Int
   percentage           Float
   estimatedMinutes     Int                 @default(0)
+  activityType        StudyActivityType   @default(QUESTIONS)
   notes                String?
   activeStudySessionId String?             @unique
   createdAt            DateTime            @default(now())

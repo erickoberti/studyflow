@@ -42,10 +42,18 @@ test("persiste subjectId, guia, data, duração e resultados sem posição de ci
   await createStandaloneStudySession(fake.tx, base, new Date("2026-07-27T12:00:00Z"));
   assert.deepEqual(fake.created, {
     userId: "user-1", studyGuideId: "guide-1", cycleEntryId: "compat-entry", subjectId: "subject-1", cyclePosition: null, cycleRound: null,
-    date: new Date("2026-07-20T13:30:00.000Z"), questions: 10, correct: 8, wrong: 2, percentage: 80, estimatedMinutes: 20, notes: "[Média] Revisar joins",
+    date: new Date("2026-07-20T13:30:00.000Z"), questions: 10, correct: 8, wrong: 2, percentage: 80, estimatedMinutes: 20, activityType: "QUESTIONS", notes: "[Média] Revisar joins",
   });
   assert.equal(fake.calls.some((call) => call.resource === "studyGuideCycleState"), false);
   assert.match(JSON.stringify(fake.calls.find((call) => call.resource === "subjectProgress")), /2026-07-20T13:30:00.000Z/);
+});
+
+test("aula avulsa aceita zero questões e preserva o tempo estudado", async () => {
+  const fake = fakeTransaction();
+  await createStandaloneStudySession(fake.tx, { ...base, correct: 0, wrong: 0, activityType: "CLASS", estimatedMinutes: 45 }, new Date("2026-07-27T12:00:00Z"));
+  assert.match(JSON.stringify(fake.created), /"activityType":"CLASS"/);
+  assert.equal((fake.created as { questions: number }).questions, 0);
+  assert.equal((fake.created as { estimatedMinutes: number }).estimatedMinutes, 45);
 });
 
 test("assunto inválido para a disciplina é rejeitado antes da persistência", async () => {

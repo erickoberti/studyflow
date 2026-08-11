@@ -102,6 +102,7 @@ export async function GET() {
       wrong: session.wrong,
       percentage: session.percentage,
       estimatedMinutes: session.estimatedMinutes,
+      activityType: session.activityType,
       notes: session.notes,
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
