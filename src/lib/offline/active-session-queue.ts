@@ -245,13 +245,14 @@ export async function queueOfflineSessionOperation(input: {
 
 export async function startOfflineActiveSession(input: {
   userId: string; studyGuideId: string; mode: OfflineStudyMode; disciplineId: string; subjectId: string;
-  cycleEntryId: string | null; disciplineName: string; subjectName: string; startedAt?: string; operationId?: string;
+  cycleEntryId: string | null; disciplineName: string; subjectName: string; startedAt?: string; operationId?: string; timerRunning?: boolean;
 }, storage: OfflineSessionQueueStorage = offlineSessionQueue) {
   if (!input.disciplineId || !input.subjectId) throw new Error("Disciplina e assunto são obrigatórios.");
   const operationId = input.operationId ?? uuid(); const now = input.startedAt ?? new Date().toISOString();
+  const timerRunning = input.timerRunning ?? true;
   const session: OfflineActiveStudySession = {
     ...input, startedAt: now, localSessionId: `offline-${operationId}`, serverSessionId: null, serverVersion: null,
-    status: "ACTIVE", pausedAt: now, finishedAt: null, accumulatedSeconds: 0, questions: 0,
+    status: timerRunning ? "ACTIVE" : "PAUSED", pausedAt: timerRunning ? now : null, finishedAt: null, accumulatedSeconds: 0, questions: 0,
     correct: 0, wrong: 0, difficulty: null, notes: null, date: now, updatedAt: now, pendingSync: true,
   };
   const operation = createOfflineSessionOperation({ operationId, userId: input.userId, studyGuideId: input.studyGuideId, type: "START_SESSION", payload: session, createdAt: now });

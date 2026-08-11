@@ -1,6 +1,7 @@
 import { ActiveStudySessionStatus, Prisma, StudySessionMode } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { advanceWeightedState, selectWeightedSubject, type CycleEngineSubject } from "@/lib/cycle-engine";
+import { calculateElapsedSeconds } from "@/lib/study-timer";
 
 export type CycleSessionDTO = {
   id: string; mode: "CYCLE" | "AVULSO"; status: "ACTIVE" | "PAUSED" | "FINISHING" | "FINISHED" | "CANCELLED";
@@ -21,9 +22,8 @@ function toEngine(subject: { id: string; name: string; disciplineId: string; wei
   return { id: subject.id, name: subject.name, disciplineId: subject.disciplineId, weight: subject.weight, sortOrder: subject.sortOrder, currentWeight: subject.progress?.currentWeight ?? 0, passages: subject.progress?.passages ?? 0, averagePercentage: subject.progress?.averagePercentage ?? 0, lastStudiedAt: subject.progress?.lastStudiedAt ?? null };
 }
 
-function elapsedSeconds(session: { accumulatedSeconds: number; status: ActiveStudySessionStatus; pausedAt: Date | null }) {
-  if (session.status !== ActiveStudySessionStatus.ACTIVE) return session.accumulatedSeconds;
-  return session.accumulatedSeconds + Math.max(0, Math.floor((Date.now() - (session.pausedAt?.getTime() ?? Date.now())) / 1000));
+function elapsedSeconds(session: { accumulatedSeconds: number; status: ActiveStudySessionStatus; startedAt: Date; pausedAt: Date | null }) {
+  return calculateElapsedSeconds(session);
 }
 
 export class CycleService {
@@ -65,7 +65,7 @@ export class CycleService {
   private async dto(client: Client, sessionId: string): Promise<CycleSessionDTO | null> {
     const value = await client.activeStudySession.findUnique({ where: { id: sessionId }, include: { discipline: true, subject: { include: { progress: true } }, cycleEntry: true, studyGuide: { include: { cycleState: true } } } });
     if (!value) return null;
-    return { id: value.id, mode: value.mode, status: value.status, version: value.version, startedAt: value.startedAt.toISOString(), accumulatedSeconds: elapsedSeconds(value), pausedAt: value.pausedAt?.toISOString() ?? null, cycle: value.cycleEntry ? { entryId: value.cycleEntry.id, position: value.cycleEntry.orderIndex, round: value.studyGuide.cycleState?.roundNumber ?? 1 } : null, discipline: { id: value.discipline.id, name: value.discipline.name, questionGoal: value.discipline.questionGoal }, subject: { id: value.subject.id, name: value.subject.name, weight: value.subject.weight, averagePercentage: value.subject.progress?.averagePercentage ?? 0, lastStudiedAt: value.subject.progress?.lastStudiedAt?.toISOString() ?? null } };
+    return { id: value.id, mode: value.mode, status: value.status, version: value.version, startedAt: value.startedAt.toISOString(), accumulatedSeconds: value.accumulatedSeconds, pausedAt: value.pausedAt?.toISOString() ?? null, cycle: value.cycleEntry ? { entryId: value.cycleEntry.id, position: value.cycleEntry.orderIndex, round: value.studyGuide.cycleState?.roundNumber ?? 1 } : null, discipline: { id: value.discipline.id, name: value.discipline.name, questionGoal: value.discipline.questionGoal }, subject: { id: value.subject.id, name: value.subject.name, weight: value.subject.weight, averagePercentage: value.subject.progress?.averagePercentage ?? 0, lastStudiedAt: value.subject.progress?.lastStudiedAt?.toISOString() ?? null } };
   }
 
   async getActive(userId: string, studyGuideId: string) {
@@ -73,7 +73,7 @@ export class CycleService {
     return active ? this.dto(prisma, active.id) : null;
   }
 
-  async start(userId: string, studyGuideId: string, input: { mode: "CYCLE" | "AVULSO"; disciplineId?: string; subjectId?: string; operationId?: string }) {
+  async start(userId: string, studyGuideId: string, input: { mode: "CYCLE" | "AVULSO"; disciplineId?: string; subjectId?: string; operationId?: string; timerRunning?: boolean }) {
     return prisma.$transaction(async (tx) => {
       if (input.operationId) {
         const processed = await tx.activeStudySession.findFirst({ where: { id: input.operationId, userId, studyGuideId }, select: { id: true } });
@@ -88,7 +88,8 @@ export class CycleService {
       if (!subject) throw new Error("O assunto não pertence à disciplina ou está inativo.");
       if (!cycleEntryId) cycleEntryId = (await tx.cycleEntry.findFirst({ where: { userId, studyGuideId, active: true }, orderBy: { orderIndex: "asc" }, select: { id: true } }))?.id;
       if (!cycleEntryId) throw new Error("Crie ao menos uma posição de ciclo antes de registrar estudo.");
-      const active = await tx.activeStudySession.create({ data: { ...(input.operationId ? { id: input.operationId } : {}), userId, studyGuideId, cycleEntryId, disciplineId, subjectId, mode: input.mode === "CYCLE" ? StudySessionMode.CYCLE : StudySessionMode.AVULSO, pausedAt: new Date() } });
+      const timerRunning = input.timerRunning ?? true;
+      const active = await tx.activeStudySession.create({ data: { ...(input.operationId ? { id: input.operationId } : {}), userId, studyGuideId, cycleEntryId, disciplineId, subjectId, mode: input.mode === "CYCLE" ? StudySessionMode.CYCLE : StudySessionMode.AVULSO, status: timerRunning ? ActiveStudySessionStatus.ACTIVE : ActiveStudySessionStatus.PAUSED, pausedAt: timerRunning ? new Date() : null } });
       return this.dto(tx, active.id);
     });
   }

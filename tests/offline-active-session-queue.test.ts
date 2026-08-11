@@ -32,6 +32,14 @@ test("fila mantém operações e sessão entre instâncias do serviço", async (
   assert.equal((await consumerAfterRefresh.getSession("user-1", "guide-1"))?.subjectId, "subject-1");
 });
 
+test("registro manual inicia pausado sem exigir cronômetro", async () => {
+  const storage = new MemoryOfflineSessionQueue();
+  const started = await startOfflineActiveSession({ userId: "user-1", studyGuideId: "guide-1", mode: "CYCLE", disciplineId: "discipline-1", subjectId: "subject-1", cycleEntryId: "entry-1", disciplineName: "Desenvolvimento", subjectName: "APIs", startedAt: base.startedAt, timerRunning: false }, storage);
+  assert.equal(started.session.status, "PAUSED");
+  assert.equal(started.session.pausedAt, null);
+  assert.equal(started.session.accumulatedSeconds, 0);
+});
+
 test("operationId repetido sobrescreve sem duplicar a fila", async () => {
   const storage = new MemoryOfflineSessionQueue();
   const operation = createOfflineSessionOperation({ operationId: "fixed-operation", userId: "user-1", studyGuideId: "guide-1", type: "START_SESSION", payload: base });

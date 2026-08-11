@@ -10,7 +10,7 @@ import { createStandaloneStudySession, formatSaoPauloStudyInput } from "@/lib/st
 const payloadSchema = z.object({
   localSessionId: z.string().min(1), serverSessionId: z.string().nullable(), serverVersion: z.number().int().nullable(),
   mode: z.enum(["CYCLE", "AVULSO"]), disciplineId: z.string().min(1), subjectId: z.string().min(1),
-  cycleEntryId: z.string().nullable(), startedAt: z.string(), accumulatedSeconds: z.number().int().min(0),
+  cycleEntryId: z.string().nullable(), status: z.enum(["ACTIVE", "PAUSED", "FINISHED", "CANCELLED"]).optional(), startedAt: z.string(), accumulatedSeconds: z.number().int().min(0),
   questions: z.number().int().min(0), correct: z.number().int().min(0), wrong: z.number().int().min(0),
   difficulty: z.enum(["Fácil", "Média", "Difícil"]).nullable(), notes: z.string().nullable(), date: z.string().datetime(),
 }).passthrough();
@@ -26,7 +26,7 @@ function notes(payload: z.infer<typeof payloadSchema>) { return [payload.difficu
 async function executeOperation(userId: string, operation: z.infer<typeof operationSchema>) {
   const payload = operation.payload;
   if (operation.type === "START_SESSION") {
-    const session = await cycleService.start(userId, operation.studyGuideId, { mode: payload.mode, disciplineId: payload.disciplineId, subjectId: payload.subjectId, operationId: operation.operationId });
+    const session = await cycleService.start(userId, operation.studyGuideId, { mode: payload.mode, disciplineId: payload.disciplineId, subjectId: payload.subjectId, operationId: operation.operationId, timerRunning: payload.status !== "PAUSED" });
     return { operationId: operation.operationId, session };
   }
   if (operation.type === "CREATE_STANDALONE_SESSION") {
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   if (operation.userId !== auth.user.id) return NextResponse.json({ message: "A operação pertence a outro usuário." }, { status: 403 });
   const ownsGuide = await prisma.studyGuide.count({ where: { id: operation.studyGuideId, userId: auth.user.id } });
   if (!ownsGuide) return NextResponse.json({ message: "O guia da operação não pertence ao usuário autenticado." }, { status: 403 });
-  const canonicalPayload = canonicalSessionOperationPayload({ type: operation.type, mode: operation.payload.mode, disciplineId: operation.payload.disciplineId, subjectId: operation.payload.subjectId, sessionId: operation.payload.serverSessionId, version: operation.payload.serverVersion, questions: operation.payload.questions, correct: operation.payload.correct, minutes: Math.max(1, Math.round(operation.payload.accumulatedSeconds / 60)), notes: notes(operation.payload), date: operation.payload.date });
+  const canonicalPayload = canonicalSessionOperationPayload({ type: operation.type, mode: operation.payload.mode, disciplineId: operation.payload.disciplineId, subjectId: operation.payload.subjectId, timerRunning: operation.payload.status !== "PAUSED", sessionId: operation.payload.serverSessionId, version: operation.payload.serverVersion, questions: operation.payload.questions, correct: operation.payload.correct, minutes: Math.max(1, Math.round(operation.payload.accumulatedSeconds / 60)), notes: notes(operation.payload), date: operation.payload.date });
   const claim = await claimOfflineOperation({ operationId: operation.operationId, userId: auth.user.id, studyGuideId: operation.studyGuideId, type: operation.type, payload: canonicalPayload });
   if (claim.kind === "REPLAY") return NextResponse.json({ ...(claim.response as object), idempotentReplay: true });
   if (claim.kind === "PENDING") return NextResponse.json({ operationId: operation.operationId, pending: true }, { status: 202 });

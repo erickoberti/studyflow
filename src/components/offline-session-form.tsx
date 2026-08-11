@@ -47,7 +47,7 @@ export function OfflineSessionForm() {
       } else {
         const entry = suggestion; const discipline = entry?.subject.discipline; const subject = entry?.subject;
         if (!entry?.serverId || !discipline?.serverId || !subject?.serverId) throw new Error("A sugestão atual precisa estar sincronizada antes do uso offline.");
-        const started = await startOfflineActiveSession({ userId, studyGuideId, mode: "CYCLE", disciplineId: discipline.serverId, subjectId: subject.serverId, cycleEntryId: entry.serverId, disciplineName: discipline.name, subjectName: subject.name });
+        const started = await startOfflineActiveSession({ userId, studyGuideId, mode: "CYCLE", disciplineId: discipline.serverId, subjectId: subject.serverId, cycleEntryId: entry.serverId, disciplineName: discipline.name, subjectName: subject.name, timerRunning: false });
         await queueOfflineSessionOperation({ userId, studyGuideId, type: "FINISH_SESSION", session: { ...started.session, accumulatedSeconds: minutes * 60, questions: correct + wrong, correct, wrong, difficulty, notes: notes.trim() || null, date: new Date(`${date}T12:00:00-03:00`).toISOString() } });
       }
       toast.success("Sessão salva na fila offline. O ciclo avançará somente após a sincronização.");
