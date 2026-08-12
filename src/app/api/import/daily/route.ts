@@ -69,7 +69,7 @@ function estimateMinutes(questions: number, weight: number) {
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+    return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
   }
 
   const guide = await getActiveStudyGuideForUser(session.user.id);
@@ -236,7 +236,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         message:
-          "Nenhuma linha valida encontrada. Use um CSV com colunas como: Data, Disciplina, Assunto, Peso, Questoes, Acertos, Erros.",
+          "Nenhuma linha válida encontrada. Use um CSV com colunas como: Data, Disciplina, Assunto, Peso, Questões, Acertos, Erros.",
       },
       { status: 400 },
     );
@@ -246,7 +246,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        message: `O arquivo foi lido, mas nenhum registro novo foi importado. ${skippedRows} linha(s) ja existiam no guia atual.`,
+        message: `O arquivo foi lido, mas nenhum registro novo foi importado. ${skippedRows} linha(s) já existiam no guia atual.`,
       },
       { status: 409 },
     );
@@ -256,6 +256,6 @@ export async function POST(request: Request) {
     ok: true,
     importedRows,
     skippedRows,
-    message: `Registro diario importado com sucesso. ${importedRows} linha(s) nova(s) criada(s) e ${skippedRows} ignorada(s) por ja existirem.`,
+    message: `Registro diário importado com sucesso. ${importedRows} linha(s) nova(s) criada(s) e ${skippedRows} ignorada(s) por já existirem.`,
   });
 }

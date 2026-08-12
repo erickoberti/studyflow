@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart3, BookOpenCheck, Check, Clock3, Focus, ListChecks, Pause, Play, RotateCcw, Square, X } from "lucide-react";
+import { BarChart3, BookOpenCheck, Check, Clock3, FileText, Focus, ListChecks, Pause, Play, RotateCcw, Scale, Square, Video, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   offlineSessionQueue,
@@ -14,6 +14,7 @@ import {
   type OfflineSessionOperationType,
 } from "@/lib/offline/active-session-queue";
 import { calculateElapsedSeconds } from "@/lib/study-timer";
+import { STUDY_ACTIVITY_LABELS, type StudyActivity } from "@/lib/study-activity";
 
 type Active = {
   id: string;
@@ -35,8 +36,6 @@ type Suggestion = {
 } | null;
 
 type Summary = { todayMinutes: number; todayQuestions: number; dailyGoal: number; streak: number };
-type StudyActivity = "QUESTIONS" | "CLASS";
-
 function duration(value: number) {
   return `${String(Math.floor(value / 3600)).padStart(2, "0")}:${String(Math.floor(value / 60) % 60).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 }
@@ -122,18 +121,16 @@ export function ActiveStudyPanel({
   const [studyActivity, setStudyActivity] = useState<StudyActivity>(preferredActivity);
   const [advanceCycle, setAdvanceCycle] = useState(true);
   const [studyMinutes, setStudyMinutes] = useState(defaultMinutes);
-  const [questions, setQuestions] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
   const [difficulty, setDifficulty] = useState("Média");
   const [notes, setNotes] = useState("");
-  const [completion, setCompletion] = useState<{ percentage: number; advanced: boolean } | null>(null);
+  const [completion, setCompletion] = useState<{ percentage: number; advanced: boolean; activityType: StudyActivity } | null>(null);
 
   const clearFinishForm = useCallback(() => {
     setStudyActivity(preferredActivity);
     setAdvanceCycle(true);
     setStudyMinutes(defaultMinutes);
-    setQuestions(0);
     setCorrect(0);
     setWrong(0);
     setDifficulty("Média");
@@ -158,7 +155,6 @@ export function ActiveStudyPanel({
           const restored = localToActive(local, null, suggestion);
           setActive(restored);
           setSeconds(calculateElapsedSeconds(restored));
-          setQuestions(local.questions);
           setCorrect(local.correct);
           setWrong(local.wrong);
           setDifficulty(local.difficulty ?? "Média");
@@ -215,7 +211,7 @@ export function ActiveStudyPanel({
     const type = operationTypes[action];
     if (!type) throw new Error("Operação offline inválida.");
     if (type === "FINISH_SESSION") {
-      const isClass = Number(body.questions ?? 0) === 0;
+      const activityType = (body.activityType as StudyActivity | undefined) ?? (Number(body.questions ?? 0) === 0 ? "CLASS" : "QUESTIONS");
       local = {
         ...local,
         accumulatedSeconds: Number(body.minutes ?? 0) * 60,
@@ -223,7 +219,7 @@ export function ActiveStudyPanel({
         correct: Number(body.correct ?? 0),
         wrong: Number(body.questions ?? 0) - Number(body.correct ?? 0),
         difficulty: difficulty as "Fácil" | "Média" | "Difícil",
-        activityType: isClass ? "CLASS" : "QUESTIONS",
+        activityType,
         advanceCycle,
         notes: notes.trim() || null,
       };
@@ -236,7 +232,7 @@ export function ActiveStudyPanel({
       operationId: typeof body.operationId === "string" ? body.operationId : undefined,
     });
     if (type === "FINISH_SESSION") {
-      setCompletion({ percentage: queued.session.questions ? queued.session.correct / queued.session.questions * 100 : -1, advanced: queued.session.advanceCycle !== false });
+      setCompletion({ percentage: queued.session.questions ? queued.session.correct / queued.session.questions * 100 : -1, advanced: queued.session.advanceCycle !== false, activityType: queued.session.activityType ?? "QUESTIONS" });
       setFinishOpen(false);
       setFocusMode(false);
       setActive(null);
@@ -269,7 +265,7 @@ export function ActiveStudyPanel({
         await persistServerActiveSession({ userId, studyGuideId, session: data.session });
         if (options?.openFinish) openFinish(data.session, elapsed, options.activity);
       } else if (data.sessionId) {
-        setCompletion({ percentage: studyActivity === "CLASS" ? -1 : questions ? correct / questions * 100 : 0, advanced: advanceCycle });
+        setCompletion({ percentage: studyActivity === "QUESTIONS" ? questions ? correct / questions * 100 : 0 : -1, advanced: advanceCycle, activityType: studyActivity });
         toast.success(data.idempotent ? "Sessão já havia sido finalizada." : "Sessão concluída; ciclo atualizado.");
         setFinishOpen(false);
         setFocusMode(false);
@@ -321,10 +317,13 @@ export function ActiveStudyPanel({
   if (!current) return <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 to-white p-7 text-center dark:to-panelDark"><BookOpenCheck className="mx-auto text-primary" size={34} /><h2 className="mt-4 text-2xl font-black">Prepare seu primeiro estudo</h2><p className="mx-auto mt-2 max-w-lg text-sm text-slate-500">Adicione as disciplinas e escolha o ponto atual do ciclo. Depois disso, o StudyFlow sempre mostrará o próximo assunto automaticamente.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><Link href="/base?import=1" className="rounded-xl bg-primary px-5 py-3 text-sm font-black text-white">Importar ou adicionar disciplinas</Link><Link href="/ciclo" className="rounded-xl border border-primary/25 px-5 py-3 text-sm font-black text-primary">Configurar ciclo</Link></div></section>;
 
   const studying = Boolean(active);
+  const questions = correct + wrong;
   const percentage = questions ? correct / questions * 100 : 0;
-  const isClass = studyActivity === "CLASS";
-  const validResults = isClass || (questions > 0 && correct >= 0 && wrong >= 0 && correct + wrong === questions);
+  const isQuestions = studyActivity === "QUESTIONS";
+  const validResults = !isQuestions || questions > 0;
   const validMinutes = Number.isInteger(studyMinutes) && studyMinutes > 0;
+  const activityLabel = STUDY_ACTIVITY_LABELS[studyActivity];
+  const timeLabel = studyActivity === "CLASS" ? "Tempo da videoaula (min)" : studyActivity === "READING" ? "Tempo de leitura da lei seca (min)" : studyActivity === "PDF_READING" ? "Tempo de leitura do PDF/material (min)" : "Tempo líquido estudado (min)";
   const goalProgress = Math.min(100, summary.dailyGoal ? summary.todayQuestions / summary.dailyGoal * 100 : 0);
 
   const panel = (
@@ -351,7 +350,7 @@ export function ActiveStudyPanel({
           {!studying ? (
             <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
               <button disabled={busy} onClick={() => act({ command: "start", mode: "CYCLE", timerRunning: false }, { openFinish: true, activity: "QUESTIONS" })} className="inline-flex min-h-14 items-center gap-2 rounded-2xl bg-primary px-6 py-4 text-base font-black text-white shadow-lg shadow-primary/25 disabled:opacity-60"><ListChecks size={19} /> Registrar questões</button>
-              <button disabled={busy} onClick={() => act({ command: "start", mode: "CYCLE", timerRunning: false }, { openFinish: true, activity: "CLASS" })} className="inline-flex min-h-14 items-center gap-2 rounded-2xl border border-primary/30 bg-white px-6 py-4 text-base font-black text-primary disabled:opacity-60 dark:bg-slate-900"><BookOpenCheck size={19} /> Registrar aula</button>
+              <button disabled={busy} onClick={() => act({ command: "start", mode: "CYCLE", timerRunning: false }, { openFinish: true, activity: "CLASS" })} className="inline-flex min-h-14 items-center gap-2 rounded-2xl border border-primary/30 bg-white px-6 py-4 text-base font-black text-primary disabled:opacity-60 dark:bg-slate-900"><BookOpenCheck size={19} /> Registrar conteúdo</button>
               <button disabled={busy} onClick={() => act({ command: "start", mode: "CYCLE", timerRunning: true })} className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-primary/30 bg-white px-5 py-3 font-black text-primary disabled:opacity-60 dark:bg-slate-900"><Play size={17} fill="currentColor" /> Iniciar cronômetro</button>
             </div>
           ) : (
@@ -377,24 +376,28 @@ export function ActiveStudyPanel({
 
     {finishOpen && active ? <div role="dialog" aria-modal="true" aria-labelledby="finish-title" className="fixed inset-0 z-[110] flex items-end bg-slate-950/50 p-0 sm:items-center sm:justify-center sm:p-6"><section className="max-h-[95vh] w-full overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-panelDark sm:max-w-xl sm:rounded-3xl"><div className="flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-wider text-primary">Finalizar sessão</p><h3 id="finish-title" className="mt-1 text-2xl font-black">Registre o que foi estudado</h3></div><button aria-label="Fechar" onClick={() => setFinishOpen(false)} className="rounded-lg p-2"><X /></button></div><p className="mt-2 text-sm text-slate-500">{current.discipline} · {current.subject}</p>
 
-      <div className="mt-6"><p className="text-sm font-bold">O que você estudou?</p><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" aria-pressed={!isClass} onClick={() => setStudyActivity("QUESTIONS")} className={`inline-flex min-h-16 items-center justify-center gap-2 rounded-xl border px-3 font-bold ${!isClass ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><ListChecks size={20} /> Questões</button><button type="button" aria-pressed={isClass} onClick={() => { setStudyActivity("CLASS"); setQuestions(0); setCorrect(0); setWrong(0); }} className={`inline-flex min-h-16 items-center justify-center gap-2 rounded-xl border px-3 font-bold ${isClass ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><BookOpenCheck size={20} /> Aula assistida</button></div></div>
+      <div className="mt-6"><p className="text-sm font-bold">O que você estudou?</p><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <button type="button" aria-pressed={studyActivity === "QUESTIONS"} onClick={() => setStudyActivity("QUESTIONS")} className={`inline-flex min-h-20 flex-col items-center justify-center gap-1 rounded-xl border px-2 text-sm font-bold ${studyActivity === "QUESTIONS" ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><ListChecks size={20} /> Questões</button>
+        <button type="button" aria-pressed={studyActivity === "CLASS"} onClick={() => { setStudyActivity("CLASS"); setCorrect(0); setWrong(0); }} className={`inline-flex min-h-20 flex-col items-center justify-center gap-1 rounded-xl border px-2 text-sm font-bold ${studyActivity === "CLASS" ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><Video size={20} /> Videoaula</button>
+        <button type="button" aria-pressed={studyActivity === "READING"} onClick={() => { setStudyActivity("READING"); setCorrect(0); setWrong(0); }} className={`inline-flex min-h-20 flex-col items-center justify-center gap-1 rounded-xl border px-2 text-sm font-bold ${studyActivity === "READING" ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><Scale size={20} /> Lei seca</button>
+        <button type="button" aria-pressed={studyActivity === "PDF_READING"} onClick={() => { setStudyActivity("PDF_READING"); setCorrect(0); setWrong(0); }} className={`inline-flex min-h-20 flex-col items-center justify-center gap-1 rounded-xl border px-2 text-sm font-bold ${studyActivity === "PDF_READING" ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><FileText size={20} /> PDF/material</button>
+      </div></div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-bold sm:col-span-2">{isClass ? "Tempo da aula assistida (min)" : "Tempo líquido estudado (min)"}<span className="relative mt-1.5 block"><Clock3 aria-hidden size={16} className="absolute left-3 top-4 text-slate-400" /><input aria-label={isClass ? "Tempo da aula assistida em minutos" : "Tempo líquido estudado em minutos"} inputMode="numeric" type="number" min={1} step={1} value={studyMinutes} onChange={(event) => setStudyMinutes(Math.max(0, Number(event.target.value) || 0))} className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-lg font-black dark:border-slate-700 dark:bg-slate-900" /></span><span className="mt-1 block text-xs font-normal text-slate-500">{seconds > 0 ? `Cronômetro: ${duration(seconds)}. Você pode corrigir o valor acima.` : isClass ? "Informe quantos minutos da aula foram assistidos." : "Informe o tempo real, mesmo que não tenha usado o cronômetro."}</span></label>
-        {!isClass ? <><label className="text-sm font-bold">Questões realizadas<input aria-label="Questões realizadas" inputMode="numeric" type="number" min={1} value={questions} onChange={(event) => setQuestions(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" /></label>
-        <div className="grid grid-cols-2 gap-3"><label className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Acertos<input aria-label="Acertos" inputMode="numeric" type="number" min={0} value={correct} onChange={(event) => setCorrect(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" /></label><label className="text-sm font-bold text-rose-700 dark:text-rose-300">Erros<input aria-label="Erros" inputMode="numeric" type="number" min={0} value={wrong} onChange={(event) => setWrong(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" /></label></div></> : <div className="sm:col-span-2 rounded-xl bg-primary/5 p-4 text-sm font-semibold text-slate-600 dark:text-slate-300">A aula contará como uma sessão, somará o tempo informado e concluirá esta posição do ciclo.</div>}
+        <label className="text-sm font-bold sm:col-span-2">{timeLabel}<span className="relative mt-1.5 block"><Clock3 aria-hidden size={16} className="absolute left-3 top-4 text-slate-400" /><input aria-label={`${timeLabel.replace(" (min)", "")} em minutos`} inputMode="numeric" type="number" min={1} step={1} value={studyMinutes} onChange={(event) => setStudyMinutes(Math.max(0, Number(event.target.value) || 0))} className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-lg font-black dark:border-slate-700 dark:bg-slate-900" /></span><span className="mt-1 block text-xs font-normal text-slate-500">{seconds > 0 ? `Cronômetro: ${duration(seconds)}. Você pode corrigir o valor acima.` : `Informe o tempo real dedicado a ${activityLabel.toLocaleLowerCase("pt-BR")}.`}</span></label>
+        {isQuestions ? <><label className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Acertos<input aria-label="Acertos" inputMode="numeric" type="number" min={0} value={correct} onChange={(event) => setCorrect(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-lg font-black dark:border-slate-700 dark:bg-slate-900" /></label><label className="text-sm font-bold text-rose-700 dark:text-rose-300">Erros<input aria-label="Erros" inputMode="numeric" type="number" min={0} value={wrong} onChange={(event) => setWrong(Math.max(0, Number(event.target.value) || 0))} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-lg font-black dark:border-slate-700 dark:bg-slate-900" /></label></> : <div className="sm:col-span-2 rounded-xl bg-primary/5 p-4 text-sm font-semibold text-slate-600 dark:text-slate-300">{activityLabel} contará como uma sessão, somará o tempo informado e poderá concluir esta posição do ciclo.</div>}
       </div>
 
-      {!isClass ? <div className="mt-4 rounded-xl bg-slate-100 p-4 text-sm dark:bg-slate-800"><div className="flex justify-between"><span>Conferência</span><b>{correct} + {wrong} = {questions} questões</b></div><div className="mt-2 flex justify-between"><span>Percentual de acertos</span><b>{questions ? `${percentage.toFixed(0)}%` : "—"}</b></div></div> : null}
+      {isQuestions ? <div className="mt-4 rounded-xl bg-slate-100 p-4 text-sm dark:bg-slate-800"><div className="flex justify-between"><span>Total de questões</span><b>{questions}</b></div><div className="mt-2 flex justify-between"><span>Percentual de acertos</span><b>{questions ? `${percentage.toFixed(0)}%` : "—"}</b></div></div> : null}
       {!validMinutes ? <p role="alert" className="mt-3 text-sm font-semibold text-rose-600 dark:text-rose-300">Informe ao menos 1 minuto de estudo.</p> : null}
-      {!validResults ? <p role="alert" className="mt-3 text-sm font-semibold text-rose-600 dark:text-rose-300">Informe as questões e confira se acertos + erros correspondem ao total.</p> : null}
+      {!validResults ? <p role="alert" className="mt-3 text-sm font-semibold text-rose-600 dark:text-rose-300">Informe ao menos um acerto ou erro.</p> : null}
 
       <div className="mt-4"><p className="text-sm font-bold">Dificuldade</p><div className="mt-2 grid grid-cols-3 gap-2">{([['Fácil', '🙂'], ['Média', '😐'], ['Difícil', '😓']] as const).map(([value, icon]) => <button key={value} type="button" aria-pressed={difficulty === value} onClick={() => setDifficulty(value)} className={`min-h-16 rounded-xl border px-2 text-sm font-bold ${difficulty === value ? "border-primary bg-primary/10 text-primary" : "border-slate-200 dark:border-slate-700"}`}><span aria-hidden className="block text-xl">{icon}</span>{value}</button>)}</div></div>
       <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700"><input type="checkbox" checked={advanceCycle} onChange={(event) => setAdvanceCycle(event.target.checked)} className="mt-1 h-4 w-4 accent-primary" /><span><span className="block text-sm font-black">Avançar para a próxima posição</span><span className="mt-0.5 block text-xs text-slate-500">Desmarque se ainda vai continuar neste mesmo assunto.</span></span></label>
       <label className="mt-4 block text-sm font-bold">Observação <span className="font-normal text-slate-400">(opcional)</span><textarea aria-label="Observação" value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900" placeholder="O que revisar ou lembrar na próxima sessão?" /></label>
-      <button disabled={busy || !validMinutes || !validResults} onClick={() => act({ command: "finish", id: active.id, version: active.version, questions: isClass ? 0 : questions, correct: isClass ? 0 : correct, minutes: studyMinutes, activityType: isClass ? "CLASS" : "QUESTIONS", advanceCycle, notes: `[${difficulty}] ${notes.trim()}`.trim() })} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-black text-white disabled:opacity-50"><Square size={17} /> {advanceCycle ? isClass ? "Salvar aula e avançar" : "Salvar e concluir" : "Salvar e continuar no assunto"}</button>
+      <button disabled={busy || !validMinutes || !validResults} onClick={() => act({ command: "finish", id: active.id, version: active.version, questions: isQuestions ? questions : 0, correct: isQuestions ? correct : 0, minutes: studyMinutes, activityType: studyActivity, advanceCycle, notes: `[${difficulty}] ${notes.trim()}`.trim() })} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-black text-white disabled:opacity-50"><Square size={17} /> {advanceCycle ? isQuestions ? "Salvar e concluir" : `Salvar ${activityLabel.toLocaleLowerCase("pt-BR")} e avançar` : "Salvar e continuar no assunto"}</button>
     </section></div> : null}
 
-    {completion ? <div role="status" className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-5"><section className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl dark:bg-panelDark"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary"><Check size={28} /></span><h3 className="mt-4 text-2xl font-black">{completion.percentage < 0 ? "Aula registrada" : "Estudo registrado"}</h3><p className="mt-2 text-sm text-slate-500">{completion.percentage < 0 ? completion.advanced ? "O tempo da aula foi somado e o ciclo avançou para a próxima posição." : "O tempo da aula foi somado e este assunto continuará como a próxima atividade." : `Aproveitamento de ${completion.percentage.toFixed(0)}%. ${completion.advanced ? "O ciclo avançou." : "Você continuará neste assunto."}`}</p><button onClick={() => setCompletion(null)} className="mt-6 min-h-11 w-full rounded-xl bg-primary px-5 font-black text-white">Continuar</button></section></div> : null}
+    {completion ? <div role="status" className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-5"><section className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl dark:bg-panelDark"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary"><Check size={28} /></span><h3 className="mt-4 text-2xl font-black">Registro concluído</h3><p className="mt-1 text-sm font-bold text-primary">{STUDY_ACTIVITY_LABELS[completion.activityType]}</p><p className="mt-2 text-sm text-slate-500">{completion.percentage < 0 ? completion.advanced ? "O tempo informado foi somado e o ciclo avançou para a próxima posição." : "O tempo informado foi somado e este assunto continuará como a próxima atividade." : `Aproveitamento de ${completion.percentage.toFixed(0)}%. ${completion.advanced ? "O ciclo avançou." : "Você continuará neste assunto."}`}</p><button onClick={() => setCompletion(null)} className="mt-6 min-h-11 w-full rounded-xl bg-primary px-5 font-black text-white">Continuar</button></section></div> : null}
   </>;
 }

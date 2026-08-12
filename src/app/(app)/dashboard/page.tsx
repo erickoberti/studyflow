@@ -10,7 +10,6 @@ import {
   Play,
   Sparkles,
   Target,
-  Zap,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData, getNextCycleSuggestion } from "@/lib/analytics";
@@ -84,15 +83,41 @@ export default async function DashboardPage() {
   const hasCycleSuggestion = Boolean(suggestion.next);
 
   return (
-    <div className="space-y-8 pb-10">
-      <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-6 pb-10">
+      <section>
         <div>
           <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">Painel de Estudos</h1>
           <p className="mt-1 text-slate-500 dark:text-slate-400">
             Bem-vindo de volta, {user.name?.split(" ")[0] ?? "Aluno"}. Sequência atual de {streak} dias.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2"><Link href="/registro?tipo=questoes" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-soft"><Zap size={16} /> Registrar questões</Link><Link href="/registro?tipo=aula" className="inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-white px-5 py-2.5 text-sm font-bold text-primary dark:bg-panelDark"><Library size={16} /> Registrar aula</Link></div>
+      </section>
+
+      <section className={`relative overflow-hidden rounded-3xl border p-6 shadow-soft sm:p-7 ${activeStudy ? "border-primary/40 bg-gradient-to-br from-primary/15 via-white to-white dark:via-panelDark dark:to-panelDark" : "border-primary/25 bg-white dark:bg-panelDark"}`}>
+        <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">{activeStudy ? "Sessão em andamento" : hasCycleSuggestion ? "Seu próximo estudo" : "Comece por aqui"}</p>
+              {activeStudy ? <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${activeStudy.status === "PAUSED" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"}`}>{activeStudy.status === "PAUSED" ? "Pausada" : "Em andamento"}</span> : null}
+            </div>
+            <h2 className="mt-2 text-2xl font-black text-slate-950 dark:text-white sm:text-3xl">{activeStudy ? activeStudy.discipline.name : hasCycleSuggestion ? nextDiscipline : "Organize seu ciclo de estudos"}</h2>
+            <p className="mt-1 text-base font-semibold text-slate-600 dark:text-slate-300">{activeStudy ? activeStudy.subject.name : hasCycleSuggestion ? nextSubject : "Defina as matérias e escolha de onde deseja continuar."}</p>
+            <p className="mt-3 text-sm text-slate-500">{activeStudy ? activeStudy.accumulatedSeconds >= 60 ? `${Math.floor(activeStudy.accumulatedSeconds / 60)} min registrados · continue de onde parou` : "Registro iniciado agora · continue de onde parou" : hasCycleSuggestion ? "Sugestão definida automaticamente pela ordem do seu ciclo." : "Depois disso, o StudyFlow sempre mostrará o próximo assunto."}</p>
+          </div>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            {activeStudy ? <>
+              <Link href="/registro" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-black text-white shadow-lg shadow-primary/20"><Play size={17} /> Retomar sessão</Link>
+              <Link href="/registro?novo=1" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-primary/25 bg-white px-5 text-sm font-bold text-primary dark:bg-slate-900">Registro avulso</Link>
+            </> : hasCycleSuggestion ? <>
+              <Link href="/registro" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-black text-white shadow-lg shadow-primary/20"><Play size={17} /> Estudar agora</Link>
+              <Link href="/registro?tipo=video" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-white px-5 text-sm font-bold text-primary dark:bg-slate-900"><Library size={16} /> Registrar conteúdo</Link>
+            </> : <>
+              <Link href="/base" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 font-black text-white">Importar matérias</Link>
+              <Link href="/ciclo" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-primary/25 px-5 text-sm font-bold text-primary">Configurar ciclo</Link>
+            </>}
+          </div>
+        </div>
       </section>
 
       <DailyGoalsCard data={dailyGoals} compact />
@@ -135,31 +160,13 @@ export default async function DashboardPage() {
         </article>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Link href="/simulados" className="group rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-primary/40 dark:border-slate-800 dark:bg-panelDark">
-          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Simulados</p><h2 className="mt-1 text-xl font-black">{phaseFive.summary.totalExams ? `${phaseFive.summary.averageExamScore.toFixed(1)}% de média` : "Registre seu primeiro simulado"}</h2><p className="mt-2 text-sm text-slate-500">{phaseFive.summary.totalExams} realizado{phaseFive.summary.totalExams === 1 ? "" : "s"} · histórico separado das sessões comuns</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><ClipboardCheck /></span></div>
-        </Link>
-        <Link href="/planejamento" className="group rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-primary/40 dark:border-slate-800 dark:bg-panelDark">
-          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Até a prova</p><h2 className="mt-1 text-xl font-black">{phaseFive.plan.daysRemaining === null ? "Defina a data da prova" : `${phaseFive.plan.daysRemaining} dias restantes`}</h2><p className="mt-2 text-sm text-slate-500">{phaseFive.summary.completedSubjects}/{phaseFive.summary.totalSubjects} assuntos do edital concluídos</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><CalendarClock /></span></div>
-        </Link>
-      </section>
-
       <section className="grid grid-cols-1 gap-8 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
-          <article className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
-            <p className="text-xs font-bold uppercase tracking-wider text-primary">{activeStudy ? "Sessão em andamento" : hasCycleSuggestion ? "O que estudar agora" : "Comece por aqui"}</p>
-            <h2 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{activeStudy ? `${activeStudy.discipline.name} → ${activeStudy.subject.name}` : hasCycleSuggestion ? `${nextDiscipline} → ${nextSubject}` : "Seu ciclo ainda não está pronto"}</h2>
-            <p className="mt-1 text-sm text-slate-500">{activeStudy ? `${activeStudy.status === "PAUSED" ? "Pausada" : "Em andamento"} · ${activeStudy.accumulatedSeconds >= 60 ? `${Math.floor(activeStudy.accumulatedSeconds / 60)} min` : "iniciada agora"}` : hasCycleSuggestion ? "Sugestão calculada pela estratégia do ciclo" : "Importe sua base ou abra o ciclo para escolher de onde continuar."}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {activeStudy || hasCycleSuggestion ? <Link href="/registro" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white"><Play size={15} /> {activeStudy ? "Retomar registro" : "Registrar estudo"}</Link> : <><Link href="/base" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white">Importar matérias</Link><Link href="/ciclo" className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-white px-4 py-2.5 text-sm font-bold text-primary dark:bg-panelDark">Ver ciclo</Link></>}
-              {hasCycleSuggestion && !activeStudy ? <Link href="/ciclo" className="inline-flex items-center rounded-xl border border-primary/30 px-4 py-2.5 text-sm font-bold text-primary">Ajustar ponto do ciclo</Link> : null}
-            </div>
-          </article>
           <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-panelDark">
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Progresso da Meta Diária</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Desempenho recente</h3>
                 <span className="rounded bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
-                  Meta: {dashboard.totals.dailyQuestionsGoal} questões
+                  Hoje: {today}/{dashboard.totals.dailyQuestionsGoal} questões
                 </span>
             </div>
 
@@ -240,7 +247,7 @@ export default async function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white">{session.subject?.name ?? session.cycleEntry.subject?.name ?? "Assunto"}</p>
-                    <p className="text-xs text-slate-500">{formatPtBrDay(session.date)} • {session.activityType === "CLASS" ? `Aula · ${session.estimatedMinutes} min` : session.activityType === "READING" ? `Leitura · ${session.estimatedMinutes} min` : session.activityType === "REVIEW" ? `Revisão · ${session.estimatedMinutes} min` : `${session.questions} questões`}</p>
+                    <p className="text-xs text-slate-500">{formatPtBrDay(session.date)} • {session.activityType === "CLASS" ? `Videoaula · ${session.estimatedMinutes} min` : session.activityType === "READING" ? `Lei seca · ${session.estimatedMinutes} min` : session.activityType === "PDF_READING" ? `PDF/material · ${session.estimatedMinutes} min` : session.activityType === "REVIEW" ? `Revisão · ${session.estimatedMinutes} min` : `${session.questions} questões`}</p>
                   </div>
                 </div>
               )) : <p className="rounded-xl border border-dashed p-4 text-sm text-slate-500">Nenhuma sessão concluída neste guia.</p>}
@@ -268,6 +275,15 @@ export default async function DashboardPage() {
             </Link>
           </article>
         </aside>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <Link href="/simulados" className="group rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-primary/40 dark:border-slate-800 dark:bg-panelDark">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Simulados</p><h2 className="mt-1 text-xl font-black">{phaseFive.summary.totalExams ? `${phaseFive.summary.averageExamScore.toFixed(1)}% de média` : "Registre seu primeiro simulado"}</h2><p className="mt-2 text-sm text-slate-500">{phaseFive.summary.totalExams} realizado{phaseFive.summary.totalExams === 1 ? "" : "s"} · histórico separado das sessões comuns</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><ClipboardCheck /></span></div>
+        </Link>
+        <Link href="/planejamento" className="group rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-primary/40 dark:border-slate-800 dark:bg-panelDark">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Até a prova</p><h2 className="mt-1 text-xl font-black">{phaseFive.plan.daysRemaining === null ? "Defina a data da prova" : `${phaseFive.plan.daysRemaining} dias restantes`}</h2><p className="mt-2 text-sm text-slate-500">{phaseFive.summary.completedSubjects}/{phaseFive.summary.totalSubjects} assuntos do edital concluídos</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><CalendarClock /></span></div>
+        </Link>
       </section>
     </div>
   );

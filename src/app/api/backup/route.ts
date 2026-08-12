@@ -7,7 +7,7 @@ import { getAllStudyGuideSettings } from "@/lib/study-guide-settings";
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+    return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
   }
 
   const [guides, disciplines, subjects, cycleEntries, sessions, settings, guideSettings] = await Promise.all([

@@ -34,7 +34,7 @@ export async function refreshOfflineSnapshotFromServer() {
   });
 
   if (!response.ok) {
-    throw new Error("Nao foi possivel atualizar o cache offline.");
+    throw new Error("Não foi possível atualizar o cache offline.");
   }
 
   const payload = await response.json();
@@ -53,7 +53,7 @@ async function syncStructureOperations() {
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.message ?? "Falha ao sincronizar alteracoes estruturais.");
+    throw new Error(data.message ?? "Falha ao sincronizar alterações estruturais.");
   }
 
   clearPendingOperations();
@@ -144,7 +144,7 @@ export async function syncPendingOfflineSessions() {
         hasErrors = true;
         markSessionError(
           session.id,
-          error instanceof Error ? error.message : "Nao foi possivel sincronizar agora.",
+          error instanceof Error ? error.message : "Não foi possível sincronizar agora.",
         );
       }
     }

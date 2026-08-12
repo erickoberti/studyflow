@@ -22,7 +22,7 @@ export function ImportDailyForm() {
 
     const file = fileRef.current?.files?.[0];
     if (!file) {
-      const message = "Selecione um CSV de registro diario.";
+      const message = "Selecione um CSV de registro diário.";
       setFeedback({ tone: "error", text: message });
       toast.error(message);
       return;
@@ -42,13 +42,13 @@ export function ImportDailyForm() {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const errorMessage = data?.message ?? "Erro ao importar registro diario.";
+        const errorMessage = data?.message ?? "Erro ao importar registro diário.";
         setFeedback({ tone: "error", text: errorMessage });
         toast.error(errorMessage);
         return;
       }
 
-      const successMessage = data?.message ?? "Registro diario importado com sucesso.";
+      const successMessage = data?.message ?? "Registro diário importado com sucesso.";
       setFeedback({ tone: "success", text: successMessage });
       toast.success(successMessage);
       setFileName("");
@@ -57,7 +57,7 @@ export function ImportDailyForm() {
         router.refresh();
       }, 900);
     } catch {
-      const errorMessage = "Nao foi possivel enviar o arquivo agora. Tente novamente.";
+      const errorMessage = "Não foi possível enviar o arquivo agora. Tente novamente.";
       setFeedback({ tone: "error", text: errorMessage });
       toast.error(errorMessage);
     } finally {
@@ -74,9 +74,9 @@ export function ImportDailyForm() {
               <FileSpreadsheet className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-black text-slate-900 dark:text-white">Arquivo de sessoes</p>
+              <p className="text-sm font-black text-slate-900 dark:text-white">Arquivo de sessões</p>
               <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                {fileName || "Selecione um CSV com Data, Disciplina, Assunto, Peso, Questoes, Acertos e Erros."}
+                {fileName || "Selecione um CSV com Data, Disciplina, Assunto, Peso, Questões, Acertos e Erros."}
               </p>
             </div>
           </div>
@@ -112,7 +112,7 @@ export function ImportDailyForm() {
         disabled={loading}
         className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-soft hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? "Importando sessoes..." : "Importar registro diario"}
+        {loading ? "Importando sessões..." : "Importar registro diário"}
       </button>
 
       {feedback ? (

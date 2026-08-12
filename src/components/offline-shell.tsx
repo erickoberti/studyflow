@@ -98,7 +98,7 @@ export function OfflineShell({ children }: { children: React.ReactNode }) {
                 {currentGuide?.name ?? "Dados locais"}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {access?.name ?? snapshot.user?.name ?? "Aluno"} | {snapshot.lastSyncedAt ? `Ultima sincronizacao: ${new Date(snapshot.lastSyncedAt).toLocaleString("pt-BR")}` : "Sem sincronizacao recente"}
+                {access?.name ?? snapshot.user?.name ?? "Aluno"} | {snapshot.lastSyncedAt ? `Última sincronização: ${new Date(snapshot.lastSyncedAt).toLocaleString("pt-BR")}` : "Sem sincronização recente"}
               </p>
             </div>
 

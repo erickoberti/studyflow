@@ -7,6 +7,14 @@ import { prisma } from "@/lib/prisma";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 import { getDashboardData } from "@/lib/analytics";
+import type { StudyActivity } from "@/lib/study-activity";
+
+function preferredActivity(tipo?: string): StudyActivity {
+  if (tipo === "video" || tipo === "aula") return "CLASS";
+  if (tipo === "lei") return "READING";
+  if (tipo === "pdf") return "PDF_READING";
+  return "QUESTIONS";
+}
 
 export default async function RegistroPage({ searchParams }: { searchParams?: { novo?: string; tipo?: string } }) {
   const user = await requireUser(); const guide = await requireActiveStudyGuide(user.id);
@@ -23,7 +31,7 @@ export default async function RegistroPage({ searchParams }: { searchParams?: { 
   const todayData = dashboard.byDay.find((item) => item.date === today); const next = focusPreview[1];
   return <div className="space-y-5 pb-20 lg:pb-0">
     <header className="flex items-center justify-between"><div><h1 className="text-3xl font-black text-slate-900 dark:text-white">Estudar</h1><p className="mt-1 text-slate-500">Uma sessão por vez. O resto pode esperar.</p></div><Link href="/registros" className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-bold text-primary">Ver sessões</Link></header>
-    <ActiveStudyPanel userId={user.id} studyGuideId={guide.id} initialActive={active as never} suggestion={current as never} nextSuggestion={next ? { discipline: next.discipline.name, subject: next.subject.name } : null} defaultMinutes={settings.sessionMinutes} preferredActivity={searchParams?.tipo === "aula" ? "CLASS" : "QUESTIONS"} summary={{ todayMinutes: todayData?.estimatedMinutes ?? 0, todayQuestions: todayData?.questions ?? 0, dailyGoal: dashboard.totals.dailyQuestionsGoal, streak: dashboard.totals.streakDays }} />
+    <ActiveStudyPanel userId={user.id} studyGuideId={guide.id} initialActive={active as never} suggestion={current as never} nextSuggestion={next ? { discipline: next.discipline.name, subject: next.subject.name } : null} defaultMinutes={settings.sessionMinutes} preferredActivity={preferredActivity(searchParams?.tipo)} summary={{ todayMinutes: todayData?.estimatedMinutes ?? 0, todayQuestions: todayData?.questions ?? 0, dailyGoal: dashboard.totals.dailyQuestionsGoal, streak: dashboard.totals.streakDays }} />
     {searchParams?.novo === "1" ? <StudySessionForm guides={guides} initialGuideId={guide.id} recentSessions={sessions} dailyQuestionsGoal={settings.questionsPerSession} toggleHref="/registro" /> : <Link href="/registro?novo=1" className="inline-flex rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">Registrar estudo avulso</Link>}
   </div>;
 }

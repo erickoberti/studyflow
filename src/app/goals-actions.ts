@@ -4,73 +4,69 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import { DAILY_GOAL_METRICS, type GoalTargets } from "@/lib/daily-goals";
+import { EMPTY_TIER, type GoalTargets } from "@/lib/daily-goals";
 import { ensureDailyGoalSettings } from "@/lib/daily-goals-service";
 import { prisma } from "@/lib/prisma";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
+import { ensureStudyGuideSettings, upsertStudyGuideSettings } from "@/lib/study-guide-settings";
 
 function refreshGoals() {
   revalidatePath("/metas");
   revalidatePath("/dashboard");
 }
 
-const nonNegative = z.coerce.number().int().min(0).max(1440);
 const configSchema = z.object({
-  timeZone: z.string().min(1).max(80),
-  firstStudyDeadline: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).or(z.literal("")),
-  includeMockExams: z.boolean(),
+  dailyMinutes: z.coerce.number().int().min(10).max(720),
+  weeklyQuestions: z.coerce.number().int().min(0).max(5000),
+  examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")),
   activeWeekdays: z.array(z.coerce.number().int().min(1).max(7)).min(1),
-  plannedRestWeekdays: z.array(z.coerce.number().int().min(1).max(7)),
-  enabledMetrics: z.array(z.enum(DAILY_GOAL_METRICS)),
-  tiers: z.record(z.string(), nonNegative),
 });
 
 export async function updateDailyGoalSettings(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
-  const tierValues: Record<string, number> = {};
-  for (const tier of ["minimum", "target", "excellent"]) for (const metric of DAILY_GOAL_METRICS) tierValues[`${tier}.${metric}`] = Number(formData.get(`${tier}.${metric}`) ?? 0);
   const parsed = configSchema.safeParse({
-    timeZone: String(formData.get("timeZone") ?? "America/Sao_Paulo"),
-    firstStudyDeadline: String(formData.get("firstStudyDeadline") ?? ""),
-    includeMockExams: formData.get("includeMockExams") === "on",
+    dailyMinutes: formData.get("dailyMinutes"),
+    weeklyQuestions: formData.get("weeklyQuestions"),
+    examDate: String(formData.get("examDate") ?? ""),
     activeWeekdays: formData.getAll("activeWeekdays"),
-    plannedRestWeekdays: formData.getAll("plannedRestWeekdays"),
-    enabledMetrics: formData.getAll("enabledMetrics"),
-    tiers: tierValues,
   });
-  if (!parsed.success) throw new Error("Configuração de metas inválida.");
-  const targets = (prefix: string): GoalTargets => ({
-    minimum: Object.fromEntries(DAILY_GOAL_METRICS.map((metric) => [metric, parsed.data.tiers[`${prefix}minimum.${metric}`] ?? parsed.data.tiers[`minimum.${metric}`] ?? 0])) as GoalTargets["minimum"],
-    target: Object.fromEntries(DAILY_GOAL_METRICS.map((metric) => [metric, parsed.data.tiers[`${prefix}target.${metric}`] ?? parsed.data.tiers[`target.${metric}`] ?? 0])) as GoalTargets["target"],
-    excellent: Object.fromEntries(DAILY_GOAL_METRICS.map((metric) => [metric, parsed.data.tiers[`${prefix}excellent.${metric}`] ?? parsed.data.tiers[`excellent.${metric}`] ?? 0])) as GoalTargets["excellent"],
-  });
-  const current = await ensureDailyGoalSettings(user.id, guide.id);
-  const mainTargets = targets("");
-  if (parsed.data.enabledMetrics.includes("firstStudy") && parsed.data.firstStudyDeadline) mainTargets.target.firstStudy = 1;
-  const weekendTargets = (day: "saturday" | "sunday") => {
-    const result = structuredClone(mainTargets);
-    for (const tier of ["minimum", "target", "excellent"] as const) for (const metric of DAILY_GOAL_METRICS) {
-      const raw = formData.get(`${day}.${tier}.${metric}`);
-      if (raw !== null && String(raw) !== "") result[tier][metric] = Math.max(0, Number(raw) || 0);
-    }
-    return result;
+  if (!parsed.success) throw new Error("Informe dias, minutos e questões válidos.");
+  const dailyQuestions = parsed.data.weeklyQuestions ? Math.ceil(parsed.data.weeklyQuestions / parsed.data.activeWeekdays.length) : 0;
+  const tier = (minutes: number, questions: number): GoalTargets["target"] => ({ ...EMPTY_TIER, minutes, questions });
+  const mainTargets: GoalTargets = {
+    minimum: tier(Math.max(10, Math.round(parsed.data.dailyMinutes * 0.5)), 0),
+    target: tier(parsed.data.dailyMinutes, dailyQuestions),
+    excellent: tier(Math.round(parsed.data.dailyMinutes * 1.25), Math.round(dailyQuestions * 1.25)),
   };
+  const current = await ensureDailyGoalSettings(user.id, guide.id);
   await prisma.dailyGoalSettings.updateMany({
     where: { id: current.id, userId: user.id, studyGuideId: guide.id },
     data: {
-      timeZone: parsed.data.timeZone,
-      firstStudyDeadline: parsed.data.enabledMetrics.includes("firstStudy") ? parsed.data.firstStudyDeadline || null : null,
-      includeMockExams: parsed.data.includeMockExams,
+      firstStudyDeadline: null,
+      includeMockExams: false,
       activeWeekdays: parsed.data.activeWeekdays,
-      plannedRestWeekdays: parsed.data.plannedRestWeekdays,
-      enabledMetrics: parsed.data.enabledMetrics,
+      plannedRestWeekdays: [],
+      enabledMetrics: ["minutes"],
       weekdayTargets: mainTargets as unknown as Prisma.InputJsonValue,
-      saturdayTargets: weekendTargets("saturday") as unknown as Prisma.InputJsonValue,
-      sundayTargets: weekendTargets("sunday") as unknown as Prisma.InputJsonValue,
+      saturdayTargets: mainTargets as unknown as Prisma.InputJsonValue,
+      sundayTargets: mainTargets as unknown as Prisma.InputJsonValue,
     },
   });
+  const guideSettings = await ensureStudyGuideSettings(user.id, guide.id);
+  const examDate = parsed.data.examDate ? new Date(`${parsed.data.examDate}T12:00:00.000Z`) : null;
+  await upsertStudyGuideSettings(user.id, guide.id, {
+    targetPercentage: guideSettings.targetPercentage,
+    dailyQuestionsGoal: dailyQuestions,
+    weeklyQuestionsGoal: parsed.data.weeklyQuestions,
+    weightPriorityBias: guideSettings.weightPriorityBias,
+    examDate: examDate && !Number.isNaN(examDate.getTime()) ? examDate : null,
+    sessionMinutes: guideSettings.sessionMinutes,
+    questionsPerSession: guideSettings.questionsPerSession,
+  });
   refreshGoals();
+  revalidatePath("/planejamento");
+  revalidatePath("/configuracoes");
 }
 
 export async function addManualDailyGoal(formData: FormData) {

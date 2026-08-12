@@ -12,7 +12,7 @@ const payloadSchema = z.object({
   mode: z.enum(["CYCLE", "AVULSO"]), disciplineId: z.string().min(1), subjectId: z.string().min(1),
   cycleEntryId: z.string().nullable(), status: z.enum(["ACTIVE", "PAUSED", "FINISHED", "CANCELLED"]).optional(), startedAt: z.string(), accumulatedSeconds: z.number().int().min(0),
   questions: z.number().int().min(0), correct: z.number().int().min(0), wrong: z.number().int().min(0),
-  activityType: z.enum(["QUESTIONS", "CLASS", "READING", "REVIEW"]).optional(), advanceCycle: z.boolean().optional(),
+  activityType: z.enum(["QUESTIONS", "CLASS", "READING", "PDF_READING", "REVIEW"]).optional(), advanceCycle: z.boolean().optional(),
   difficulty: z.enum(["Fácil", "Média", "Difícil"]).nullable(), notes: z.string().nullable(), date: z.string().datetime(),
 }).passthrough();
 

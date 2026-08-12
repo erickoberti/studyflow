@@ -53,7 +53,7 @@ function getFieldByIndex(row: Record<string, string>, headers: string[], index: 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+    return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
   }
 
   const guide = await getActiveStudyGuideForUser(session.user.id);
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        message: `Nenhuma linha valida encontrada. Use um CSV com colunas como: Seq, Assunto, Peso, Disciplina, Onde marcar no TEC. Cabecalhos detectados: ${headers.join(" | ") || "nenhum"}.`,
+        message: `Nenhuma linha válida encontrada. Use um CSV com colunas como: Seq, Assunto, Peso, Disciplina, Onde marcar no TEC. Cabeçalhos detectados: ${headers.join(" | ") || "nenhum"}.`,
       },
       { status: 400 },
     );
@@ -189,7 +189,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         message:
-          "O arquivo foi lido, mas nada novo foi importado. Verifique se as linhas ja existem no guia atual ou se as colunas estao no formato esperado.",
+          "O arquivo foi lido, mas nada novo foi importado. Verifique se as linhas já existem no guia atual ou se as colunas estão no formato esperado.",
       },
       { status: 409 },
     );

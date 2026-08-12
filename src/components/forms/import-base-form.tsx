@@ -57,7 +57,7 @@ export function ImportBaseForm() {
         router.refresh();
       }, 900);
     } catch {
-      const errorMessage = "Nao foi possivel enviar o arquivo agora. Tente novamente.";
+      const errorMessage = "Não foi possível enviar o arquivo agora. Tente novamente.";
       setFeedback({ tone: "error", text: errorMessage });
       toast.error(errorMessage);
     } finally {

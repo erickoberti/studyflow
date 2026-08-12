@@ -80,7 +80,7 @@ export function OfflineGuideManager() {
         <h2 className="text-xl font-black">Guia offline</h2>
         <div className="mt-4 space-y-3">
           <input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Nome do guia" className="h-11 w-full rounded-2xl border border-slate-300 px-3" />
-          <textarea value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Descricao" rows={4} className="w-full rounded-2xl border border-slate-300 p-3" />
+          <textarea value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Descrição" rows={4} className="w-full rounded-2xl border border-slate-300 p-3" />
           <div className="flex flex-wrap gap-2">
             {ICONS.map((icon) => (
               <button key={icon} type="button" onClick={() => setForm((current) => ({ ...current, icon }))} className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${form.icon === icon ? "border-primary bg-primary text-white" : "border-slate-300"}`}>

@@ -22,7 +22,7 @@ export type OfflineSessionOperationStatus =
 
 export type OfflineStudyMode = "CYCLE" | "AVULSO";
 export type OfflineDifficulty = "Fácil" | "Média" | "Difícil" | null;
-export type OfflineActivityType = "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
+export type OfflineActivityType = "QUESTIONS" | "CLASS" | "READING" | "PDF_READING" | "REVIEW";
 
 export type OfflineSessionPayload = {
   localSessionId: string;

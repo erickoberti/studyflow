@@ -12,7 +12,7 @@ export type StandaloneStudyInput = {
   correct: number;
   wrong: number;
   estimatedMinutes: number;
-  activityType?: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
+  activityType?: "QUESTIONS" | "CLASS" | "READING" | "PDF_READING" | "REVIEW";
   difficulty: "Fácil" | "Média" | "Difícil";
   notes?: string | null;
 };

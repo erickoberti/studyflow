@@ -56,7 +56,7 @@ export default async function EstatisticasPage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Desempenho Geral</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Acompanhe sua evolucao nos estudos nos ultimos 30 dias.
+            Acompanhe sua evolução nos estudos nos últimos 30 dias.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -80,7 +80,7 @@ export default async function EstatisticasPage() {
           </span>
         </article>
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <p className="text-sm font-medium text-slate-500">Precisao Media</p>
+          <p className="text-sm font-medium text-slate-500">Precisão média</p>
           <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">
             {dashboard.totals.overallPercentage.toFixed(1)}%
           </p>
@@ -89,14 +89,14 @@ export default async function EstatisticasPage() {
           </span>
         </article>
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <p className="text-sm font-medium text-slate-500">Questoes Totais</p>
+          <p className="text-sm font-medium text-slate-500">Questões totais</p>
           <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{dashboard.totals.totalQuestions}</p>
           <span className="mt-3 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-600">
             +5%
           </span>
         </article>
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
-          <p className="text-sm font-medium text-slate-500">Meta Concluida</p>
+          <p className="text-sm font-medium text-slate-500">Meta concluída</p>
           <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">
             {dashboard.totals.targetPercentage.toFixed(0)}%
           </p>
@@ -115,7 +115,7 @@ export default async function EstatisticasPage() {
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark xl:col-span-7">
           <div className="mb-5 flex items-center justify-between">
             <h3 className="text-xl font-black text-slate-900 dark:text-white">Atividade Semanal</h3>
-            <span className="text-sm font-semibold text-slate-500">Media: {avgHoursPerDay.toFixed(1)}h/dia</span>
+            <span className="text-sm font-semibold text-slate-500">Média: {avgHoursPerDay.toFixed(1)}h/dia</span>
           </div>
           <div className="flex h-56 items-end justify-between gap-3 px-1">
             {week.map((day) => (
@@ -123,7 +123,7 @@ export default async function EstatisticasPage() {
                 <div className="flex w-full flex-1 items-end">
                   <div
                     className="w-full rounded-t-lg bg-primary/25"
-                    title={`${day.questions} questoes`}
+                    title={`${day.questions} questões`}
                     style={{ height: `${Math.max(15, (day.questions / maxWeek) * 100)}%` }}
                   />
                 </div>
@@ -134,7 +134,7 @@ export default async function EstatisticasPage() {
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark xl:col-span-3">
-          <h3 className="mb-5 text-xl font-black text-slate-900 dark:text-white">Precisao por Materia</h3>
+          <h3 className="mb-5 text-xl font-black text-slate-900 dark:text-white">Precisão por matéria</h3>
           <div className="space-y-4">
             {dashboard.disciplineStats.slice(0, 5).map((item) => (
               <div key={item.discipline}>
@@ -153,7 +153,7 @@ export default async function EstatisticasPage() {
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-panelDark">
         <div className="border-b border-slate-200 p-5 dark:border-slate-800">
-          <h3 className="text-xl font-black text-slate-900 dark:text-white">Estatisticas Detalhadas</h3>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white">Estatísticas detalhadas</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
@@ -161,8 +161,8 @@ export default async function EstatisticasPage() {
               <tr>
                 <th className="px-6 py-4 font-bold">Disciplina</th>
                 <th className="px-6 py-4 font-bold">Tempo Estudado</th>
-                <th className="px-6 py-4 font-bold">Questoes</th>
-                <th className="px-6 py-4 font-bold">Precisao %</th>
+                <th className="px-6 py-4 font-bold">Questões</th>
+                <th className="px-6 py-4 font-bold">Precisão %</th>
                 <th className="px-6 py-4 font-bold">Tendencia</th>
               </tr>
             </thead>
@@ -180,7 +180,7 @@ export default async function EstatisticasPage() {
           </table>
         </div>
         <div className="border-t border-slate-200 bg-slate-50/60 p-4 text-center text-sm font-bold text-primary dark:border-slate-800 dark:bg-slate-800/30">
-          Ver relatorio completo
+          Ver relatório completo
         </div>
       </section>
     </div>

@@ -32,7 +32,7 @@ export function OfflineCycle() {
     <div className="space-y-5 pb-10">
       <header>
         <h2 className="text-3xl font-black">Ciclo local</h2>
-        <p className="mt-1 text-sm text-slate-500">Consulta offline do ciclo atual. Alteracoes estruturais continuam online.</p>
+        <p className="mt-1 text-sm text-slate-500">Consulta offline do ciclo atual. Alterações estruturais continuam online.</p>
       </header>
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
@@ -42,7 +42,7 @@ export function OfflineCycle() {
               <th className="px-4 py-3">Ordem</th>
               <th className="px-4 py-3">Disciplina</th>
               <th className="px-4 py-3">Assunto</th>
-              <th className="px-4 py-3 text-right">Questoes</th>
+              <th className="px-4 py-3 text-right">Questões</th>
               <th className="px-4 py-3 text-right">Acerto</th>
               <th className="px-4 py-3">Status</th>
             </tr>

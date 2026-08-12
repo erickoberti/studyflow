@@ -21,12 +21,12 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
     const typedEmail = candidateEmail?.trim().toLowerCase() ?? "";
 
     if (!cachedEmail) {
-      setError("Este dispositivo ainda nao tem dados sincronizados para acesso offline.");
+      setError("Este dispositivo ainda não tem dados sincronizados para acesso offline.");
       return false;
     }
 
     if (typedEmail && typedEmail !== cachedEmail) {
-      setError("Use o mesmo e-mail da ultima sincronizacao para entrar offline.");
+      setError("Use o mesmo e-mail da última sincronização para entrar offline.");
       return false;
     }
 
@@ -71,7 +71,7 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
       if (!navigator.onLine && continueOffline(email)) {
         return;
       }
-      setError("Nao foi possivel autenticar agora.");
+      setError("Não foi possível autenticar agora.");
     }
   }
 
@@ -169,7 +169,7 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
       </div>
 
       <p className="pt-2 text-center text-sm text-slate-500 dark:text-slate-400">
-        Ainda nao tem uma conta?{" "}
+        Ainda não tem uma conta?{" "}
         <Link href="/auth/register" className="font-semibold text-primary hover:underline">
           Cadastre-se
         </Link>

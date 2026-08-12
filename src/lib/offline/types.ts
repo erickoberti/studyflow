@@ -69,7 +69,7 @@ export type OfflineStudySession = {
   wrong: number;
   percentage: number;
   estimatedMinutes: number;
-  activityType?: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
+  activityType?: "QUESTIONS" | "CLASS" | "READING" | "PDF_READING" | "REVIEW";
   notes: string | null;
   createdAt: string;
   updatedAt: string;

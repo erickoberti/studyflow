@@ -74,12 +74,12 @@ function GuidePreview({
           {name || "Novo guia"}
         </h3>
         <p className="mx-auto mt-3 max-w-[280px] text-sm text-slate-500 dark:text-slate-400">
-          {description || "Defina o foco deste guia e mantenha as materias organizadas em um so lugar."}
+          {description || "Defina o foco deste guia e mantenha as matérias organizadas em um só lugar."}
         </p>
 
         <div className="mt-6">
           <div className="mb-2 flex items-center justify-between text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">
-            <span>Materias</span>
+            <span>Matérias</span>
             <span className="text-primary">{disciplines.length} total</span>
           </div>
           <div className="h-2 rounded-full bg-slate-100 dark:bg-white/10">
@@ -104,7 +104,7 @@ function GuidePreview({
           ))}
           {!disciplines.length ? (
             <span className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-[11px] font-semibold text-slate-400 dark:border-white/10">
-              Sem materias
+              Sem matérias
             </span>
           ) : null}
         </div>
@@ -153,7 +153,7 @@ function GuideList({
                 >
                   {guide.name}
                 </span>
-                <span className="mt-0.5 block text-[11px] text-slate-400">{guide.disciplines.length} materias</span>
+                <span className="mt-0.5 block text-[11px] text-slate-400">{guide.disciplines.length} matérias</span>
               </span>
 
               {guide.id === activeGuideId ? <Check className="h-4 w-4 text-primary" /> : null}
@@ -217,12 +217,12 @@ function GuideEditor({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Descricao</label>
+            <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Descrição</label>
             <textarea
               name="description"
               value={description}
               onChange={(event) => onDescriptionChange(event.target.value)}
-              placeholder="Sem descricao cadastrada."
+              placeholder="Sem descrição cadastrada."
               rows={2}
               className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-primary dark:border-white/10 dark:bg-[#24173b] dark:text-white"
             />
@@ -232,7 +232,7 @@ function GuideEditor({
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 dark:border-white/10 dark:bg-[#151225] dark:text-slate-300">
                 <StudyGuideIcon icon={selectedIcon} className="h-3.5 w-3.5" />
-                Icone selecionado
+                Ícone selecionado
               </span>
               <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 dark:border-white/10 dark:bg-[#151225] dark:text-slate-300">
                 <span className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: selectedColor }} />
@@ -248,7 +248,7 @@ function GuideEditor({
         <div className="col-span-12 xl:col-span-4">
           <div className="grid grid-cols-[minmax(0,1fr)_112px] gap-3">
             <div>
-              <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Icone</label>
+              <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Ícone</label>
               <div className="grid grid-cols-4 gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-2.5 dark:border-white/10 dark:bg-[#1c1630]">
                 {iconOptions.map((icon) => (
                   <button
@@ -353,7 +353,7 @@ export function GuideManager({
         <div>
           <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Guias de estudo</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Edite identidade, cor, icone e materias sem sair da mesma tela.
+            Edite identidade, cor, ícone e matérias sem sair da mesma tela.
           </p>
         </div>
 
@@ -386,7 +386,7 @@ export function GuideManager({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-black text-slate-800 dark:text-white">{guide.name}</span>
-                        <span className="block text-[11px] text-slate-400">{guide.disciplines.length} materias</span>
+                        <span className="block text-[11px] text-slate-400">{guide.disciplines.length} matérias</span>
                       </span>
                       {guide.id === activeGuideId ? <Check className="h-4 w-4 text-primary" /> : null}
                     </button>
@@ -491,7 +491,7 @@ export function GuideManager({
                       name="studyGuideId"
                       value={activeGuide.id}
                       onClick={(event) => {
-                        if (!window.confirm(`Excluir o guia "${activeGuide.name}"? Essa acao remove os dados vinculados a ele.`)) {
+                        if (!window.confirm(`Excluir o guia "${activeGuide.name}"? Essa ação remove os dados vinculados a ele.`)) {
                           event.preventDefault();
                         }
                       }}
@@ -517,7 +517,7 @@ export function GuideManager({
                     <Rows3 className="h-4 w-4" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black leading-none text-slate-900 dark:text-white">Assuntos / materias</h2>
+                    <h2 className="text-lg font-black leading-none text-slate-900 dark:text-white">Assuntos / matérias</h2>
                     <p className="mt-1 text-xs text-slate-400">Tudo em formato compacto para caber na mesma tela.</p>
                   </div>
                 </div>
@@ -525,12 +525,12 @@ export function GuideManager({
                 <form action={createGuideDisciplineAction} className="flex flex-wrap items-center gap-2">
                   <input
                     name="name"
-                    placeholder="Nova materia"
+                    placeholder="Nova matéria"
                     className="w-40 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-primary dark:border-white/10 dark:bg-[#24173b] dark:text-white"
                   />
                   <input
                     name="category"
-                    placeholder="Descricao curta"
+                    placeholder="Descrição curta"
                     className="w-40 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-primary dark:border-white/10 dark:bg-[#24173b] dark:text-white"
                   />
                   <button className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-1.5 text-sm font-bold text-white">
@@ -561,7 +561,7 @@ export function GuideManager({
                         <input
                           name="category"
                           defaultValue={discipline.category ?? ""}
-                          placeholder="Descricao"
+                          placeholder="Descrição"
                           className="w-full border-none bg-transparent p-0 text-xs text-slate-400 outline-none focus:ring-0 dark:text-slate-400"
                         />
                       </div>
@@ -569,7 +569,7 @@ export function GuideManager({
                       <div className="col-span-12 text-center lg:col-span-2">
                         {discipline.subjectCount > 0 ? (
                           <span className="inline-flex items-center rounded-md border border-amber-100 bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
-                            {discipline.subjectCount} materias vinculadas
+                            {discipline.subjectCount} matérias vinculadas
                           </span>
                         ) : (
                           <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500 dark:bg-white/10 dark:text-slate-300">
@@ -603,10 +603,10 @@ export function GuideManager({
                           onClick={(event) => {
                             if (discipline.subjectCount > 0) {
                               event.preventDefault();
-                              window.alert("Essa disciplina nao pode ser excluida porque ja possui materias vinculadas.");
+                              window.alert("Essa disciplina não pode ser excluída porque já possui matérias vinculadas.");
                               return;
                             }
-                            if (!window.confirm(`Excluir a disciplina "${discipline.name}"? Essa acao nao pode ser desfeita.`)) {
+                            if (!window.confirm(`Excluir a disciplina "${discipline.name}"? Essa ação não pode ser desfeita.`)) {
                               event.preventDefault();
                             }
                           }}
@@ -619,7 +619,7 @@ export function GuideManager({
                   ))
                 ) : (
                   <div className="rounded-xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
-                    Este guia ainda nao tem materias. Adicione a primeira acima.
+                    Este guia ainda não tem matérias. Adicione a primeira acima.
                   </div>
                 )}
               </div>
@@ -649,7 +649,7 @@ export function GuideManager({
                     <button
                       type="submit"
                       onClick={(event) => {
-                        if (!window.confirm(`Excluir o guia "${guide.name}"? Essa acao remove os dados vinculados a ele.`)) {
+                        if (!window.confirm(`Excluir o guia "${guide.name}"? Essa ação remove os dados vinculados a ele.`)) {
                           event.preventDefault();
                         }
                       }}

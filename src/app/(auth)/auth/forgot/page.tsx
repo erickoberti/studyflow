@@ -24,7 +24,7 @@ export default function ForgotPage() {
         <input
           name="email"
           type="email"
-          placeholder="Email"
+          placeholder="E-mail"
           required
           className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2"
         />

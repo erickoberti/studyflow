@@ -46,7 +46,7 @@ export default async function ConfiguracoesPage() {
     <div className="space-y-5 pb-10">
       <header className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Configuracoes</h1>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Configurações</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Ajustes essenciais da conta e do seu ritmo de estudo em uma tela mais enxuta.
           </p>
@@ -61,7 +61,7 @@ export default async function ConfiguracoesPage() {
                 <UserCircle2 className="h-10 w-10" />
               </div>
               <div>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">{user.name ?? "Usuario"}</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{user.name ?? "Usuário"}</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
                 <div className="mt-2 inline-flex rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-primary">
                   Plano Premium
@@ -90,7 +90,7 @@ export default async function ConfiguracoesPage() {
           <article className={infoCardClassName()}>
             <div className="mb-4 flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-black text-slate-900 dark:text-white">Preferencias de estudo</h2>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Preferências de estudo</h2>
             </div>
 
             <div className="space-y-3">
@@ -111,7 +111,7 @@ export default async function ConfiguracoesPage() {
                   </span>
                   <div>
                     <p className="text-sm font-black text-slate-900 dark:text-white">Meta diaria</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Questoes por dia</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Questões por dia</p>
                   </div>
                 </div>
                 <input
@@ -187,7 +187,7 @@ export default async function ConfiguracoesPage() {
           <article className={infoCardClassName()}>
             <div className="mb-4 flex items-center gap-2">
               <Bell className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-black text-slate-900 dark:text-white">Interface e notificacoes</h2>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Interface e notificações</h2>
             </div>
 
             <div className="space-y-3">
@@ -198,7 +198,7 @@ export default async function ConfiguracoesPage() {
                   </span>
                   <div>
                     <p className="text-sm font-black text-slate-900 dark:text-white">Modo de tema</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Controle rapido entre claro e escuro</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Controle rápido entre claro e escuro</p>
                   </div>
                 </div>
                 <ThemeToggle />
@@ -209,13 +209,13 @@ export default async function ConfiguracoesPage() {
               {[
                 {
                   icon: Mail,
-                  title: "Emails de lembrete",
-                  text: "Resumo e notificacoes por email",
+                  title: "E-mails de lembrete",
+                  text: "Resumo e notificações por e-mail",
                   checked: true,
                 },
                 {
                   icon: Bell,
-                  title: "Notificacoes push",
+                  title: "Notificações push",
                   text: "Alertas no navegador",
                   checked: true,
                 },
@@ -247,7 +247,7 @@ export default async function ConfiguracoesPage() {
           <article className={infoCardClassName()}>
             <div className="mb-4 flex items-center gap-2">
               <LockKeyhole className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-black text-slate-900 dark:text-white">Seguranca</h2>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Segurança</h2>
             </div>
 
             <div className="space-y-3">
@@ -255,11 +255,11 @@ export default async function ConfiguracoesPage() {
                 {
                   icon: LockKeyhole,
                   title: "Alterar senha",
-                  text: "Ultima alteracao ha 3 meses",
+                  text: "Última alteração há 3 meses",
                 },
                 {
                   icon: ShieldCheck,
-                  title: "Autenticacao em 2 etapas",
+                  title: "Autenticação em 2 etapas",
                   text: "Ativado via app",
                 },
               ].map((item) => {
@@ -302,7 +302,7 @@ export default async function ConfiguracoesPage() {
                     <UserCircle2 className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">Sessoes ativas</p>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">Sessões ativas</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Gerencie dispositivos conectados</p>
                   </div>
                 </div>
@@ -316,7 +316,7 @@ export default async function ConfiguracoesPage() {
                 <h2 className="text-lg font-black text-slate-900 dark:text-white">Zona de perigo</h2>
               </div>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Excluir sua conta remove dados de estudo, guias e historico de forma permanente.
+                Excluir sua conta remove dados de estudo, guias e histórico de forma permanente.
               </p>
               <button
                 type="button"
@@ -336,7 +336,7 @@ export default async function ConfiguracoesPage() {
             Cancelar
           </button>
           <button type="submit" className="rounded-xl bg-primary px-6 py-2 text-sm font-bold text-white shadow-soft">
-            Salvar alteracoes
+            Salvar alterações
           </button>
         </section>
       </form>

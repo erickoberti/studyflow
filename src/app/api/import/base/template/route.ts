@@ -19,10 +19,10 @@ export async function GET() {
     },
     {
       Seq: 3,
-      Assunto: "Interpretacao de Textos",
+      Assunto: "Interpretação de Textos",
       Peso: 2,
-      Disciplina: "Portugues",
-      "Onde marcar no TEC": "Portugues > Interpretacao de Textos",
+      Disciplina: "Português",
+      "Onde marcar no TEC": "Português > Interpretação de Textos",
     },
   ]);
 

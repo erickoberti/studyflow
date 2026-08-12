@@ -3,8 +3,6 @@ import { prisma } from "@/lib/prisma";
 import {
   DATAPREV_TARGETS,
   DEFAULT_TARGETS,
-  DAILY_GOAL_METRICS,
-  type DailyGoalMetric,
   type DaySource,
   buildDaySummary,
   applyMockExam,
@@ -17,6 +15,7 @@ import {
   shiftDayKey,
   weekdayFromDayKey,
 } from "@/lib/daily-goals";
+import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 
 export async function ensureDailyGoalSettings(userId: string, studyGuideId: string) {
   const existing = await prisma.dailyGoalSettings.findFirst({ where: { userId, studyGuideId } });
@@ -37,7 +36,7 @@ function targetsForWeekday(settings: Awaited<ReturnType<typeof ensureDailyGoalSe
 export async function getDailyGoalsData(userId: string, studyGuideId: string, now = new Date()) {
   const settings = await ensureDailyGoalSettings(userId, studyGuideId);
   const todayKey = dayKeyInTimeZone(now, settings.timeZone);
-  const [sessions, reviews, activeSessions, mockExams, manualGoals, checks, reflection] = await Promise.all([
+  const [sessions, reviews, activeSessions, mockExams, manualGoals, checks, reflection, guideSettings, reviewsDue] = await Promise.all([
     prisma.studySession.findMany({ where: { userId, studyGuideId }, select: { date: true, estimatedMinutes: true, correct: true, wrong: true, cyclePosition: true } }),
     prisma.reviewSchedule.findMany({ where: { userId, studyGuideId, status: "COMPLETED" }, select: { completedAt: true } }),
     prisma.activeStudySession.findMany({ where: { userId, studyGuideId, status: { not: "CANCELLED" } }, select: { startedAt: true } }),
@@ -45,6 +44,8 @@ export async function getDailyGoalsData(userId: string, studyGuideId: string, no
     prisma.manualDailyGoal.findMany({ where: { userId, studyGuideId, active: true }, orderBy: { createdAt: "asc" } }),
     prisma.manualDailyGoalCheck.findMany({ where: { userId, studyGuideId, dayKey: { lte: todayKey } } }),
     prisma.dailyReflection.findFirst({ where: { userId, studyGuideId, dayKey: todayKey } }),
+    getStudyGuideSettings(userId, studyGuideId),
+    prisma.reviewSchedule.count({ where: { userId, studyGuideId, status: "PENDING", dueAt: { lte: now } } }),
   ]);
   const sources = new Map<string, DaySource>();
   const sourceFor = (key: string) => {
@@ -68,19 +69,25 @@ export async function getDailyGoalsData(userId: string, studyGuideId: string, no
     applyMockExam(source, exam);
   }
   const checkSet = new Set(checks.map((check) => `${check.manualGoalId}:${check.dayKey}`));
-  const earliestEventKey = [...sources.keys(), ...manualGoals.map((goal) => dayKeyInTimeZone(goal.createdAt, settings.timeZone))].sort()[0];
+  const earliestEventKey = [...sources.keys()].sort()[0];
   const firstKey = earliestEventKey && earliestEventKey < shiftDayKey(todayKey, -34) ? earliestEventKey : shiftDayKey(todayKey, -34);
   const dayKeys: string[] = [];
   for (let dayKey = firstKey; dayKey <= todayKey; dayKey = shiftDayKey(dayKey, 1)) dayKeys.push(dayKey);
   const days = dayKeys.map((dayKey) => {
     const weekday = weekdayFromDayKey(dayKey);
     const source = sourceFor(dayKey);
-    for (const goal of manualGoals.filter((item) => dayKeyInTimeZone(item.createdAt, settings.timeZone) <= dayKey && item.activeWeekdays.includes(weekday))) {
-      const checked = checkSet.has(`${goal.id}:${dayKey}`);
-      if (goal.tier === "MINIMUM") { source.manualMinimumTotal += 1; if (checked) source.manualMinimumDone += 1; }
-      else { source.manualTargetTotal += 1; if (checked) source.manualTargetDone += 1; }
-    }
-    return buildDaySummary({ dayKey, source, targets: targetsForWeekday(settings, weekday), enabledMetrics: settings.enabledMetrics.filter((metric): metric is DailyGoalMetric => DAILY_GOAL_METRICS.includes(metric as DailyGoalMetric)), activeWeekdays: settings.activeWeekdays, plannedRestWeekdays: settings.plannedRestWeekdays, firstStudyDeadline: settings.firstStudyDeadline, timeZone: settings.timeZone, includeMockExams: settings.includeMockExams, isToday: dayKey === todayKey });
+    return buildDaySummary({
+      dayKey,
+      source,
+      targets: targetsForWeekday(settings, weekday),
+      enabledMetrics: ["minutes"],
+      activeWeekdays: settings.activeWeekdays,
+      plannedRestWeekdays: [],
+      firstStudyDeadline: null,
+      timeZone: settings.timeZone,
+      includeMockExams: false,
+      isToday: dayKey === todayKey,
+    });
   });
   const today = days.at(-1)!;
   const week = days.slice(-7);
@@ -88,7 +95,22 @@ export async function getDailyGoalsData(userId: string, studyGuideId: string, no
   const rhythm = calculateRhythm(days, todayKey);
   const weekTotals = { minimumDays: week.filter((day) => day.minimumMet).length, targetDays: week.filter((day) => day.targetMet).length, minutes: week.reduce((sum, day) => sum + day.minutes, 0), questions: week.reduce((sum, day) => sum + day.questions, 0), sessions: week.reduce((sum, day) => sum + day.sessions, 0), averageMinutes: Math.round(week.reduce((sum, day) => sum + day.minutes, 0) / 7) };
   const weekdayTargets = parseTargets(settings.weekdayTargets, DEFAULT_TARGETS);
-  return { settings, targets: targetsForWeekday(settings, today.weekday), weekdayTargets, saturdayTargets: parseTargets(settings.saturdayTargets, weekdayTargets), sundayTargets: parseTargets(settings.sundayTargets, weekdayTargets), today, week, days: days.slice(-28), streak, rhythm, weekTotals, manualGoals: manualGoals.map((goal) => ({ ...goal, checkedToday: checkSet.has(`${goal.id}:${todayKey}`) })), reflection };
+  const todayTargets = targetsForWeekday(settings, today.weekday);
+  const weekStartKey = shiftDayKey(todayKey, -(today.weekday - 1));
+  const calendarWeek = days.filter((day) => day.dayKey >= weekStartKey && day.dayKey <= todayKey);
+  const questionsThisWeek = calendarWeek.reduce((sum, day) => sum + day.questions, 0);
+  const questionsRemaining = Math.max(0, guideSettings.weeklyQuestionsGoal - questionsThisWeek);
+  const activeDaysRemaining = settings.activeWeekdays.filter((weekday) => weekday >= today.weekday).length || 1;
+  const plan = {
+    dailyMinutes: todayTargets.target.minutes,
+    weeklyQuestions: guideSettings.weeklyQuestionsGoal,
+    questionsThisWeek,
+    questionsRemaining,
+    suggestedQuestionsToday: questionsRemaining ? Math.ceil(questionsRemaining / activeDaysRemaining) : 0,
+    reviewsDue,
+    examDate: guideSettings.examDate,
+  };
+  return { settings, targets: targetsForWeekday(settings, today.weekday), weekdayTargets, saturdayTargets: parseTargets(settings.saturdayTargets, weekdayTargets), sundayTargets: parseTargets(settings.sundayTargets, weekdayTargets), today, week, days: days.slice(-28), streak, rhythm, weekTotals, plan, manualGoals: manualGoals.map((goal) => ({ ...goal, checkedToday: checkSet.has(`${goal.id}:${todayKey}`) })), reflection };
 }
 
 export type DailyGoalsData = Awaited<ReturnType<typeof getDailyGoalsData>>;

@@ -230,7 +230,7 @@ export default async function BasePage({
                     </label>
                     <input
                       name="name"
-                      placeholder="Titulo do assunto"
+                      placeholder="Título do assunto"
                       required
                       defaultValue={editingSubject?.name ?? ""}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-[#0e0b18] dark:text-white"
@@ -353,7 +353,7 @@ export default async function BasePage({
                       <th className="px-5 py-3">Ordem</th>
                       <th className="px-5 py-3">Disciplina</th>
                       <th className="px-5 py-3">Assuntos</th>
-                      <th className="px-5 py-3 text-right">Acao</th>
+                      <th className="px-5 py-3 text-right">Ação</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-primary/10">
@@ -398,7 +398,7 @@ export default async function BasePage({
                       <th className="px-5 py-3">Disciplina</th>
                       <th className="px-5 py-3">Peso</th>
                       <th className="px-5 py-3">Observacoes</th>
-                      <th className="px-5 py-3 text-right">Acao</th>
+                      <th className="px-5 py-3 text-right">Ação</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-primary/10">

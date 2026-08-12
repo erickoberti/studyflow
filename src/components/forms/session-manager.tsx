@@ -14,7 +14,7 @@ type SessionItem = {
   wrong: number;
   percentage: number;
   estimatedMinutes: number;
-  activityType: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
+  activityType: "QUESTIONS" | "CLASS" | "READING" | "PDF_READING" | "REVIEW";
   notes: string;
   subjectName: string;
   disciplineName: string;
@@ -133,7 +133,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
       toast.success("Registro excluído.");
       router.refresh();
     } catch {
-      toast.error("Nao foi possivel excluir agora. Tente novamente.");
+      toast.error("Não foi possível excluir agora. Tente novamente.");
     } finally {
       setDeletingId(null);
     }
@@ -173,7 +173,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        toast.error(data?.message ?? "Erro ao salvar alteracao.");
+        toast.error(data?.message ?? "Erro ao salvar alteração.");
         return;
       }
 
@@ -211,7 +211,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
       setEditingId(null);
       router.refresh();
     } catch {
-      toast.error("Nao foi possivel salvar agora. Tente novamente.");
+      toast.error("Não foi possível salvar agora. Tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -228,7 +228,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
             <label className="text-xs font-semibold text-slate-500">
               Atividade
-              <select value={form.activityType} onChange={(event) => setForm((value) => ({ ...value, activityType: event.target.value as SessionItem["activityType"], questions: event.target.value === "QUESTIONS" ? value.questions : 0, correct: event.target.value === "QUESTIONS" ? value.correct : 0 }))} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-primary/30 dark:bg-[#120e20]"><option value="QUESTIONS">Questões</option><option value="CLASS">Aula</option><option value="READING">Leitura</option><option value="REVIEW">Revisão</option></select>
+              <select value={form.activityType} onChange={(event) => setForm((value) => ({ ...value, activityType: event.target.value as SessionItem["activityType"], questions: event.target.value === "QUESTIONS" ? value.questions : 0, correct: event.target.value === "QUESTIONS" ? value.correct : 0 }))} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-primary/30 dark:bg-[#120e20]"><option value="QUESTIONS">Questões</option><option value="CLASS">Videoaula</option><option value="READING">Lei seca</option><option value="PDF_READING">PDF/material</option><option value="REVIEW">Revisão</option></select>
             </label>
             <label className="text-xs font-semibold text-slate-500">
               Data
@@ -254,7 +254,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
               </select>
             </label>
             {form.activityType === "QUESTIONS" ? <label className="text-xs font-semibold text-slate-500">
-              Questoes
+              Questões
               <input
                 type="number"
                 min={1}
@@ -309,7 +309,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
               disabled={!editingId || saving}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
             >
-              {saving ? "Salvando..." : "Salvar alteracao"}
+              {saving ? "Salvando..." : "Salvar alteração"}
             </button>
             <button
               type="button"
@@ -355,10 +355,10 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                 <th className="py-2">Disciplina</th>
                 <th className="py-2">Assunto</th>
                 <th className="py-2">Atividade</th>
-                <th className="py-2 text-right">Questoes</th>
+                <th className="py-2 text-right">Questões</th>
                 <th className="py-2 text-right">Acertos</th>
                 <th className="py-2 text-right">%</th>
-                <th className="py-2 text-right">Acao</th>
+                <th className="py-2 text-right">Ação</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-primary/15">
@@ -367,7 +367,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                   <td className="py-2.5 text-slate-600 dark:text-slate-300">{formatPtBr(item.date)}</td>
                   <td className="py-2.5 font-medium">{item.disciplineName}</td>
                   <td className="py-2.5">{item.subjectName}</td>
-                  <td className="py-2.5"><span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{item.activityType === "CLASS" ? <BookOpenCheck size={13} /> : <ListChecks size={13} />}{item.activityType === "CLASS" ? "Aula" : item.activityType === "READING" ? "Leitura" : item.activityType === "REVIEW" ? "Revisão" : "Questões"}</span></td>
+                  <td className="py-2.5"><span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{item.activityType === "QUESTIONS" ? <ListChecks size={13} /> : <BookOpenCheck size={13} />}{item.activityType === "CLASS" ? "Videoaula" : item.activityType === "READING" ? "Lei seca" : item.activityType === "PDF_READING" ? "PDF/material" : item.activityType === "REVIEW" ? "Revisão" : "Questões"}</span></td>
                   <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" ? item.questions : "—"}</td>
                   <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" ? item.correct : "—"}</td>
                   <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" ? `${item.percentage.toFixed(1)}%` : `${item.estimatedMinutes} min`}</td>

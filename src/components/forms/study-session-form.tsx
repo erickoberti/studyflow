@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Clock3, Search } from "lucide-react";
+import { CalendarDays, Clock3, FileText, ListChecks, Search, Scale, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { STUDY_ACTIVITY_LABELS, type StudyActivity } from "@/lib/study-activity";
 
 export type StandaloneGuideOption = {
   id: string;
@@ -19,6 +20,8 @@ type RecentSession = {
   id: string;
   date: Date;
   questions: number;
+  estimatedMinutes: number;
+  activityType: StudyActivity;
   subjectName: string;
   disciplineName: string;
 };
@@ -69,6 +72,7 @@ export function StudySessionForm({
   const [date, setDate] = useState(() => dateKey(new Date()));
   const [time, setTime] = useState(() => timeKey(new Date()));
   const [estimatedMinutes, setEstimatedMinutes] = useState(60);
+  const [activityType, setActivityType] = useState<StudyActivity>("QUESTIONS");
   const [correct, setCorrect] = useState("");
   const [wrong, setWrong] = useState("");
   const [difficulty, setDifficulty] = useState<"Fácil" | "Média" | "Difícil">(DEFAULT_DIFFICULTY);
@@ -88,6 +92,7 @@ export function StudySessionForm({
   const correctNumber = Number(correct) || 0;
   const wrongNumber = Number(wrong) || 0;
   const questions = correctNumber + wrongNumber;
+  const isQuestions = activityType === "QUESTIONS";
   const percentage = questions ? (correctNumber / questions) * 100 : 0;
   const today = dateKey(new Date());
 
@@ -110,6 +115,7 @@ export function StudySessionForm({
     setDate(dateKey(now));
     setTime(timeKey(now));
     setEstimatedMinutes(60);
+    setActivityType("QUESTIONS");
     setCorrect("");
     setWrong("");
     setDifficulty(DEFAULT_DIFFICULTY);
@@ -148,7 +154,7 @@ export function StudySessionForm({
       const message = "Selecione guia, disciplina e assunto.";
       setStatus({ type: "error", message }); toast.error(message); return;
     }
-    if (questions <= 0) {
+    if (isQuestions && questions <= 0) {
       const message = "Informe ao menos um acerto ou erro.";
       setStatus({ type: "error", message }); toast.error(message); return;
     }
@@ -163,7 +169,7 @@ export function StudySessionForm({
       const response = await fetch("/api/study-sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studyGuideId, disciplineId, subjectId, date, time, correct: correctNumber, wrong: wrongNumber, estimatedMinutes, difficulty, notes }),
+        body: JSON.stringify({ studyGuideId, disciplineId, subjectId, date, time, correct: isQuestions ? correctNumber : 0, wrong: isQuestions ? wrongNumber : 0, estimatedMinutes, activityType, difficulty, notes }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message ?? "Erro ao salvar registro.");
@@ -195,6 +201,12 @@ export function StudySessionForm({
 
         <form onSubmit={submit} noValidate>
           <fieldset disabled={loading} className="space-y-5 disabled:opacity-70">
+            <div><p className="text-sm font-bold">O que você estudou?</p><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <button type="button" aria-pressed={activityType === "QUESTIONS"} onClick={() => setActivityType("QUESTIONS")} className={`inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border text-sm font-bold ${activityType === "QUESTIONS" ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><ListChecks size={19} /> Questões</button>
+              <button type="button" aria-pressed={activityType === "CLASS"} onClick={() => { setActivityType("CLASS"); setCorrect(""); setWrong(""); }} className={`inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border text-sm font-bold ${activityType === "CLASS" ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><Video size={19} /> Videoaula</button>
+              <button type="button" aria-pressed={activityType === "READING"} onClick={() => { setActivityType("READING"); setCorrect(""); setWrong(""); }} className={`inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border text-sm font-bold ${activityType === "READING" ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><Scale size={19} /> Lei seca</button>
+              <button type="button" aria-pressed={activityType === "PDF_READING"} onClick={() => { setActivityType("PDF_READING"); setCorrect(""); setWrong(""); }} className={`inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border text-sm font-bold ${activityType === "PDF_READING" ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-700"}`}><FileText size={19} /> PDF/material</button>
+            </div></div>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="text-sm font-bold">Guia
                 <select aria-label="Guia" value={studyGuideId} onChange={(event) => changeGuide(event.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-900">
@@ -229,19 +241,19 @@ export function StudySessionForm({
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className={`grid gap-4 ${isQuestions ? "sm:grid-cols-3" : "sm:grid-cols-1"}`}>
               <label className="text-sm font-bold">Duração (min)
                 <span className="relative mt-1.5 block"><Clock3 aria-hidden size={16} className="absolute left-3 top-4 text-slate-400" /><input aria-label="Duração em minutos" inputMode="numeric" type="number" min={1} required value={estimatedMinutes} onChange={(event) => setEstimatedMinutes(Number(event.target.value) || 0)} className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-900" /></span>
               </label>
-              <label className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Acertos
+              {isQuestions ? <><label className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Acertos
                 <input aria-label="Acertos" inputMode="numeric" type="number" min={0} value={correct} onChange={(event) => setCorrect(event.target.value)} placeholder="0" className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-900" />
               </label>
               <label className="text-sm font-bold text-rose-700 dark:text-rose-300">Erros
                 <input aria-label="Erros" inputMode="numeric" type="number" min={0} value={wrong} onChange={(event) => setWrong(event.target.value)} placeholder="0" className="mt-1.5 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-900" />
-              </label>
+              </label></> : null}
             </div>
 
-            <div className="rounded-xl bg-slate-100 p-4 text-sm dark:bg-slate-900"><div className="flex justify-between"><span>Total de questões</span><b data-testid="standalone-total">{questions}</b></div><div className="mt-2 flex justify-between"><span>Percentual de acertos</span><b data-testid="standalone-percentage">{questions ? `${percentage.toFixed(0)}%` : "—"}</b></div><div className="mt-2 flex justify-between"><span>Meta da sessão</span><b>{questions}/{dailyQuestionsGoal}</b></div></div>
+            {isQuestions ? <div className="rounded-xl bg-slate-100 p-4 text-sm dark:bg-slate-900"><div className="flex justify-between"><span>Total de questões</span><b data-testid="standalone-total">{questions}</b></div><div className="mt-2 flex justify-between"><span>Percentual de acertos</span><b data-testid="standalone-percentage">{questions ? `${percentage.toFixed(0)}%` : "—"}</b></div><div className="mt-2 flex justify-between"><span>Meta da sessão</span><b>{questions}/{dailyQuestionsGoal}</b></div></div> : <div className="rounded-xl bg-primary/5 p-4 text-sm font-semibold text-slate-600 dark:text-slate-300">O tempo e a sessão serão contabilizados sem adicionar questões.</div>}
 
             <div><p className="text-sm font-bold">Dificuldade</p><div className="mt-2 grid grid-cols-3 gap-2">{difficultyOptions.map(([value, icon]) => <button key={value} type="button" aria-pressed={difficulty === value} onClick={() => setDifficulty(value)} className={`min-h-16 rounded-xl border px-2 text-sm font-bold ${difficulty === value ? "border-primary bg-primary/10 text-primary" : "border-slate-200 dark:border-slate-700"}`}><span aria-hidden className="block text-xl">{icon}</span>{value}</button>)}</div></div>
             <label className="block text-sm font-bold">Observação <span className="font-normal text-slate-400">(opcional)</span><textarea aria-label="Observação" value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} placeholder="O que revisar ou lembrar na próxima sessão?" className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white p-3 outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-900" /></label>
@@ -251,7 +263,7 @@ export function StudySessionForm({
         </form>
       </article>
 
-      <aside className="space-y-4"><article className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-panelDark"><p className="text-xs font-black uppercase tracking-wider text-primary">Garantia do modo avulso</p><p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Este registro atualiza histórico, calendário e estatísticas na data escolhida, sem avançar nem reposicionar o ciclo.</p></article><article className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-panelDark"><h3 className="font-black">Registros recentes</h3><div className="mt-3 space-y-3">{recentSessions?.length ? recentSessions.map((session) => <div key={session.id} className="border-t border-slate-100 pt-3 first:border-0 first:pt-0 dark:border-slate-800"><p className="text-sm font-bold">{session.disciplineName}</p><p className="truncate text-xs text-slate-500">{session.subjectName} · {session.questions} questões</p><p className="mt-1 text-xs text-slate-400">{formatPtBrDay(session.date)}</p></div>) : <p className="text-sm text-slate-500">Nenhum registro neste guia.</p>}</div></article></aside>
+      <aside className="space-y-4"><article className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-panelDark"><p className="text-xs font-black uppercase tracking-wider text-primary">Garantia do modo avulso</p><p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Este registro atualiza histórico, calendário e estatísticas na data escolhida, sem avançar nem reposicionar o ciclo.</p></article><article className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-panelDark"><h3 className="font-black">Registros recentes</h3><div className="mt-3 space-y-3">{recentSessions?.length ? recentSessions.map((session) => <div key={session.id} className="border-t border-slate-100 pt-3 first:border-0 first:pt-0 dark:border-slate-800"><p className="text-sm font-bold">{session.disciplineName}</p><p className="truncate text-xs text-slate-500">{session.subjectName} · {session.activityType === "QUESTIONS" ? `${session.questions} questões` : `${STUDY_ACTIVITY_LABELS[session.activityType]} · ${session.estimatedMinutes} min`}</p><p className="mt-1 text-xs text-slate-400">{formatPtBrDay(session.date)}</p></div>) : <p className="text-sm text-slate-500">Nenhum registro neste guia.</p>}</div></article></aside>
     </section>
   );
 }

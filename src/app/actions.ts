@@ -30,12 +30,12 @@ export async function registerUser(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { ok: false, message: "Dados invalidos." };
+    return { ok: false, message: "Dados inválidos." };
   }
 
   const exists = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (exists) {
-    return { ok: false, message: "Email ja cadastrado." };
+    return { ok: false, message: "E-mail já cadastrado." };
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
@@ -58,7 +58,7 @@ export async function requestPasswordReset(formData: FormData) {
   const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
-    return { ok: true, message: "Se o email existir, um token sera gerado." };
+    return { ok: true, message: "Se o e-mail existir, um token será gerado." };
   }
 
   const token = crypto.randomUUID();
@@ -86,7 +86,7 @@ export async function resetPassword(formData: FormData) {
 
   const resetToken = await prisma.passwordResetToken.findUnique({ where: { token } });
   if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
-    return { ok: false, message: "Token invalido ou expirado." };
+    return { ok: false, message: "Token inválido ou expirado." };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);

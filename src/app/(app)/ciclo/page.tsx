@@ -337,7 +337,7 @@ export default async function CicloPage({
                 <th className="px-4 py-3 font-bold">Progresso</th>
                 <th className="px-4 py-3 font-bold">Tempo</th>
                 <th className="px-4 py-3 font-bold">Status</th>
-                <th className="px-4 py-3 text-right font-bold">Acoes</th>
+                <th className="px-4 py-3 text-right font-bold">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -446,12 +446,12 @@ export default async function CicloPage({
               <Rocket size={24} />
             </div>
             <div>
-              <h4 className="text-2xl font-black">Pronto para a proxima meta?</h4>
+              <h4 className="text-2xl font-black">Pronto para a próxima meta?</h4>
               <p className="mt-2 text-sm text-white/90">
-                Seu desempenho esta acima da media. Considere revisar temas mais complexos hoje.
+                Seu desempenho está acima da média. Considere revisar temas mais complexos hoje.
               </p>
               <Link href="/registro" className="mt-4 inline-flex rounded-xl bg-white px-4 py-2 text-sm font-bold text-primary">
-                Iniciar Cronometro
+                Iniciar cronômetro
               </Link>
             </div>
           </div>
@@ -459,7 +459,7 @@ export default async function CicloPage({
 
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-panelDark">
           <div className="mb-4 flex items-center justify-between">
-            <h4 className="text-xl font-black text-slate-900 dark:text-white">Resumo Diario</h4>
+            <h4 className="text-xl font-black text-slate-900 dark:text-white">Resumo diário</h4>
             <span className="text-xs font-bold uppercase text-primary">Hoje</span>
           </div>
           <div className="space-y-3 text-sm">
@@ -468,7 +468,7 @@ export default async function CicloPage({
               <span className="font-bold">{(totalMinutes / 60).toFixed(1)}h</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-600 dark:text-slate-400">Questoes Resolvidas</span>
+              <span className="text-slate-600 dark:text-slate-400">Questões resolvidas</span>
               <span className="font-bold">{totalQuestions}</span>
             </div>
             <div className="flex justify-between">
@@ -478,7 +478,7 @@ export default async function CicloPage({
           </div>
           <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
             <Link href="/estatisticas" className="text-sm font-bold text-primary hover:underline">
-              Ver relatorio completo →
+              Ver relatório completo →
             </Link>
           </div>
         </article>

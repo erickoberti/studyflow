@@ -29,7 +29,7 @@ export function OfflineDashboard() {
           <Library size={18} className="mt-3 text-primary" />
         </article>
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-          <p className="text-sm text-slate-500">Sequencia</p>
+          <p className="text-sm text-slate-500">Sequência</p>
           <p className="mt-2 text-4xl font-black">{dashboard.totals.streakDays} dias</p>
           <Flame size={18} className="mt-3 text-orange-500" />
         </article>
@@ -43,9 +43,9 @@ export function OfflineDashboard() {
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
         <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-2xl font-black">Ultimos dias</h2>
+            <h2 className="text-2xl font-black">Últimos dias</h2>
             <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-black text-primary">
-              Meta: {snapshot.settings?.dailyQuestionsGoal ?? 30} questoes
+              Meta: {snapshot.settings?.dailyQuestionsGoal ?? 30} questões
             </span>
           </div>
 
@@ -62,15 +62,15 @@ export function OfflineDashboard() {
         </article>
 
         <article className="rounded-3xl bg-gradient-to-br from-primary to-primarySoft p-6 text-white shadow-soft">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/80">Proximo topico</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/80">Próximo tópico</p>
           <h3 className="mt-2 text-3xl font-black">{suggestion.next?.subject.name ?? "Organize seu ciclo"}</h3>
           <p className="mt-2 text-sm text-white/85">
             {suggestion.next?.subject.discipline.name ?? "Adicione um guia e pelo menos um assunto para seguir estudando offline."}
           </p>
-          <p className="mt-4 text-sm text-white/90">{suggestion.next?.subject.notes ?? "A sincronizacao vai manter seus dados locais e do servidor alinhados quando a conexao voltar."}</p>
+          <p className="mt-4 text-sm text-white/90">{suggestion.next?.subject.notes ?? "A sincronização vai manter seus dados locais e do servidor alinhados quando a conexão voltar."}</p>
           <Link href="/offline/registro" className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black text-primary">
             <Zap size={14} />
-            Registrar sessao
+            Registrar sessão
           </Link>
         </article>
       </section>

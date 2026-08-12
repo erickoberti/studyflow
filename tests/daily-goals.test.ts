@@ -128,3 +128,19 @@ test("falha de rede é tratada sem marcar revisão e migration é aditiva", () =
   assert.doesNotMatch(migration, /DROP\s+(?:TABLE|COLUMN|TYPE)|TRUNCATE|DELETE\s+FROM|ALTER\s+COLUMN/i);
   assert.match(migration, /CREATE TABLE "DailyGoalSettings"/);
 });
+
+test("configuração simplificada expõe apenas metas compreensíveis ao usuário", () => {
+  const forms = readFileSync(resolve(process.cwd(), "src/components/goal-forms.tsx"), "utf8");
+  const actions = readFileSync(resolve(process.cwd(), "src/app/goals-actions.ts"), "utf8");
+  const service = readFileSync(resolve(process.cwd(), "src/lib/daily-goals-service.ts"), "utf8");
+  const page = readFileSync(resolve(process.cwd(), "src/app/(app)/metas/page.tsx"), "utf8");
+
+  assert.match(forms, /name="dailyMinutes"/);
+  assert.match(forms, /name="weeklyQuestions"/);
+  assert.match(forms, /name="examDate"/);
+  assert.match(forms, /name="activeWeekdays"/);
+  assert.doesNotMatch(forms, /name="enabledMetrics"|name="plannedRestWeekdays"|name="firstStudyDeadline"/);
+  assert.match(actions, /enabledMetrics: \["minutes"\]/);
+  assert.match(service, /enabledMetrics: \["minutes"\]/);
+  assert.doesNotMatch(page, /<ManualGoals/);
+});

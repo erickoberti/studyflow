@@ -103,7 +103,7 @@ async function upsertPrimaryCycleEntry(userId: string, studyGuideId: string, sub
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+    return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
   }
 
   const payload = await request.json().catch(() => ({}));

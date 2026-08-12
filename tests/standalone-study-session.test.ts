@@ -56,6 +56,16 @@ test("aula avulsa aceita zero questões e preserva o tempo estudado", async () =
   assert.equal((fake.created as { estimatedMinutes: number }).estimatedMinutes, 45);
 });
 
+test("lei seca e PDF são registrados separadamente sem exigir questões", async () => {
+  for (const activityType of ["READING", "PDF_READING"] as const) {
+    const fake = fakeTransaction();
+    await createStandaloneStudySession(fake.tx, { ...base, correct: 0, wrong: 0, activityType, estimatedMinutes: 35 }, new Date("2026-07-27T12:00:00Z"));
+    assert.equal((fake.created as { activityType: string }).activityType, activityType);
+    assert.equal((fake.created as { questions: number }).questions, 0);
+    assert.equal((fake.created as { estimatedMinutes: number }).estimatedMinutes, 35);
+  }
+});
+
 test("assunto inválido para a disciplina é rejeitado antes da persistência", async () => {
   const fake = fakeTransaction({ subject: false });
   await assert.rejects(() => createStandaloneStudySession(fake.tx, base), /não pertence à disciplina/);
@@ -77,6 +87,19 @@ test("formulários só limpam resultados após sucesso e preservam falhas ou ras
   assert.match(active, /setCorrect\(local\.correct\)/);
   assert.match(active, /setWrong\(local\.wrong\)/);
   assert.ok((active.match(/clearFinishForm\(\)/g) ?? []).length >= 5);
+});
+
+test("finalização do ciclo calcula o total usando acertos e erros", () => {
+  const active = readFileSync(resolve(process.cwd(), "src/components/study/active-study-panel.tsx"), "utf8");
+  assert.match(active, /const questions = correct \+ wrong/);
+  assert.doesNotMatch(active, /aria-label="Questões realizadas"/);
+  assert.match(active, /<span>Total de questões<\/span><b>\{questions\}<\/b>/);
+});
+
+test("finalização oferece videoaula, lei seca e PDF como atividades contabilizáveis", () => {
+  const active = readFileSync(resolve(process.cwd(), "src/components/study/active-study-panel.tsx"), "utf8");
+  for (const activity of ["CLASS", "READING", "PDF_READING"]) assert.match(active, new RegExp(`setStudyActivity\\(\"${activity}\"\\)`));
+  for (const label of ["Videoaula", "Lei seca", "PDF/material"]) assert.match(active, new RegExp(label));
 });
 
 test("analytics usa a data persistida e ignora avulso na progressão do ciclo", () => {

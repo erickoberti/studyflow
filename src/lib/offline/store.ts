@@ -228,7 +228,7 @@ export function createOfflineSession(input: {
   correct: number;
   wrong: number;
   estimatedMinutes: number;
-  activityType?: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
+  activityType?: "QUESTIONS" | "CLASS" | "READING" | "PDF_READING" | "REVIEW";
   notes: string | null;
 }) {
   const snapshot = getOfflineSnapshot();
@@ -268,7 +268,7 @@ export function updateOfflineSession(
     correct: number;
     wrong: number;
     estimatedMinutes: number;
-    activityType?: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
+    activityType?: "QUESTIONS" | "CLASS" | "READING" | "PDF_READING" | "REVIEW";
     notes: string | null;
   },
 ) {
@@ -347,7 +347,7 @@ export function hydrateOfflineSessionsFromServer(input: {
     wrong: number;
     percentage: number;
     estimatedMinutes: number;
-    activityType?: "QUESTIONS" | "CLASS" | "READING" | "REVIEW";
+    activityType?: "QUESTIONS" | "CLASS" | "READING" | "PDF_READING" | "REVIEW";
     notes: string | null;
     createdAt: string;
     updatedAt: string;

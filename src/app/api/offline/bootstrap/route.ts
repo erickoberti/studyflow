@@ -8,7 +8,7 @@ import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+    return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
   }
 
   const [user, guides, activeGuide] = await Promise.all([
@@ -25,7 +25,7 @@ export async function GET() {
   ]);
 
   if (!user) {
-    return NextResponse.json({ message: "Usuario nao encontrado" }, { status: 404 });
+    return NextResponse.json({ message: "Usuário não encontrado" }, { status: 404 });
   }
 
   if (!activeGuide) {

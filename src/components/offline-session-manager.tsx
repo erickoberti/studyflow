@@ -33,7 +33,7 @@ export function OfflineSessionManager() {
     questions: 0,
     correct: 0,
     estimatedMinutes: 60,
-    activityType: "QUESTIONS" as "QUESTIONS" | "CLASS" | "READING" | "REVIEW",
+    activityType: "QUESTIONS" as "QUESTIONS" | "CLASS" | "READING" | "PDF_READING" | "REVIEW",
     notes: "",
   });
 
@@ -124,7 +124,7 @@ export function OfflineSessionManager() {
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
           <h2 className="text-lg font-black">Editar registro local</h2>
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="text-sm font-semibold">Atividade<select value={form.activityType} onChange={(event) => setForm((current) => ({ ...current, activityType: event.target.value as typeof current.activityType }))} className="mt-1.5 h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"><option value="QUESTIONS">Questões</option><option value="CLASS">Aula</option><option value="READING">Leitura</option><option value="REVIEW">Revisão</option></select></label>
+            <label className="text-sm font-semibold">Atividade<select value={form.activityType} onChange={(event) => setForm((current) => ({ ...current, activityType: event.target.value as typeof current.activityType }))} className="mt-1.5 h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"><option value="QUESTIONS">Questões</option><option value="CLASS">Videoaula</option><option value="READING">Lei seca</option><option value="PDF_READING">PDF/material</option><option value="REVIEW">Revisão</option></select></label>
             {form.activityType === "QUESTIONS" ? <label className="text-sm font-semibold">
               Data
               <input
@@ -149,7 +149,7 @@ export function OfflineSessionManager() {
               </select>
             </label> : null}
             <label className="text-sm font-semibold">
-              Questoes
+              Questões
               <input
                 type="number"
                 value={form.questions}
@@ -199,7 +199,7 @@ export function OfflineSessionManager() {
 
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <h2 className="text-2xl font-black">Sessoes locais</h2>
+          <h2 className="text-2xl font-black">Sessões locais</h2>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -216,10 +216,10 @@ export function OfflineSessionManager() {
                 <th className="py-2">Disciplina</th>
                 <th className="py-2">Assunto</th>
                 <th className="py-2">Atividade</th>
-                <th className="py-2 text-right">Questoes</th>
+                <th className="py-2 text-right">Questões</th>
                 <th className="py-2 text-right">% </th>
                 <th className="py-2">Status</th>
-                <th className="py-2 text-right">Acao</th>
+                <th className="py-2 text-right">Ação</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -230,7 +230,7 @@ export function OfflineSessionManager() {
                     <td className="py-3">{formatPtBr(session.date)}</td>
                     <td className="py-3 font-medium">{entry?.subject.discipline.name ?? "-"}</td>
                     <td className="py-3">{entry?.subject.name ?? "-"}</td>
-                    <td className="py-3 font-semibold text-primary">{session.activityType === "CLASS" ? "Aula" : session.activityType === "READING" ? "Leitura" : session.activityType === "REVIEW" ? "Revisão" : "Questões"}</td>
+                    <td className="py-3 font-semibold text-primary">{session.activityType === "CLASS" ? "Videoaula" : session.activityType === "READING" ? "Lei seca" : session.activityType === "PDF_READING" ? "PDF/material" : session.activityType === "REVIEW" ? "Revisão" : "Questões"}</td>
                     <td className="py-3 text-right">{session.activityType && session.activityType !== "QUESTIONS" ? "—" : session.questions}</td>
                     <td className="py-3 text-right">{session.activityType && session.activityType !== "QUESTIONS" ? `${session.estimatedMinutes} min` : `${session.percentage.toFixed(1)}%`}</td>
                     <td className="py-3">

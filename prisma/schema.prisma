@@ -11,6 +11,7 @@ enum StudyActivityType {
   QUESTIONS
   CLASS
   READING
+  PDF_READING
   REVIEW
 }
 

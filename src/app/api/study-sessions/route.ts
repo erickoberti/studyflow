@@ -15,7 +15,7 @@ const standaloneCreateSchema = z.object({
   correct: z.number().int().min(0),
   wrong: z.number().int().min(0),
   estimatedMinutes: z.number().int().min(1),
-  activityType: z.enum(["QUESTIONS", "CLASS", "READING", "REVIEW"]).optional(),
+  activityType: z.enum(["QUESTIONS", "CLASS", "READING", "PDF_READING", "REVIEW"]).optional(),
   difficulty: z.enum(["Fácil", "Média", "Difícil"]),
   notes: z.string().max(4000).optional().nullable(),
 });
@@ -29,7 +29,7 @@ const legacySessionSchema = z.object({
   wrong: z.number().int().min(0),
   notes: z.string().optional().nullable(),
   estimatedMinutes: z.number().int().min(0).optional(),
-  activityType: z.enum(["QUESTIONS", "CLASS", "READING", "REVIEW"]).optional(),
+  activityType: z.enum(["QUESTIONS", "CLASS", "READING", "PDF_READING", "REVIEW"]).optional(),
 });
 
 const updateSchema = legacySessionSchema.extend({
@@ -43,7 +43,7 @@ const deleteSchema = z.object({
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+    return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
   }
   const guide = await getActiveStudyGuideForUser(session.user.id);
   if (!guide) {
@@ -74,7 +74,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+    return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
   }
   const payload = await request.json().catch(() => null);
   const parsed = standaloneCreateSchema.safeParse(payload);
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+    return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
   }
   const guide = await getActiveStudyGuideForUser(session.user.id);
   if (!guide) {
@@ -115,13 +115,13 @@ export async function PUT(request: Request) {
   const payload = await request.json();
   const parsed = updateSchema.safeParse(payload);
   if (!parsed.success) {
-    return NextResponse.json({ message: "Dados invalidos" }, { status: 400 });
+    return NextResponse.json({ message: "Dados inválidos" }, { status: 400 });
   }
 
   const { id, date, cycleEntryId, questions, correct, wrong, notes, estimatedMinutes, activityType } = parsed.data;
 
   if (correct + wrong !== questions) {
-    return NextResponse.json({ message: "Questoes deve ser acertos + erros" }, { status: 400 });
+    return NextResponse.json({ message: "Questões deve ser igual a acertos + erros" }, { status: 400 });
   }
 
   const existing = await prisma.studySession.findFirst({
@@ -129,7 +129,7 @@ export async function PUT(request: Request) {
   });
 
   if (!existing) {
-    return NextResponse.json({ message: "Registro nao encontrado" }, { status: 404 });
+    return NextResponse.json({ message: "Registro não encontrado" }, { status: 404 });
   }
 
   const cycleEntry = await prisma.cycleEntry.findFirst({
@@ -141,7 +141,7 @@ export async function PUT(request: Request) {
   });
 
   if (!cycleEntry) {
-    return NextResponse.json({ message: "Entrada de ciclo nao encontrada" }, { status: 404 });
+    return NextResponse.json({ message: "Entrada de ciclo não encontrada" }, { status: 404 });
   }
 
   const updated = await prisma.studySession.update({
@@ -165,7 +165,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
+    return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
   }
   const guide = await getActiveStudyGuideForUser(session.user.id);
   if (!guide) {
@@ -175,7 +175,7 @@ export async function DELETE(request: Request) {
   const payload = await request.json();
   const parsed = deleteSchema.safeParse(payload);
   if (!parsed.success) {
-    return NextResponse.json({ message: "Dados invalidos" }, { status: 400 });
+    return NextResponse.json({ message: "Dados inválidos" }, { status: 400 });
   }
 
   const existing = await prisma.studySession.findFirst({
@@ -184,7 +184,7 @@ export async function DELETE(request: Request) {
   });
 
   if (!existing) {
-    return NextResponse.json({ message: "Registro nao encontrado" }, { status: 404 });
+    return NextResponse.json({ message: "Registro não encontrado" }, { status: 404 });
   }
 
   await prisma.studySession.delete({
