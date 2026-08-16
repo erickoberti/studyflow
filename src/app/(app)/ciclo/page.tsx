@@ -18,6 +18,7 @@ import {
   ArrowRight,
   BookOpen,
   CalendarDays,
+  CircleCheckBig,
   Clock3,
   GripVertical,
   Play,
@@ -129,12 +130,20 @@ export default async function CicloPage({
             Acompanhamento do progresso atual por disciplina e metas.
           </p>
         </div>
-        <Link
-          href={`/ciclo?novo=${showAdd ? "0" : "1"}`}
-          className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-soft"
-        >
-          <Plus size={16} /> {showAdd ? "Fechar" : "Novo Ciclo"}
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/debug/ciclo?simular=200"
+            className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-5 py-2.5 text-sm font-bold text-primary"
+          >
+            <CircleCheckBig size={16} /> Verificar ciclo
+          </Link>
+          <Link
+            href={`/ciclo?novo=${showAdd ? "0" : "1"}`}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-soft"
+          >
+            <Plus size={16} /> {showAdd ? "Fechar" : "Novo Ciclo"}
+          </Link>
+        </div>
       </section>
 
       {showAdd ? (
