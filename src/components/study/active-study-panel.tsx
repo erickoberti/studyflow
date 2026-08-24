@@ -79,12 +79,12 @@ function localToActive(session: OfflineActiveStudySession, source: Active | null
       round: source?.cycle?.round ?? suggestion?.roundNumber ?? 1,
     } : null,
     discipline: {
-      id: session.disciplineId,
+      id: session.disciplineId ?? "",
       name: session.disciplineName,
       questionGoal: source?.discipline.questionGoal ?? suggestion?.entry.discipline?.questionGoal ?? 20,
     },
     subject: {
-      id: session.subjectId,
+      id: session.subjectId ?? "",
       name: session.subjectName,
       weight: source?.subject.weight ?? suggestion?.subject?.weight ?? 1,
       averagePercentage: source?.subject.averagePercentage ?? 0,

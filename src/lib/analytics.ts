@@ -76,7 +76,8 @@ export async function getNextCycleSuggestion(userId: string, studyGuideId: strin
     return { last: null, next: activeEntries[0] };
   }
 
-  const currentOrder = lastSession.cycleEntry.orderIndex;
+  const currentOrder = lastSession.cycleEntry?.orderIndex;
+  if (currentOrder === undefined) return { last: null, next: activeEntries[0] };
   const next = activeEntries.find((entry) => entry.orderIndex > currentOrder) ?? activeEntries[0];
 
   return { last: lastSession.cycleEntry, next };
@@ -126,16 +127,6 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
   for (const session of sessions) {
     const sessionDayKey = dayKey(session.date);
     const weekKey = startOfWeekKey(sessionDayKey);
-    const studiedSubject = session.subject ?? session.cycleEntry.subject;
-    if (!studiedSubject) continue;
-    const disciplineName = studiedSubject.discipline.name;
-    const subjectName = studiedSubject.name;
-
-    const dayDistance = diffCalendarDaysUTC(todayKey, sessionDayKey);
-    if (session.cyclePosition !== null && dayDistance >= 0 && dayDistance <= 29) {
-      sessionsByActiveEntryRecent.set(session.cycleEntryId, (sessionsByActiveEntryRecent.get(session.cycleEntryId) ?? 0) + 1);
-    }
-
     const dayData = byDay.get(sessionDayKey) ?? { date: sessionDayKey, questions: 0, correct: 0, percentage: 0, estimatedMinutes: 0 };
     dayData.questions += session.questions;
     dayData.correct += session.correct;
@@ -148,6 +139,16 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
     weekData.correct += session.correct;
     weekData.percentage = weekData.questions > 0 ? (weekData.correct / weekData.questions) * 100 : 0;
     byWeek.set(weekKey, weekData);
+
+    const studiedSubject = session.subject ?? session.cycleEntry?.subject;
+    if (!studiedSubject) continue;
+    const disciplineName = studiedSubject.discipline.name;
+    const subjectName = studiedSubject.name;
+
+    const dayDistance = diffCalendarDaysUTC(todayKey, sessionDayKey);
+    if (session.cyclePosition !== null && session.cycleEntryId && dayDistance >= 0 && dayDistance <= 29) {
+      sessionsByActiveEntryRecent.set(session.cycleEntryId, (sessionsByActiveEntryRecent.get(session.cycleEntryId) ?? 0) + 1);
+    }
 
     const discData = byDiscipline.get(disciplineName) ?? { discipline: disciplineName, questions: 0, correct: 0, wrong: 0, estimatedMinutes: 0 };
     discData.questions += session.questions;

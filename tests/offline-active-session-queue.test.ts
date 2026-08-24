@@ -56,6 +56,21 @@ test("estudo avulso preserva disciplina, assunto e todos os resultados", async (
   assert.deepEqual([result.operation.payload.questions, result.operation.payload.correct, result.operation.payload.wrong], [15, 12, 3]);
 });
 
+test("revisão geral offline não exige matéria nem posição de ciclo", async () => {
+  const storage = new MemoryOfflineSessionQueue();
+  const result = await createStandaloneOfflineSession({
+    userId: "user-1", studyGuideId: "guide-1", mode: "AVULSO", scope: "GENERAL",
+    disciplineId: null, subjectId: null, cycleEntryId: null, disciplineName: "Todas as matérias", subjectName: "Revisão geral",
+    startedAt: base.startedAt, pausedAt: null, finishedAt: "2026-07-25T11:00:00.000Z", accumulatedSeconds: 3600,
+    questions: 30, correct: 24, wrong: 6, activityType: "REVIEW", advanceCycle: false,
+    difficulty: "Média", notes: "Caderno misto", date: base.date,
+  }, storage);
+  assert.equal(result.operation.payload.scope, "GENERAL");
+  assert.equal(result.operation.payload.cycleEntryId, null);
+  assert.equal(result.operation.payload.subjectId, null);
+  assert.deepEqual([result.operation.payload.questions, result.operation.payload.correct, result.operation.payload.wrong], [30, 24, 6]);
+});
+
 test("finalização offline não avança cursor local nem duplica a posição", async () => {
   const storage = new MemoryOfflineSessionQueue();
   const started = await startOfflineActiveSession({ userId: "user-1", studyGuideId: "guide-1", mode: "CYCLE", disciplineId: "discipline-1", subjectId: "subject-1", cycleEntryId: "entry-1", disciplineName: "Desenvolvimento", subjectName: "APIs", startedAt: base.startedAt }, storage);

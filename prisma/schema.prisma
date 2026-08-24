@@ -15,6 +15,12 @@ enum StudyActivityType {
   REVIEW
 }
 
+enum StudySessionScope {
+  CYCLE
+  SUBJECT
+  GENERAL
+}
+
 model User {
   id                  String                 @id @default(cuid())
   name                String
@@ -170,8 +176,9 @@ model StudySession {
   id                   String              @id @default(cuid())
   userId               String
   studyGuideId         String?
-  cycleEntryId         String
+  cycleEntryId         String?
   subjectId            String?
+  scope                StudySessionScope    @default(SUBJECT)
   cyclePosition        Int?
   cycleRound           Int?
   date                 DateTime
@@ -187,7 +194,7 @@ model StudySession {
   updatedAt            DateTime            @updatedAt
   user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   studyGuide           StudyGuide?         @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
-  cycleEntry           CycleEntry          @relation(fields: [cycleEntryId], references: [id], onDelete: Cascade)
+  cycleEntry           CycleEntry?         @relation(fields: [cycleEntryId], references: [id], onDelete: Cascade)
   subject              Subject?            @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   activeStudySession   ActiveStudySession? @relation("CompletedActiveStudySession", fields: [activeStudySessionId], references: [id], onDelete: SetNull)
   reviews              ReviewSchedule[]

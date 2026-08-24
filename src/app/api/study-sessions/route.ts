@@ -4,7 +4,19 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveStudyGuideForUser } from "@/lib/study-guide";
-import { createStandaloneStudySession } from "@/lib/standalone-study-session";
+import { createGeneralReviewSession, createStandaloneStudySession } from "@/lib/standalone-study-session";
+
+const generalReviewCreateSchema = z.object({
+  scope: z.literal("GENERAL"),
+  studyGuideId: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string().regex(/^\d{2}:\d{2}$/),
+  correct: z.number().int().min(0),
+  wrong: z.number().int().min(0),
+  estimatedMinutes: z.number().int().min(1),
+  difficulty: z.enum(["Fácil", "Média", "Difícil"]),
+  notes: z.string().max(4000).optional().nullable(),
+});
 
 const standaloneCreateSchema = z.object({
   studyGuideId: z.string().min(1),
@@ -34,6 +46,17 @@ const legacySessionSchema = z.object({
 
 const updateSchema = legacySessionSchema.extend({
   id: z.string().min(1),
+});
+
+const generalReviewUpdateSchema = z.object({
+  scope: z.literal("GENERAL"),
+  id: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  questions: z.number().int().positive(),
+  correct: z.number().int().min(0),
+  wrong: z.number().int().min(0),
+  estimatedMinutes: z.number().int().positive(),
+  notes: z.string().max(4000).optional().nullable(),
 });
 
 const deleteSchema = z.object({
@@ -77,6 +100,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
   }
   const payload = await request.json().catch(() => null);
+  const generalReview = generalReviewCreateSchema.safeParse(payload);
+  if (generalReview.success) {
+    try {
+      const created = await prisma.$transaction((tx) => createGeneralReviewSession(tx, { userId: session.user.id, ...generalReview.data }));
+      return NextResponse.json(created, { status: 201 });
+    } catch (error) {
+      return NextResponse.json({ message: error instanceof Error ? error.message : "Não foi possível salvar a revisão geral." }, { status: 400 });
+    }
+  }
   const parsed = standaloneCreateSchema.safeParse(payload);
   if (parsed.success) {
     try {
@@ -113,6 +145,18 @@ export async function PUT(request: Request) {
   }
 
   const payload = await request.json();
+  const generalReview = generalReviewUpdateSchema.safeParse(payload);
+  if (generalReview.success) {
+    const { id, date, questions, correct, wrong, estimatedMinutes, notes } = generalReview.data;
+    if (correct + wrong !== questions) return NextResponse.json({ message: "Questões deve ser igual a acertos + erros" }, { status: 400 });
+    const existing = await prisma.studySession.findFirst({ where: { id, userId: session.user.id, studyGuideId: guide.id, scope: "GENERAL" }, select: { id: true } });
+    if (!existing) return NextResponse.json({ message: "Revisão geral não encontrada" }, { status: 404 });
+    const updated = await prisma.studySession.update({
+      where: { id },
+      data: { cycleEntryId: null, subjectId: null, scope: "GENERAL", date: new Date(`${date}T12:00:00-03:00`), questions, correct, wrong, percentage: correct / questions * 100, estimatedMinutes, activityType: "REVIEW", notes },
+    });
+    return NextResponse.json(updated, { status: 200 });
+  }
   const parsed = updateSchema.safeParse(payload);
   if (!parsed.success) {
     return NextResponse.json({ message: "Dados inválidos" }, { status: 400 });

@@ -28,6 +28,7 @@ export function OfflineSessionManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [form, setForm] = useState({
+    scope: "SUBJECT" as "CYCLE" | "SUBJECT" | "GENERAL",
     cycleEntryId: "",
     date: dayKeySaoPaulo(new Date().toISOString()),
     questions: 0,
@@ -63,8 +64,8 @@ export function OfflineSessionManager() {
       const entry = availableEntries.find((item) => item.id === session.cycleEntryId);
       return [
         formatPtBr(session.date),
-        entry?.subject.discipline.name ?? "",
-        entry?.subject.name ?? "",
+        session.scope === "GENERAL" ? "todas as matérias" : entry?.subject.discipline.name ?? "",
+        session.scope === "GENERAL" ? "revisão geral" : entry?.subject.name ?? "",
         session.syncStatus,
       ]
         .join(" ")
@@ -78,7 +79,8 @@ export function OfflineSessionManager() {
     if (!session) return;
     setEditingId(id);
     setForm({
-      cycleEntryId: session.cycleEntryId,
+      scope: session.scope ?? "SUBJECT",
+      cycleEntryId: session.cycleEntryId ?? "",
       date: dayKeySaoPaulo(session.date),
       questions: session.questions,
       correct: session.correct,
@@ -90,19 +92,21 @@ export function OfflineSessionManager() {
 
   function save() {
     if (!editingId) return;
-    if (!form.cycleEntryId || form.estimatedMinutes <= 0 || (form.activityType === "QUESTIONS" && (form.questions <= 0 || form.correct > form.questions))) {
+    const hasQuestions = form.activityType === "QUESTIONS" || form.scope === "GENERAL";
+    if ((form.scope !== "GENERAL" && !form.cycleEntryId) || form.estimatedMinutes <= 0 || (hasQuestions && (form.questions <= 0 || form.correct > form.questions))) {
       toast.error("Preencha os dados corretamente.");
       return;
     }
 
     updateOfflineSession(editingId, {
-      cycleEntryId: form.cycleEntryId,
+      cycleEntryId: form.scope === "GENERAL" ? null : form.cycleEntryId,
+      scope: form.scope,
       date: form.date,
-      questions: form.activityType === "QUESTIONS" ? form.questions : 0,
-      correct: form.activityType === "QUESTIONS" ? form.correct : 0,
-      wrong: form.activityType === "QUESTIONS" ? Math.max(0, form.questions - form.correct) : 0,
+      questions: hasQuestions ? form.questions : 0,
+      correct: hasQuestions ? form.correct : 0,
+      wrong: hasQuestions ? Math.max(0, form.questions - form.correct) : 0,
       estimatedMinutes: form.estimatedMinutes,
-      activityType: form.activityType,
+      activityType: form.scope === "GENERAL" ? "REVIEW" : form.activityType,
       notes: form.notes.trim() || null,
     });
 
@@ -124,8 +128,8 @@ export function OfflineSessionManager() {
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
           <h2 className="text-lg font-black">Editar registro local</h2>
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="text-sm font-semibold">Atividade<select value={form.activityType} onChange={(event) => setForm((current) => ({ ...current, activityType: event.target.value as typeof current.activityType }))} className="mt-1.5 h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"><option value="QUESTIONS">Questões</option><option value="CLASS">Videoaula</option><option value="READING">Lei seca</option><option value="PDF_READING">PDF/material</option><option value="REVIEW">Revisão</option></select></label>
-            {form.activityType === "QUESTIONS" ? <label className="text-sm font-semibold">
+            {form.scope === "GENERAL" ? <div className="rounded-2xl bg-primary/10 p-3 text-sm font-black text-primary">Revisão geral</div> : <label className="text-sm font-semibold">Atividade<select value={form.activityType} onChange={(event) => setForm((current) => ({ ...current, activityType: event.target.value as typeof current.activityType }))} className="mt-1.5 h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"><option value="QUESTIONS">Questões</option><option value="CLASS">Videoaula</option><option value="READING">Lei seca</option><option value="PDF_READING">PDF/material</option><option value="REVIEW">Revisão</option></select></label>}
+            {form.activityType === "QUESTIONS" || form.scope === "GENERAL" ? <label className="text-sm font-semibold">
               Data
               <input
                 type="date"
@@ -134,7 +138,7 @@ export function OfflineSessionManager() {
                 className="mt-1.5 h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
               />
             </label> : null}
-            {form.activityType === "QUESTIONS" ? <label className="text-sm font-semibold">
+            {form.activityType === "QUESTIONS" && form.scope !== "GENERAL" ? <label className="text-sm font-semibold">
               Assunto
               <select
                 value={form.cycleEntryId}
@@ -228,11 +232,11 @@ export function OfflineSessionManager() {
                 return (
                   <tr key={session.id}>
                     <td className="py-3">{formatPtBr(session.date)}</td>
-                    <td className="py-3 font-medium">{entry?.subject.discipline.name ?? "-"}</td>
-                    <td className="py-3">{entry?.subject.name ?? "-"}</td>
+                    <td className="py-3 font-medium">{session.scope === "GENERAL" ? "Todas as matérias" : entry?.subject.discipline.name ?? "-"}</td>
+                    <td className="py-3">{session.scope === "GENERAL" ? "Revisão geral" : entry?.subject.name ?? "-"}</td>
                     <td className="py-3 font-semibold text-primary">{session.activityType === "CLASS" ? "Videoaula" : session.activityType === "READING" ? "Lei seca" : session.activityType === "PDF_READING" ? "PDF/material" : session.activityType === "REVIEW" ? "Revisão" : "Questões"}</td>
-                    <td className="py-3 text-right">{session.activityType && session.activityType !== "QUESTIONS" ? "—" : session.questions}</td>
-                    <td className="py-3 text-right">{session.activityType && session.activityType !== "QUESTIONS" ? `${session.estimatedMinutes} min` : `${session.percentage.toFixed(1)}%`}</td>
+                    <td className="py-3 text-right">{session.activityType && session.activityType !== "QUESTIONS" && session.scope !== "GENERAL" ? "—" : session.questions}</td>
+                    <td className="py-3 text-right">{session.activityType && session.activityType !== "QUESTIONS" && session.scope !== "GENERAL" ? `${session.estimatedMinutes} min` : `${session.percentage.toFixed(1)}%`}</td>
                     <td className="py-3">
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                         {session.syncStatus}

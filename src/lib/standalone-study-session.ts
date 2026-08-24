@@ -17,6 +17,18 @@ export type StandaloneStudyInput = {
   notes?: string | null;
 };
 
+export type GeneralReviewInput = {
+  userId: string;
+  studyGuideId: string;
+  date: string;
+  time: string;
+  correct: number;
+  wrong: number;
+  estimatedMinutes: number;
+  difficulty: "Fácil" | "Média" | "Difícil";
+  notes?: string | null;
+};
+
 function zonedParts(value: Date) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: STUDY_TIME_ZONE,
@@ -105,6 +117,7 @@ export async function createStandaloneStudySession(
       studyGuideId: input.studyGuideId,
       cycleEntryId: cycleEntry.id,
       subjectId: subject.id,
+      scope: "SUBJECT",
       cyclePosition: null,
       cycleRound: null,
       date: sessionDate,
@@ -137,4 +150,43 @@ export async function createStandaloneStudySession(
     },
   });
   return created;
+}
+
+export async function createGeneralReviewSession(
+  tx: Prisma.TransactionClient,
+  input: GeneralReviewInput,
+  now = new Date(),
+) {
+  const questions = input.correct + input.wrong;
+  if (questions <= 0) throw new Error("Informe ao menos um acerto ou erro.");
+  if (input.correct < 0 || input.wrong < 0) throw new Error("Acertos e erros não podem ser negativos.");
+  if (!Number.isInteger(input.correct) || !Number.isInteger(input.wrong)) throw new Error("Acertos e erros devem ser números inteiros.");
+  if (!Number.isInteger(input.estimatedMinutes) || input.estimatedMinutes <= 0) throw new Error("Informe uma duração válida em minutos.");
+
+  const guide = await tx.studyGuide.findFirst({
+    where: { id: input.studyGuideId, userId: input.userId },
+    select: { id: true },
+  });
+  if (!guide) throw new Error("Guia inválido ou sem acesso.");
+
+  const sessionDate = parseSaoPauloStudyDate(input.date, input.time, now);
+  return tx.studySession.create({
+    data: {
+      userId: input.userId,
+      studyGuideId: input.studyGuideId,
+      cycleEntryId: null,
+      subjectId: null,
+      scope: "GENERAL",
+      cyclePosition: null,
+      cycleRound: null,
+      date: sessionDate,
+      questions,
+      correct: input.correct,
+      wrong: input.wrong,
+      percentage: input.correct / questions * 100,
+      estimatedMinutes: input.estimatedMinutes,
+      activityType: "REVIEW",
+      notes: formatStandaloneNotes(input.difficulty, input.notes),
+    },
+  });
 }

@@ -29,8 +29,9 @@ export type OfflineSessionPayload = {
   serverSessionId: string | null;
   serverVersion: number | null;
   mode: OfflineStudyMode;
-  disciplineId: string;
-  subjectId: string;
+  scope?: "SUBJECT" | "GENERAL";
+  disciplineId: string | null;
+  subjectId: string | null;
   cycleEntryId: string | null;
   disciplineName: string;
   subjectName: string;
@@ -89,12 +90,13 @@ function sessionKey(userId: string, studyGuideId: string) {
 }
 
 function ensurePayload(payload: OfflineSessionPayload) {
-  if (!payload.disciplineId || !payload.subjectId) {
+  if (payload.scope !== "GENERAL" && (!payload.disciplineId || !payload.subjectId)) {
     throw new Error("Disciplina e assunto são obrigatórios para uma sessão offline.");
   }
-  if (payload.mode === "AVULSO" && !payload.subjectId) {
+  if (payload.mode === "AVULSO" && payload.scope !== "GENERAL" && !payload.subjectId) {
     throw new Error("O estudo avulso offline exige subjectId.");
   }
+  if (payload.scope === "GENERAL" && (payload.mode !== "AVULSO" || payload.activityType !== "REVIEW")) throw new Error("A revisão geral offline possui escopo inválido.");
   if (payload.questions < 0 || payload.correct < 0 || payload.wrong < 0 || payload.correct + payload.wrong !== payload.questions) {
     throw new Error("Questões, acertos e erros da sessão offline são inválidos.");
   }
@@ -264,7 +266,7 @@ export async function startOfflineActiveSession(input: {
 }
 
 export async function createStandaloneOfflineSession(input: Omit<OfflineActiveStudySession, "localSessionId" | "serverSessionId" | "serverVersion" | "status" | "updatedAt" | "pendingSync">, storage: OfflineSessionQueueStorage = offlineSessionQueue) {
-  if (!input.subjectId) throw new Error("O estudo avulso offline exige subjectId.");
+  if (input.scope !== "GENERAL" && !input.subjectId) throw new Error("O estudo avulso offline exige subjectId.");
   const operationId = uuid(); const now = new Date().toISOString();
   const session: OfflineActiveStudySession = { ...input, localSessionId: `offline-${operationId}`, serverSessionId: null, serverVersion: null, status: "FINISHED", updatedAt: now, pendingSync: true };
   const operation = createOfflineSessionOperation({ operationId, userId: input.userId, studyGuideId: input.studyGuideId, type: "CREATE_STANDALONE_SESSION", payload: session, createdAt: now });

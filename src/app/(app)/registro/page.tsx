@@ -26,7 +26,7 @@ export default async function RegistroPage({ searchParams }: { searchParams?: { 
       where: { userId: user.id }, orderBy: { name: "asc" }, select: { id: true, name: true, disciplines: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, name: true, subjects: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, name: true, weight: true } } } } },
     }),
   ]);
-  const sessions = recentSessions.map((session) => ({ ...session, subjectName: session.subject?.name ?? "Assunto legado indisponível", disciplineName: session.subject?.discipline.name ?? session.cycleEntry.discipline?.name ?? "Disciplina" }));
+  const sessions = recentSessions.map((session) => ({ ...session, subjectName: session.scope === "GENERAL" ? "Revisão geral" : session.subject?.name ?? "Assunto legado indisponível", disciplineName: session.scope === "GENERAL" ? "Todas as matérias" : session.subject?.discipline.name ?? session.cycleEntry?.discipline?.name ?? "Disciplina" }));
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const todayData = dashboard.byDay.find((item) => item.date === today); const next = focusPreview[1];
   return <div className="space-y-5 pb-20 lg:pb-0">

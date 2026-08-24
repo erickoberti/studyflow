@@ -5,11 +5,11 @@ import { authOptions } from "@/lib/auth";
 import { CycleConflictError, cycleService } from "@/lib/cycle-service";
 import { canonicalSessionOperationPayload, claimOfflineOperation, completeOfflineOperation, failOfflineOperation } from "@/lib/offline-operation-ledger";
 import { prisma } from "@/lib/prisma";
-import { createStandaloneStudySession, formatSaoPauloStudyInput } from "@/lib/standalone-study-session";
+import { createGeneralReviewSession, createStandaloneStudySession, formatSaoPauloStudyInput } from "@/lib/standalone-study-session";
 
 const payloadSchema = z.object({
   localSessionId: z.string().min(1), serverSessionId: z.string().nullable(), serverVersion: z.number().int().nullable(),
-  mode: z.enum(["CYCLE", "AVULSO"]), disciplineId: z.string().min(1), subjectId: z.string().min(1),
+  mode: z.enum(["CYCLE", "AVULSO"]), scope: z.enum(["SUBJECT", "GENERAL"]).optional(), disciplineId: z.string().min(1).nullable(), subjectId: z.string().min(1).nullable(),
   cycleEntryId: z.string().nullable(), status: z.enum(["ACTIVE", "PAUSED", "FINISHED", "CANCELLED"]).optional(), startedAt: z.string(), accumulatedSeconds: z.number().int().min(0),
   questions: z.number().int().min(0), correct: z.number().int().min(0), wrong: z.number().int().min(0),
   activityType: z.enum(["QUESTIONS", "CLASS", "READING", "PDF_READING", "REVIEW"]).optional(), advanceCycle: z.boolean().optional(),
@@ -27,6 +27,7 @@ function notes(payload: z.infer<typeof payloadSchema>) { return [payload.difficu
 async function executeOperation(userId: string, operation: z.infer<typeof operationSchema>) {
   const payload = operation.payload;
   if (operation.type === "START_SESSION") {
+    if (!payload.disciplineId || !payload.subjectId) throw new Error("Disciplina e assunto são obrigatórios para iniciar a sessão.");
     const session = await cycleService.start(userId, operation.studyGuideId, { mode: payload.mode, disciplineId: payload.disciplineId, subjectId: payload.subjectId, operationId: operation.operationId, timerRunning: payload.status !== "PAUSED" });
     return { operationId: operation.operationId, session };
   }
@@ -34,11 +35,12 @@ async function executeOperation(userId: string, operation: z.infer<typeof operat
     const when = new Date(payload.date);
     if (Number.isNaN(when.getTime())) throw new Error("A data do estudo avulso offline é inválida.");
     const local = formatSaoPauloStudyInput(when);
-    const created = await prisma.$transaction((tx) => createStandaloneStudySession(tx, {
-      userId, studyGuideId: operation.studyGuideId, disciplineId: payload.disciplineId, subjectId: payload.subjectId,
-      ...local, correct: payload.correct, wrong: payload.wrong, estimatedMinutes: Math.max(1, Math.round(payload.accumulatedSeconds / 60)),
-      difficulty: payload.difficulty ?? "Média", activityType: payload.activityType ?? "QUESTIONS", notes: payload.notes,
-    }));
+    const created = await prisma.$transaction((tx) => payload.scope === "GENERAL"
+      ? createGeneralReviewSession(tx, { userId, studyGuideId: operation.studyGuideId, ...local, correct: payload.correct, wrong: payload.wrong, estimatedMinutes: Math.max(1, Math.round(payload.accumulatedSeconds / 60)), difficulty: payload.difficulty ?? "Média", notes: payload.notes })
+      : (() => {
+          if (!payload.disciplineId || !payload.subjectId) throw new Error("O estudo avulso offline exige disciplina e assunto.");
+          return createStandaloneStudySession(tx, { userId, studyGuideId: operation.studyGuideId, disciplineId: payload.disciplineId, subjectId: payload.subjectId, ...local, correct: payload.correct, wrong: payload.wrong, estimatedMinutes: Math.max(1, Math.round(payload.accumulatedSeconds / 60)), difficulty: payload.difficulty ?? "Média", activityType: payload.activityType ?? "QUESTIONS", notes: payload.notes });
+        })());
     return { operationId: operation.operationId, serverSessionId: created.id };
   }
   if (!payload.serverSessionId || payload.serverVersion === null) throw new CycleConflictError("A sessão ainda não existe no servidor.", "SESSION_NOT_SYNCHRONIZED");
@@ -58,7 +60,7 @@ export async function POST(request: Request) {
   if (operation.userId !== auth.user.id) return NextResponse.json({ message: "A operação pertence a outro usuário." }, { status: 403 });
   const ownsGuide = await prisma.studyGuide.count({ where: { id: operation.studyGuideId, userId: auth.user.id } });
   if (!ownsGuide) return NextResponse.json({ message: "O guia da operação não pertence ao usuário autenticado." }, { status: 403 });
-  const canonicalPayload = canonicalSessionOperationPayload({ type: operation.type, mode: operation.payload.mode, disciplineId: operation.payload.disciplineId, subjectId: operation.payload.subjectId, timerRunning: operation.payload.status !== "PAUSED", sessionId: operation.payload.serverSessionId, version: operation.payload.serverVersion, questions: operation.payload.questions, correct: operation.payload.correct, minutes: Math.max(1, Math.round(operation.payload.accumulatedSeconds / 60)), activityType: operation.payload.activityType, advanceCycle: operation.payload.advanceCycle, notes: notes(operation.payload), date: operation.payload.date });
+  const canonicalPayload = canonicalSessionOperationPayload({ type: operation.type, mode: operation.payload.mode, scope: operation.payload.scope, disciplineId: operation.payload.disciplineId, subjectId: operation.payload.subjectId, timerRunning: operation.payload.status !== "PAUSED", sessionId: operation.payload.serverSessionId, version: operation.payload.serverVersion, questions: operation.payload.questions, correct: operation.payload.correct, minutes: Math.max(1, Math.round(operation.payload.accumulatedSeconds / 60)), activityType: operation.payload.activityType, advanceCycle: operation.payload.advanceCycle, notes: notes(operation.payload), date: operation.payload.date });
   const claim = await claimOfflineOperation({ operationId: operation.operationId, userId: auth.user.id, studyGuideId: operation.studyGuideId, type: operation.type, payload: canonicalPayload });
   if (claim.kind === "REPLAY") return NextResponse.json({ ...(claim.response as object), idempotentReplay: true });
   if (claim.kind === "PENDING") return NextResponse.json({ operationId: operation.operationId, pending: true }, { status: 202 });

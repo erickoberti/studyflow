@@ -35,9 +35,11 @@ export async function GET() {
   const csv = Papa.unparse(
     sessions.map((row) => ({
       data: row.date.toISOString().slice(0, 10),
-      disciplina: row.subject?.discipline.name ?? row.cycleEntry.subject?.discipline.name ?? "",
-      assunto: row.subject?.name ?? row.cycleEntry.subject?.name ?? "",
-      peso: row.subject?.weight ?? row.cycleEntry.subject?.weight ?? 0,
+      escopo: row.scope,
+      atividade: row.activityType,
+      disciplina: row.scope === "GENERAL" ? "Todas as matérias" : row.subject?.discipline.name ?? row.cycleEntry?.subject?.discipline.name ?? "",
+      assunto: row.scope === "GENERAL" ? "Revisão geral" : row.subject?.name ?? row.cycleEntry?.subject?.name ?? "",
+      peso: row.subject?.weight ?? row.cycleEntry?.subject?.weight ?? 0,
       questoes: row.questions,
       acertos: row.correct,
       erros: row.wrong,

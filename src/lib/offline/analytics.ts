@@ -92,20 +92,17 @@ export function getOfflineDashboard(snapshot: OfflineSnapshot) {
   const todayKey = dayKey(new Date());
 
   for (const session of sessions) {
-    const entry = entryMap.get(session.cycleEntryId);
-    if (!entry) continue;
-
     const sessionDayKey = dayKey(new Date(session.date));
-    const dayDistance = diffCalendarDaysUTC(todayKey, sessionDayKey);
-    if (dayDistance >= 0 && dayDistance <= 29) {
-      recentByEntry.set(entry.id, (recentByEntry.get(entry.id) ?? 0) + 1);
-    }
-
     const dayData = byDay.get(sessionDayKey) ?? { date: sessionDayKey, questions: 0, correct: 0, percentage: 0 };
     dayData.questions += session.questions;
     dayData.correct += session.correct;
     dayData.percentage = dayData.questions > 0 ? (dayData.correct / dayData.questions) * 100 : 0;
     byDay.set(sessionDayKey, dayData);
+
+    const entry = session.cycleEntryId ? entryMap.get(session.cycleEntryId) : null;
+    if (!entry) continue;
+    const dayDistance = diffCalendarDaysUTC(todayKey, sessionDayKey);
+    if (dayDistance >= 0 && dayDistance <= 29) recentByEntry.set(entry.id, (recentByEntry.get(entry.id) ?? 0) + 1);
 
     const disciplineName = entry.subject.discipline.name;
     const disciplineData = byDiscipline.get(disciplineName) ?? { discipline: disciplineName, questions: 0, correct: 0 };

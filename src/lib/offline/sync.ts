@@ -82,6 +82,17 @@ async function syncSingleSession(session: ReturnType<typeof getOfflineSnapshot>[
     return;
   }
 
+  if (session.scope === "GENERAL") {
+    const date = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(session.date));
+    const activeGuide = snapshot.guides.find((guide) => guide.id === snapshot.activeGuideId);
+    const payload = session.serverId
+      ? { scope: "GENERAL", id: session.serverId, date, questions: session.questions, correct: session.correct, wrong: session.wrong, estimatedMinutes: session.estimatedMinutes, notes: session.notes }
+      : { scope: "GENERAL", studyGuideId: activeGuide?.serverId ?? activeGuide?.id, date, time: "12:00", correct: session.correct, wrong: session.wrong, estimatedMinutes: session.estimatedMinutes, difficulty: "Média", notes: session.notes };
+    const response = await fetch("/api/study-sessions", { method: session.serverId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.message ?? "Falha ao sincronizar revisão geral."); }
+    const data = await response.json(); markSessionSynced(session.id, data.id); return;
+  }
+
   const legacyEntry = snapshot.cycleEntries.find((entry) => entry.id === session.cycleEntryId || entry.serverId === session.cycleEntryId);
   const legacySubject = legacyEntry ? snapshot.subjects.find((subject) => subject.id === legacyEntry.subjectId) : null;
   if (!legacySubject?.serverId) throw new Error("O registro offline legado não possui um assunto sincronizado e foi preservado neste dispositivo.");

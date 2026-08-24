@@ -246,8 +246,8 @@ export default async function DashboardPage() {
                     <span className="text-lg font-black text-primary">{format(session.date, "dd")}</span>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{session.subject?.name ?? session.cycleEntry.subject?.name ?? "Assunto"}</p>
-                    <p className="text-xs text-slate-500">{formatPtBrDay(session.date)} • {session.activityType === "CLASS" ? `Videoaula · ${session.estimatedMinutes} min` : session.activityType === "READING" ? `Lei seca · ${session.estimatedMinutes} min` : session.activityType === "PDF_READING" ? `PDF/material · ${session.estimatedMinutes} min` : session.activityType === "REVIEW" ? `Revisão · ${session.estimatedMinutes} min` : `${session.questions} questões`}</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{session.scope === "GENERAL" ? "Revisão geral" : session.subject?.name ?? session.cycleEntry?.subject?.name ?? "Assunto"}</p>
+                    <p className="text-xs text-slate-500">{formatPtBrDay(session.date)} • {session.activityType === "CLASS" ? `Videoaula · ${session.estimatedMinutes} min` : session.activityType === "READING" ? `Lei seca · ${session.estimatedMinutes} min` : session.activityType === "PDF_READING" ? `PDF/material · ${session.estimatedMinutes} min` : session.activityType === "REVIEW" ? `Revisão · ${session.questions} questões · ${session.estimatedMinutes} min` : `${session.questions} questões`}</p>
                   </div>
                 </div>
               )) : <p className="rounded-xl border border-dashed p-4 text-sm text-slate-500">Nenhuma sessão concluída neste guia.</p>}

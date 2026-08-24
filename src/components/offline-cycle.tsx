@@ -19,7 +19,7 @@ export function OfflineCycle() {
   const sessionsByEntry = useMemo(() => {
     const map = new Map<string, { questions: number; correct: number }>();
     for (const session of snapshot.sessions) {
-      if (session.syncStatus === "pending_delete") continue;
+      if (session.syncStatus === "pending_delete" || !session.cycleEntryId) continue;
       const current = map.get(session.cycleEntryId) ?? { questions: 0, correct: 0 };
       current.questions += session.questions;
       current.correct += session.correct;

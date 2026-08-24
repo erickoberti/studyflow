@@ -7,7 +7,8 @@ import { toast } from "sonner";
 
 type SessionItem = {
   id: string;
-  cycleEntryId: string;
+  cycleEntryId: string | null;
+  scope: "CYCLE" | "SUBJECT" | "GENERAL";
   date: string;
   questions: number;
   correct: number;
@@ -55,6 +56,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     id: "",
+    scope: "SUBJECT" as SessionItem["scope"],
     cycleEntryId: cycleEntries[0]?.id ?? "",
     date: new Intl.DateTimeFormat("sv-SE", {
       timeZone: "America/Sao_Paulo",
@@ -93,7 +95,8 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
     setEditingId(item.id);
     setForm({
       id: item.id,
-      cycleEntryId: item.cycleEntryId,
+      scope: item.scope,
+      cycleEntryId: item.cycleEntryId ?? "",
       date: dayKeySaoPaulo(item.date),
       questions: item.questions,
       correct: item.correct,
@@ -145,29 +148,26 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
       return;
     }
 
-    if (!form.cycleEntryId || form.estimatedMinutes <= 0 || (form.activityType === "QUESTIONS" && (form.questions <= 0 || form.correct > form.questions))) {
+    const hasQuestionResults = form.activityType === "QUESTIONS" || form.scope === "GENERAL";
+    if ((form.scope !== "GENERAL" && !form.cycleEntryId) || form.estimatedMinutes <= 0 || (hasQuestionResults && (form.questions <= 0 || form.correct > form.questions))) {
       toast.error("Preencha os dados corretamente.");
       return;
     }
 
     try {
       setSaving(true);
-      const questions = form.activityType === "QUESTIONS" ? form.questions : 0;
-      const correct = form.activityType === "QUESTIONS" ? form.correct : 0;
+      const questions = hasQuestionResults ? form.questions : 0;
+      const correct = hasQuestionResults ? form.correct : 0;
       const wrong = Math.max(0, questions - correct);
       const response = await fetch("/api/study-sessions", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: form.id,
-          cycleEntryId: form.cycleEntryId,
-          date: form.date,
-          questions,
-          correct,
-          wrong,
-          activityType: form.activityType,
-          estimatedMinutes: form.estimatedMinutes,
-          notes: form.notes,
+        body: JSON.stringify(form.scope === "GENERAL" ? {
+          scope: "GENERAL", id: form.id, date: form.date, questions, correct, wrong,
+          estimatedMinutes: form.estimatedMinutes, notes: form.notes,
+        } : {
+          id: form.id, cycleEntryId: form.cycleEntryId, date: form.date, questions, correct, wrong,
+          activityType: form.activityType, estimatedMinutes: form.estimatedMinutes, notes: form.notes,
         }),
       });
 
@@ -187,17 +187,17 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
             item.id === form.id
               ? {
                   ...item,
-                  cycleEntryId: form.cycleEntryId,
+                  cycleEntryId: form.scope === "GENERAL" ? null : form.cycleEntryId,
                   date: updatedDate,
                   questions,
                   correct,
                   wrong,
                   percentage,
-                  activityType: form.activityType,
+                  activityType: form.scope === "GENERAL" ? "REVIEW" : form.activityType,
                   estimatedMinutes: form.estimatedMinutes,
                   notes: form.notes,
-                  subjectName: selectedEntry?.subjectName ?? item.subjectName,
-                  disciplineName: selectedEntry?.disciplineName ?? item.disciplineName,
+                  subjectName: form.scope === "GENERAL" ? "Revisão geral" : selectedEntry?.subjectName ?? item.subjectName,
+                  disciplineName: form.scope === "GENERAL" ? "Todas as matérias" : selectedEntry?.disciplineName ?? item.disciplineName,
                 }
               : item,
           )
@@ -226,10 +226,10 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <label className="text-xs font-semibold text-slate-500">
+            {form.scope === "GENERAL" ? <div className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-bold text-primary">Revisão geral</div> : <label className="text-xs font-semibold text-slate-500">
               Atividade
               <select value={form.activityType} onChange={(event) => setForm((value) => ({ ...value, activityType: event.target.value as SessionItem["activityType"], questions: event.target.value === "QUESTIONS" ? value.questions : 0, correct: event.target.value === "QUESTIONS" ? value.correct : 0 }))} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-primary/30 dark:bg-[#120e20]"><option value="QUESTIONS">Questões</option><option value="CLASS">Videoaula</option><option value="READING">Lei seca</option><option value="PDF_READING">PDF/material</option><option value="REVIEW">Revisão</option></select>
-            </label>
+            </label>}
             <label className="text-xs font-semibold text-slate-500">
               Data
               <input
@@ -239,7 +239,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                 className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-primary/30 dark:bg-[#120e20]"
               />
             </label>
-            <label className="text-xs font-semibold text-slate-500 xl:col-span-2">
+            {form.scope !== "GENERAL" ? <label className="text-xs font-semibold text-slate-500 xl:col-span-2">
               Assunto do ciclo
               <select
                 value={form.cycleEntryId}
@@ -252,8 +252,8 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                   </option>
                 ))}
               </select>
-            </label>
-            {form.activityType === "QUESTIONS" ? <label className="text-xs font-semibold text-slate-500">
+            </label> : <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 xl:col-span-2">Sem vínculo com matéria ou ciclo.</div>}
+            {form.activityType === "QUESTIONS" || form.scope === "GENERAL" ? <label className="text-xs font-semibold text-slate-500">
               Questões
               <input
                 type="number"
@@ -263,7 +263,7 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                 className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-primary/30 dark:bg-[#120e20]"
               />
             </label> : null}
-            {form.activityType === "QUESTIONS" ? <label className="text-xs font-semibold text-slate-500">
+            {form.activityType === "QUESTIONS" || form.scope === "GENERAL" ? <label className="text-xs font-semibold text-slate-500">
               Acertos
               <input
                 type="number"
@@ -368,9 +368,9 @@ export function SessionManager({ sessions, cycleEntries }: { sessions: SessionIt
                   <td className="py-2.5 font-medium">{item.disciplineName}</td>
                   <td className="py-2.5">{item.subjectName}</td>
                   <td className="py-2.5"><span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{item.activityType === "QUESTIONS" ? <ListChecks size={13} /> : <BookOpenCheck size={13} />}{item.activityType === "CLASS" ? "Videoaula" : item.activityType === "READING" ? "Lei seca" : item.activityType === "PDF_READING" ? "PDF/material" : item.activityType === "REVIEW" ? "Revisão" : "Questões"}</span></td>
-                  <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" ? item.questions : "—"}</td>
-                  <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" ? item.correct : "—"}</td>
-                  <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" ? `${item.percentage.toFixed(1)}%` : `${item.estimatedMinutes} min`}</td>
+                  <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" || item.scope === "GENERAL" ? item.questions : "—"}</td>
+                  <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" || item.scope === "GENERAL" ? item.correct : "—"}</td>
+                  <td className="py-2.5 text-right">{item.activityType === "QUESTIONS" || item.scope === "GENERAL" ? `${item.percentage.toFixed(1)}%` : `${item.estimatedMinutes} min`}</td>
                   <td className="py-2.5 text-right">
                     <button
                       type="button"

@@ -96,6 +96,7 @@ export async function GET() {
     sessions: sessions.map((session) => ({
       id: session.id,
       cycleEntryId: session.cycleEntryId,
+      scope: session.scope,
       date: session.date.toISOString(),
       questions: session.questions,
       correct: session.correct,

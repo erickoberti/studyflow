@@ -262,7 +262,8 @@ export function createOfflineSession(input: {
 export function updateOfflineSession(
   sessionId: string,
   input: {
-    cycleEntryId: string;
+    cycleEntryId: string | null;
+    scope?: "CYCLE" | "SUBJECT" | "GENERAL";
     date: string;
     questions: number;
     correct: number;
@@ -279,6 +280,7 @@ export function updateOfflineSession(
     return {
       ...session,
       cycleEntryId: input.cycleEntryId,
+      scope: input.scope ?? session.scope,
       date: new Date(`${input.date}T12:00:00-03:00`).toISOString(),
       questions: input.questions,
       correct: input.correct,
@@ -340,7 +342,8 @@ export function hydrateOfflineSessionsFromServer(input: {
   cycleEntries: OfflineCycleEntry[];
   sessions: Array<{
     id: string;
-    cycleEntryId: string;
+    cycleEntryId: string | null;
+    scope?: "CYCLE" | "SUBJECT" | "GENERAL";
     date: string;
     questions: number;
     correct: number;

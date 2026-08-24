@@ -15,10 +15,10 @@ export default async function RegistrosPage() {
     getCyclePositionSuggestions(user.id, guide.id),
   ]);
   const safeSessions = sessions.map((item) => ({
-    id: item.id, cycleEntryId: item.cycleEntryId, date: item.date.toISOString(), questions: item.questions, correct: item.correct, wrong: item.wrong,
+    id: item.id, cycleEntryId: item.cycleEntryId, scope: item.scope, date: item.date.toISOString(), questions: item.questions, correct: item.correct, wrong: item.wrong,
     percentage: item.percentage, estimatedMinutes: item.estimatedMinutes, activityType: item.activityType, notes: item.notes ?? "",
-    subjectName: item.subject?.name ?? item.cycleEntry.subject?.name ?? "Assunto legado indisponível",
-    disciplineName: item.subject?.discipline.name ?? item.cycleEntry.discipline?.name ?? item.cycleEntry.subject?.discipline.name ?? "Disciplina",
+    subjectName: item.scope === "GENERAL" ? "Revisão geral" : item.subject?.name ?? item.cycleEntry?.subject?.name ?? "Assunto legado indisponível",
+    disciplineName: item.scope === "GENERAL" ? "Todas as matérias" : item.subject?.discipline.name ?? item.cycleEntry?.discipline?.name ?? item.cycleEntry?.subject?.discipline.name ?? "Disciplina",
   }));
   const cycleEntries = suggestions.map((item) => ({ id: item.entryId, orderIndex: item.orderIndex, subjectName: item.subject?.name ?? "Assunto sugerido indisponível", disciplineName: item.discipline }));
   return <div className="space-y-6 pb-10"><header><h1 className="text-3xl font-black text-slate-900 dark:text-white">Sessões de Estudo</h1><p className="mt-1 text-slate-500 dark:text-slate-400">Histórico usa o assunto registrado em cada sessão; o ciclo usa sugestões dinâmicas.</p></header><SessionManager sessions={safeSessions} cycleEntries={cycleEntries} /></div>;

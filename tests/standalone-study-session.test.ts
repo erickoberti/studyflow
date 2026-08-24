@@ -3,7 +3,7 @@ import test from "node:test";
 import type { Prisma } from "@prisma/client";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { createStandaloneStudySession, parseSaoPauloStudyDate, type StandaloneStudyInput } from "../src/lib/standalone-study-session";
+import { createGeneralReviewSession, createStandaloneStudySession, parseSaoPauloStudyDate, type StandaloneStudyInput } from "../src/lib/standalone-study-session";
 
 const base: StandaloneStudyInput = {
   userId: "user-1", studyGuideId: "guide-1", disciplineId: "discipline-1", subjectId: "subject-1",
@@ -41,11 +41,35 @@ test("persiste subjectId, guia, data, duração e resultados sem posição de ci
   const fake = fakeTransaction();
   await createStandaloneStudySession(fake.tx, base, new Date("2026-07-27T12:00:00Z"));
   assert.deepEqual(fake.created, {
-    userId: "user-1", studyGuideId: "guide-1", cycleEntryId: "compat-entry", subjectId: "subject-1", cyclePosition: null, cycleRound: null,
+    userId: "user-1", studyGuideId: "guide-1", cycleEntryId: "compat-entry", subjectId: "subject-1", scope: "SUBJECT", cyclePosition: null, cycleRound: null,
     date: new Date("2026-07-20T13:30:00.000Z"), questions: 10, correct: 8, wrong: 2, percentage: 80, estimatedMinutes: 20, activityType: "QUESTIONS", notes: "[Média] Revisar joins",
   });
   assert.equal(fake.calls.some((call) => call.resource === "studyGuideCycleState"), false);
   assert.match(JSON.stringify(fake.calls.find((call) => call.resource === "subjectProgress")), /2026-07-20T13:30:00.000Z/);
+});
+
+test("revisão geral contabiliza questões sem matéria, assunto ou ciclo", async () => {
+  const fake = fakeTransaction();
+  await createGeneralReviewSession(fake.tx, {
+    userId: "user-1", studyGuideId: "guide-1", date: "2026-07-20", time: "10:30",
+    correct: 34, wrong: 6, estimatedMinutes: 90, difficulty: "Média", notes: "Caderno misto do QConcursos",
+  }, new Date("2026-07-27T12:00:00Z"));
+  assert.deepEqual(fake.created, {
+    userId: "user-1", studyGuideId: "guide-1", cycleEntryId: null, subjectId: null, scope: "GENERAL",
+    cyclePosition: null, cycleRound: null, date: new Date("2026-07-20T13:30:00.000Z"),
+    questions: 40, correct: 34, wrong: 6, percentage: 85, estimatedMinutes: 90,
+    activityType: "REVIEW", notes: "[Média] Caderno misto do QConcursos",
+  });
+  assert.equal(fake.calls.some((call) => ["discipline", "subject", "cycleEntry", "subjectProgress"].includes(call.resource)), false);
+});
+
+test("revisão geral exige ao menos uma questão", async () => {
+  const fake = fakeTransaction();
+  await assert.rejects(() => createGeneralReviewSession(fake.tx, {
+    userId: "user-1", studyGuideId: "guide-1", date: "2026-07-20", time: "10:30",
+    correct: 0, wrong: 0, estimatedMinutes: 30, difficulty: "Fácil",
+  }), /acerto ou erro/);
+  assert.equal(fake.calls.some((call) => call.resource === "studySession"), false);
 });
 
 test("aula avulsa aceita zero questões e preserva o tempo estudado", async () => {
@@ -107,4 +131,11 @@ test("analytics usa a data persistida e ignora avulso na progressão do ciclo", 
   assert.match(analytics, /dayKey\(session\.date\)/);
   assert.match(analytics, /cyclePosition:\s*\{\s*not:\s*null\s*\}/);
   assert.match(analytics, /session\.cyclePosition !== null/);
+});
+
+test("formulário oferece revisão geral sem exigir disciplina e explica o impacto", () => {
+  const form = readFileSync(resolve(process.cwd(), "src/components/forms/study-session-form.tsx"), "utf8");
+  assert.match(form, /Revisão geral/);
+  assert.match(form, /scope: "GENERAL"/);
+  assert.match(form, /sem ser atribuído a uma matéria e sem avançar o ciclo/);
 });

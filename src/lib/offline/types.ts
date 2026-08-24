@@ -62,7 +62,8 @@ export type OfflineSessionSyncStatus =
 export type OfflineStudySession = {
   id: string;
   serverId: string | null;
-  cycleEntryId: string;
+  cycleEntryId: string | null;
+  scope?: "CYCLE" | "SUBJECT" | "GENERAL";
   date: string;
   questions: number;
   correct: number;
