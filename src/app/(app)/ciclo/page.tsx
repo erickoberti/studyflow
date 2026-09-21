@@ -20,6 +20,7 @@ import {
   CalendarDays,
   CircleCheckBig,
   Clock3,
+  Download,
   GripVertical,
   Play,
   Plus,
@@ -135,7 +136,13 @@ export default async function CicloPage({
             href="/debug/ciclo?simular=200"
             className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-5 py-2.5 text-sm font-bold text-primary"
           >
-            <CircleCheckBig size={16} /> Verificar ciclo
+            <CircleCheckBig size={16} /> Analisar novamente
+          </Link>
+          <Link
+            href="/api/cycle/export?total=200"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200"
+          >
+            <Download size={16} /> Exportar ciclo
           </Link>
           <Link
             href={`/ciclo?novo=${showAdd ? "0" : "1"}`}

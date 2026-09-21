@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarClock, CheckCircle2, CircleAlert, Gauge, Settings, Target } from "lucide-react";
+import { ArrowLeft, CalendarClock, CheckCircle2, CircleAlert, Download, Gauge, Settings, Target } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { getCycleDebug } from "@/lib/cycle-debug";
@@ -25,7 +25,12 @@ export default async function CycleDebugPage({ searchParams }: { searchParams?: 
           <h1 className="mt-1 text-3xl font-black tracking-tight">Verificar ciclo</h1>
           <p className="mt-1 text-sm text-slate-500">Confira se todas as matérias aparecem e projete seu volume de questões até a prova.</p>
         </div>
-        <span className="rounded-xl bg-primary/10 px-4 py-2 text-sm font-black text-primary">{guide.name}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <a href={`/api/cycle/export?total=${total}`} className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-4 py-2 text-sm font-black text-primary">
+              <Download size={16} /> Exportar análise
+            </a>
+            <span className="rounded-xl bg-primary/10 px-4 py-2 text-sm font-black text-primary">{guide.name}</span>
+          </div>
       </header>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-panelDark sm:p-6">
