@@ -67,47 +67,47 @@ export function ImportBaseForm() {
 
   return (
     <form onSubmit={onSubmit} className="mt-4 space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-[#120e20]">
-        <p className="text-sm font-black text-slate-900 dark:text-white">Como importar</p>
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-elevated">
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">Como importar</p>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#161126]">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">1. Baixe o modelo</p>
+          <div className="rounded-xl border border-slate-200 bg-surface p-3 dark:border-white/10 dark:bg-panelDark">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-textSecondary">1. Baixe o modelo</p>
             <a
               href="/api/import/base/template"
-              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-black text-white"
+              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-white"
             >
               <Download className="h-4 w-4" />
               Baixar modelo CSV
             </a>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#161126]">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">2. Preencha estas colunas</p>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Seq, Assunto, Peso, Disciplina, Onde marcar no TEC</p>
+          <div className="rounded-xl border border-slate-200 bg-surface p-3 dark:border-white/10 dark:bg-panelDark">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-textSecondary">2. Preencha estas colunas</p>
+            <p className="mt-2 text-sm text-textSecondary dark:text-textSecondary">Seq, Assunto, Peso, Disciplina, Onde marcar no TEC</p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#161126]">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">3. Envie o arquivo</p>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Salve em CSV e envie aqui mesmo.</p>
+          <div className="rounded-xl border border-slate-200 bg-surface p-3 dark:border-white/10 dark:bg-panelDark">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-textSecondary">3. Envie o arquivo</p>
+            <p className="mt-2 text-sm text-textSecondary dark:text-textSecondary">Salve em CSV e envie aqui mesmo.</p>
           </div>
         </div>
       </div>
 
-      <label className="block cursor-pointer rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-primary/40 hover:bg-primary/5 dark:border-white/10 dark:bg-[#120e20] dark:hover:border-primary/50 dark:hover:bg-primary/10">
+      <label className="block cursor-pointer rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-primary/40 hover:bg-primary/5 dark:border-white/10 dark:bg-elevated dark:hover:border-primary/50 dark:hover:bg-primary/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <FileSpreadsheet className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-black text-slate-900 dark:text-white">Arquivo CSV do ciclo</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Arquivo CSV do ciclo</p>
+              <p className="truncate text-xs text-textSecondary dark:text-textSecondary">
                 {fileName || "Use o modelo baixado acima para evitar erro no formato."}
               </p>
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-black text-primary">
+          <div className="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
             <UploadCloud className="h-4 w-4" />
             {fileName ? "Trocar arquivo" : "Escolher CSV"}
           </div>

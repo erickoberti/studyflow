@@ -63,6 +63,7 @@ export type OfflineStudySession = {
   id: string;
   serverId: string | null;
   cycleEntryId: string | null;
+  subjectId?: string | null;
   scope?: "CYCLE" | "SUBJECT" | "GENERAL";
   date: string;
   questions: number;
@@ -83,6 +84,7 @@ export type OfflineSnapshot = {
   user: OfflineUser | null;
   guides: OfflineGuide[];
   activeGuideId: string | null;
+  cycleCursor?: { guideId: string; currentOrderIndex: number } | null;
   settings: OfflineSettings | null;
   disciplines: OfflineDiscipline[];
   subjects: OfflineSubject[];
@@ -94,6 +96,7 @@ export type OfflineSnapshot = {
 
 export type OfflineAccessSession = {
   email: string;
+  userId?: string | null;
   name: string;
   unlockedAt: string;
 };

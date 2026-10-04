@@ -76,8 +76,8 @@ export function OfflineGuideManager() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr] pb-10">
-      <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-        <h2 className="text-xl font-black">Guia offline</h2>
+      <article className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm dark:border-white/5 dark:bg-slate-950/70">
+        <h2 className="text-xl font-semibold">Guia offline</h2>
         <div className="mt-4 space-y-3">
           <input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Nome do guia" className="h-11 w-full rounded-2xl border border-slate-300 px-3" />
           <textarea value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Descrição" rows={4} className="w-full rounded-2xl border border-slate-300 p-3" />
@@ -93,19 +93,19 @@ export function OfflineGuideManager() {
               <button key={color} type="button" onClick={() => setForm((current) => ({ ...current, color }))} className={`h-9 w-9 rounded-full border-2 ${form.color === color ? "border-slate-900" : "border-transparent"}`} style={{ backgroundColor: color }} />
             ))}
           </div>
-          <button type="button" onClick={save} className="rounded-full bg-primary px-4 py-2 text-sm font-black text-white">
+          <button type="button" onClick={save} className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white">
             {form.id ? "Salvar guia" : "Criar guia"}
           </button>
           {!form.id ? null : (
-            <button type="button" onClick={() => deleteOfflineGuide(form.id)} className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-black text-rose-600">
+            <button type="button" onClick={() => deleteOfflineGuide(form.id)} className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600">
               Excluir guia
             </button>
           )}
         </div>
       </article>
 
-      <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-        <h2 className="text-xl font-black">Guias locais</h2>
+      <article className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm dark:border-white/5 dark:bg-slate-950/70">
+        <h2 className="text-xl font-semibold">Guias locais</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {snapshot.guides.map((guide) => (
             <button key={guide.id} type="button" onClick={() => selectOfflineGuide(guide.id)} className={`rounded-3xl border p-4 text-left ${guide.id === activeGuide?.id ? "border-primary bg-primary/5" : "border-slate-200"}`}>
@@ -114,20 +114,20 @@ export function OfflineGuideManager() {
                   <StudyGuideIcon icon={guide.icon} className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="font-black">{guide.name}</p>
-                  <p className="text-xs text-slate-500">{getOfflineDisciplines(snapshot, guide.id).length} disciplinas</p>
+                  <p className="font-semibold">{guide.name}</p>
+                  <p className="text-xs text-textSecondary">{getOfflineDisciplines(snapshot, guide.id).length} disciplinas</p>
                 </div>
               </div>
             </button>
           ))}
           <button type="button" onClick={() => setForm({ id: "", name: "", description: "", icon: ICONS[0], color: COLORS[0] })} className="rounded-3xl border border-dashed border-slate-300 p-4 text-left">
-            <p className="font-black text-primary">Novo guia</p>
-            <p className="text-xs text-slate-500">Cria um guia local e sincroniza depois.</p>
+            <p className="font-semibold text-primary">Novo guia</p>
+            <p className="text-xs text-textSecondary">Cria um guia local e sincroniza depois.</p>
           </button>
         </div>
-        <div className="mt-5 rounded-3xl bg-slate-50 p-4 dark:bg-slate-900">
-          <p className="text-sm font-black">{activeGuide?.name ?? "Nenhum guia selecionado"}</p>
-          <p className="mt-1 text-sm text-slate-500">{disciplines.length} disciplinas no guia ativo.</p>
+        <div className="mt-5 rounded-3xl bg-slate-50 p-4 dark:bg-elevated">
+          <p className="text-sm font-semibold">{activeGuide?.name ?? "Nenhum guia selecionado"}</p>
+          <p className="mt-1 text-sm text-textSecondary">{disciplines.length} disciplinas no guia ativo.</p>
         </div>
       </article>
     </div>

@@ -48,13 +48,13 @@ function GuidePreview({
   const activeCount = disciplines.filter((item) => item.active).length;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#151225]">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-        <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Preview</span>
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-sm dark:border-white/5 dark:bg-panelDark">
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-white/5">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-textSecondary">Preview</span>
         <div className="flex gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-white/20" />
-          <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-white/20" />
-          <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-white/20" />
+          <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-surface/20" />
+          <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-surface/20" />
+          <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-surface/20" />
         </div>
       </div>
 
@@ -70,19 +70,19 @@ function GuidePreview({
           <StudyGuideIcon icon={icon} className="h-7 w-7" />
         </div>
 
-        <h3 className="mt-5 text-2xl font-black leading-tight tracking-tight text-slate-900 dark:text-white">
+        <h3 className="mt-5 text-2xl font-semibold leading-tight tracking-tight text-slate-900 dark:text-white">
           {name || "Novo guia"}
         </h3>
-        <p className="mx-auto mt-3 max-w-[280px] text-sm text-slate-500 dark:text-slate-400">
+        <p className="mx-auto mt-3 max-w-[280px] text-sm text-textSecondary dark:text-textSecondary">
           {description || "Defina o foco deste guia e mantenha as matérias organizadas em um só lugar."}
         </p>
 
         <div className="mt-6">
-          <div className="mb-2 flex items-center justify-between text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">
+          <div className="mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-textSecondary">
             <span>Matérias</span>
             <span className="text-primary">{disciplines.length} total</span>
           </div>
-          <div className="h-2 rounded-full bg-slate-100 dark:bg-white/10">
+          <div className="h-2 rounded-full bg-slate-100 dark:bg-surface/10">
             <div
               className="h-2 rounded-full transition-all"
               style={{
@@ -97,13 +97,13 @@ function GuidePreview({
           {disciplines.slice(0, 4).map((discipline) => (
             <span
               key={discipline.id}
-              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-textSecondary dark:border-white/10 dark:bg-surface/5 dark:text-textSecondary"
             >
               {discipline.name}
             </span>
           ))}
           {!disciplines.length ? (
-            <span className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-[11px] font-semibold text-slate-400 dark:border-white/10">
+            <span className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-[11px] font-semibold text-textSecondary dark:border-white/10">
               Sem matérias
             </span>
           ) : null}
@@ -121,10 +121,10 @@ function GuideList({
   activeGuideId: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#151225]">
+    <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm dark:border-white/5 dark:bg-panelDark">
       <div className="mb-4 flex items-center gap-2">
         <FolderKanban className="h-4 w-4 text-primary" />
-        <h4 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800 dark:text-white">Guias cadastrados</h4>
+        <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-800 dark:text-white">Guias cadastrados</h4>
       </div>
 
       <div className="space-y-3">
@@ -135,7 +135,7 @@ function GuideList({
               className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
                 guide.id === activeGuideId
                   ? "border-primary/20 bg-primary/10"
-                  : "border-slate-200 bg-white hover:border-primary/20 hover:bg-slate-50 dark:border-white/10 dark:bg-[#1c1630] dark:hover:bg-white/5"
+                  : "border-slate-200 bg-surface hover:border-primary/20 hover:bg-slate-50 dark:border-white/10 dark:bg-elevated dark:hover:bg-surface/5"
               }`}
             >
               <span
@@ -147,13 +147,13 @@ function GuideList({
 
               <span className="min-w-0 flex-1">
                 <span
-                  className={`block text-sm font-black leading-tight ${
+                  className={`block text-sm font-semibold leading-tight ${
                     guide.id === activeGuideId ? "text-primary" : "text-slate-800 dark:text-white"
                   }`}
                 >
                   {guide.name}
                 </span>
-                <span className="mt-0.5 block text-[11px] text-slate-400">{guide.disciplines.length} matérias</span>
+                <span className="mt-0.5 block text-[11px] text-textSecondary">{guide.disciplines.length} matérias</span>
               </span>
 
               {guide.id === activeGuideId ? <Check className="h-4 w-4 text-primary" /> : null}
@@ -193,53 +193,53 @@ function GuideEditor({
   onDescriptionChange: (value: string) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#151225]">
+    <div className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm dark:border-white/5 dark:bg-panelDark">
       <div className="mb-4 flex items-center gap-2">
         <div className="rounded-xl bg-primary/10 p-2 text-primary">
           <PencilLine className="h-4 w-4" />
         </div>
-        <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
           {mode === "create" ? "Novo guia" : "Guia atual"}
         </h2>
       </div>
 
-      <div className="grid grid-cols-12 items-start gap-4">
+      <div className="guide-editor-fields grid grid-cols-12 items-start gap-4">
         <div className="col-span-12 xl:col-span-8 space-y-3">
           <div>
-            <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Nome do guia</label>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-textSecondary">Nome do guia</label>
             <input
               name="name"
               value={name}
               onChange={(event) => onNameChange(event.target.value)}
               placeholder="Ex.: Analista de TI - UERJ"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold outline-none focus:border-primary dark:border-white/10 dark:bg-[#24173b] dark:text-white"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold outline-none focus:border-primary dark:border-white/10 dark:bg-elevated dark:text-white"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Descrição</label>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-textSecondary">Descrição</label>
             <textarea
               name="description"
               value={description}
               onChange={(event) => onDescriptionChange(event.target.value)}
               placeholder="Sem descrição cadastrada."
               rows={2}
-              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-primary dark:border-white/10 dark:bg-[#24173b] dark:text-white"
+              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-primary dark:border-white/10 dark:bg-elevated dark:text-white"
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-surface/5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 dark:border-white/10 dark:bg-[#151225] dark:text-slate-300">
+              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-surface px-3 py-1 text-[11px] font-semibold text-textSecondary dark:border-white/10 dark:bg-panelDark dark:text-textSecondary">
                 <StudyGuideIcon icon={selectedIcon} className="h-3.5 w-3.5" />
                 Ícone selecionado
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 dark:border-white/10 dark:bg-[#151225] dark:text-slate-300">
+              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-surface px-3 py-1 text-[11px] font-semibold text-textSecondary dark:border-white/10 dark:bg-panelDark dark:text-textSecondary">
                 <span className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: selectedColor }} />
                 {selectedColor}
               </span>
             </div>
-            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-textSecondary">
               {mode === "create" ? "Novo guia" : guide ? "Guia principal" : ""}
             </span>
           </div>
@@ -248,17 +248,17 @@ function GuideEditor({
         <div className="col-span-12 xl:col-span-4">
           <div className="grid grid-cols-[minmax(0,1fr)_112px] gap-3">
             <div>
-              <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Ícone</label>
-              <div className="grid grid-cols-4 gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-2.5 dark:border-white/10 dark:bg-[#1c1630]">
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-textSecondary">Ícone</label>
+              <div className="grid grid-cols-4 gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-2.5 dark:border-white/10 dark:bg-elevated">
                 {iconOptions.map((icon) => (
                   <button
                     key={icon}
                     type="button"
-                    onClick={() => onIconChange(icon)}
+                    aria-label={`Ícone ${icon}`} aria-pressed={selectedIcon === icon} onClick={() => onIconChange(icon)}
                     className={`flex h-12 w-full items-center justify-center rounded-xl border transition ${
                       selectedIcon === icon
                         ? "border-primary bg-primary text-white"
-                        : "border-slate-200 bg-white text-slate-500 hover:border-primary/30 dark:border-white/10 dark:bg-[#151225] dark:text-slate-300"
+                        : "border-slate-200 bg-surface text-textSecondary hover:border-primary/30 dark:border-white/10 dark:bg-panelDark dark:text-textSecondary"
                     }`}
                   >
                     <StudyGuideIcon icon={icon} className="h-4.5 w-4.5" />
@@ -268,14 +268,14 @@ function GuideEditor({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Cor</label>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-center dark:border-white/10 dark:bg-[#1c1630]">
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-textSecondary">Cor</label>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-center dark:border-white/10 dark:bg-elevated">
                 <div className="grid grid-cols-2 gap-2">
                   {colorOptions.map((color) => (
                     <button
                       key={color}
                       type="button"
-                      onClick={() => onColorChange(color)}
+                      aria-label={`Cor ${color}`} aria-pressed={selectedColor === color} onClick={() => onColorChange(color)}
                       className={`mx-auto h-9 w-9 rounded-full border-2 transition ${
                         selectedColor === color ? "border-slate-900 ring-2 ring-primary dark:border-white" : "border-transparent"
                       }`}
@@ -283,7 +283,7 @@ function GuideEditor({
                     />
                   ))}
                 </div>
-                <span className="mt-3 block text-[10px] font-medium text-slate-400">{selectedColor}</span>
+                <span className="mt-3 block text-[10px] font-medium text-textSecondary">{selectedColor}</span>
               </div>
             </div>
           </div>
@@ -351,8 +351,8 @@ export function GuideManager({
     <div className="space-y-5 pb-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Guias de estudo</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">Guias de estudo</h1>
+          <p className="mt-1 text-sm text-textSecondary dark:text-textSecondary">
             Edite identidade, cor, ícone e matérias sem sair da mesma tela.
           </p>
         </div>
@@ -361,12 +361,12 @@ export function GuideManager({
           <details className="relative">
             <summary className="flex list-none cursor-pointer items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-4 py-2.5 text-sm font-semibold text-primary">
               <span>Trocar guia</span>
-              <span className="rounded-md bg-primary px-2 py-1 text-[11px] font-black text-white">
+              <span className="rounded-md bg-primary px-2 py-1 text-[11px] font-semibold text-white">
                 {activeGuide?.name ?? "Nenhum guia"}
               </span>
             </summary>
 
-            <div className="absolute right-0 z-20 mt-3 w-[320px] rounded-2xl border border-slate-200 bg-white p-2.5 shadow-2xl dark:border-slate-800 dark:bg-[#151225]">
+            <div className="absolute right-0 z-20 mt-3 w-[320px] rounded-2xl border border-slate-200 bg-surface p-2.5 shadow-2xl dark:border-white/5 dark:bg-panelDark">
               <div className="space-y-2">
                 {guides.map((guide) => (
                   <form key={guide.id} action={selectStudyGuideAction}>
@@ -375,7 +375,7 @@ export function GuideManager({
                       className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
                         guide.id === activeGuideId
                           ? "border border-primary/20 bg-primary/10"
-                          : "border border-slate-200 bg-white hover:border-primary/20 hover:bg-slate-50 dark:border-white/10 dark:bg-[#1c1630] dark:hover:bg-white/5"
+                          : "border border-slate-200 bg-surface hover:border-primary/20 hover:bg-slate-50 dark:border-white/10 dark:bg-elevated dark:hover:bg-surface/5"
                       }`}
                     >
                       <span
@@ -385,8 +385,8 @@ export function GuideManager({
                         <StudyGuideIcon icon={guide.icon} className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-black text-slate-800 dark:text-white">{guide.name}</span>
-                        <span className="block text-[11px] text-slate-400">{guide.disciplines.length} matérias</span>
+                        <span className="block truncate text-sm font-semibold text-slate-800 dark:text-white">{guide.name}</span>
+                        <span className="block text-[11px] text-textSecondary">{guide.disciplines.length} matérias</span>
                       </span>
                       {guide.id === activeGuideId ? <Check className="h-4 w-4 text-primary" /> : null}
                     </button>
@@ -399,7 +399,7 @@ export function GuideManager({
           <button
             type="button"
             onClick={() => setMode((value) => (value === "create" ? "edit" : "create"))}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 dark:border-white/10 dark:bg-[#151225] dark:text-white"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-surface px-4 py-2.5 text-sm font-semibold text-slate-700 dark:border-white/10 dark:bg-panelDark dark:text-white"
           >
             {mode === "create" ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             {mode === "create" ? "Fechar novo guia" : "Novo guia"}
@@ -410,7 +410,7 @@ export function GuideManager({
               type="button"
               onClick={() => setMode("edit")}
               disabled={mode === "edit"}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:cursor-default disabled:opacity-60 dark:border-white/10 dark:bg-[#151225] dark:text-white"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-surface px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:cursor-default disabled:opacity-60 dark:border-white/10 dark:bg-panelDark dark:text-white"
             >
               <PencilLine className="h-4 w-4" />
               {mode === "edit" ? "Editando guia" : "Editar guia"}
@@ -419,7 +419,7 @@ export function GuideManager({
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-5">
+      <div className="guide-main-grid grid grid-cols-12 gap-5">
         <div className="col-span-12 lg:col-span-8 space-y-5">
           {mode === "create" ? (
             <form action={createStudyGuideAction} className="space-y-5">
@@ -461,8 +461,8 @@ export function GuideManager({
                 onNameChange={setDraftName}
                 onDescriptionChange={setDraftDescription}
               />
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
+              <div className="guide-save-actions flex items-center justify-between gap-3">
+                <details className="guide-danger"><summary>Opções do guia</summary><div className="flex flex-wrap items-center gap-3">
                   <button
                     type="submit"
                     formAction={resetStudyGuideAction}
@@ -503,22 +503,22 @@ export function GuideManager({
                       </span>
                     </button>
                   ) : null}
-                </div>
+                </div></details>
                 <button className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white">Salvar guia</button>
               </div>
             </form>
           ) : null}
 
           {activeGuide ? (
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#151225]">
-              <div className="flex flex-col gap-3 border-b border-slate-100 p-4 lg:flex-row lg:items-center lg:justify-between dark:border-slate-800">
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-surface shadow-sm dark:border-white/5 dark:bg-panelDark">
+              <div className="flex flex-col gap-3 border-b border-slate-100 p-4 lg:flex-row lg:items-center lg:justify-between dark:border-white/5">
                 <div className="flex items-center gap-3">
                   <div className="rounded-xl bg-primary/10 p-2 text-primary">
                     <Rows3 className="h-4 w-4" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black leading-none text-slate-900 dark:text-white">Assuntos / matérias</h2>
-                    <p className="mt-1 text-xs text-slate-400">Tudo em formato compacto para caber na mesma tela.</p>
+                    <h2 className="text-lg font-semibold leading-none text-slate-900 dark:text-white">Assuntos / matérias</h2>
+                    <p className="mt-1 text-xs text-textSecondary">Gerencie as disciplinas vinculadas a este guia.</p>
                   </div>
                 </div>
 
@@ -526,12 +526,12 @@ export function GuideManager({
                   <input
                     name="name"
                     placeholder="Nova matéria"
-                    className="w-40 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-primary dark:border-white/10 dark:bg-[#24173b] dark:text-white"
+                    className="w-40 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-primary dark:border-white/10 dark:bg-elevated dark:text-white"
                   />
                   <input
                     name="category"
                     placeholder="Descrição curta"
-                    className="w-40 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-primary dark:border-white/10 dark:bg-[#24173b] dark:text-white"
+                    className="w-40 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-primary dark:border-white/10 dark:bg-elevated dark:text-white"
                   />
                   <button className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-1.5 text-sm font-bold text-white">
                     <Plus className="h-4 w-4" />
@@ -540,13 +540,13 @@ export function GuideManager({
                 </form>
               </div>
 
-              <div className="space-y-2 bg-slate-50/40 p-2 dark:bg-transparent">
+              <div className="guide-discipline-list space-y-2 bg-slate-50/40 p-2 dark:bg-transparent">
                 {activeGuide.disciplines.length ? (
                   activeGuide.disciplines.map((discipline) => (
                     <form
                       key={discipline.id}
                       action={updateGuideDisciplineAction}
-                      className="grid grid-cols-12 items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition hover:border-primary/30 hover:shadow-sm dark:border-white/10 dark:bg-[#1c1630]"
+                      className="grid grid-cols-12 items-center gap-3 rounded-xl border border-slate-200 bg-surface p-3 transition hover:border-primary/30 hover:shadow-sm dark:border-white/10 dark:bg-elevated"
                     >
                       <input type="hidden" name="disciplineId" value={discipline.id} />
                       <div className="col-span-12 lg:col-span-3">
@@ -562,7 +562,7 @@ export function GuideManager({
                           name="category"
                           defaultValue={discipline.category ?? ""}
                           placeholder="Descrição"
-                          className="w-full border-none bg-transparent p-0 text-xs text-slate-400 outline-none focus:ring-0 dark:text-slate-400"
+                          className="w-full border-none bg-transparent p-0 text-xs text-textSecondary outline-none focus:ring-0 dark:text-textSecondary"
                         />
                       </div>
 
@@ -572,7 +572,7 @@ export function GuideManager({
                             {discipline.subjectCount} matérias vinculadas
                           </span>
                         ) : (
-                          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500 dark:bg-white/10 dark:text-slate-300">
+                          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-textSecondary dark:bg-surface/10 dark:text-textSecondary">
                             Sem vinculos
                           </span>
                         )}
@@ -589,7 +589,7 @@ export function GuideManager({
                           className={`rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
                             discipline.active
                               ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"
-                              : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300"
+                              : "bg-slate-100 text-textSecondary dark:bg-surface/10 dark:text-textSecondary"
                           }`}
                         >
                           {discipline.active ? "Ativa" : "Inativa"}
@@ -618,7 +618,7 @@ export function GuideManager({
                     </form>
                   ))
                 ) : (
-                  <div className="rounded-xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
+                  <div className="rounded-xl border border-dashed border-slate-200 p-5 text-center text-sm text-textSecondary dark:border-white/10 dark:text-textSecondary">
                     Este guia ainda não tem matérias. Adicione a primeira acima.
                   </div>
                 )}
@@ -637,10 +637,10 @@ export function GuideManager({
           />
           <GuideList guides={guides} activeGuideId={activeGuideId} />
           {guides.length > 1 ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#151225]">
+            <details className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm dark:border-white/5 dark:bg-panelDark"><summary className="cursor-pointer text-sm font-semibold text-textSecondary">Gerenciar exclusão de guias</summary>
               <div className="mb-4 flex items-center gap-2">
                 <Trash2 className="h-4 w-4 text-red-500" />
-                <h4 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800 dark:text-white">Excluir guia</h4>
+                <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-800 dark:text-white">Excluir guia</h4>
               </div>
               <div className="space-y-2">
                 {guides.map((guide) => (
@@ -669,7 +669,7 @@ export function GuideManager({
                   </form>
                 ))}
               </div>
-            </div>
+            </details>
           ) : null}
         </div>
       </div>

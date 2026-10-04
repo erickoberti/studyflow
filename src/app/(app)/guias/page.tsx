@@ -1,3 +1,5 @@
+import shell from "@/components/official-shell.module.css";
+import visual from "@/components/resource-screens.module.css";
 import { GuideManager } from "@/components/guide-manager";
 import { requireUser } from "@/lib/auth";
 import { getStudyGuidesWithDisciplines, STUDY_GUIDE_COLORS, STUDY_GUIDE_ICONS } from "@/lib/study-guide";
@@ -22,11 +24,11 @@ export default async function GuiasPage() {
   }));
 
   return (
-    <GuideManager
+    <div className={`${shell.screen} ${visual.page} ${visual.guides}`}><GuideManager
       guides={guides}
       activeGuideId={state.activeGuide?.id ?? ""}
       iconOptions={STUDY_GUIDE_ICONS}
       colorOptions={STUDY_GUIDE_COLORS}
-    />
+    /></div>
   );
 }

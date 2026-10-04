@@ -41,12 +41,32 @@ test("login offline retoma guia, ciclo e registro local", async ({ page }) => {
   await expect(page).toHaveURL(/\/offline\/ciclo/);
   await page.getByRole("link", { name: "Registrar" }).click();
   await expect(page).toHaveURL(/\/offline\/registro/);
-  await page.getByRole("button", { name: "Aula", exact: true }).click();
+  await page.getByRole("button", { name: "Videoaula", exact: true }).click();
   await expect(page.getByLabel("Acertos")).toHaveCount(0);
   await expect(page.getByLabel("Erros")).toHaveCount(0);
   await expect(page.getByText("Tempo (min)")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Salvar aula localmente" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Salvar videoaula localmente" })).toBeEnabled();
   await expectNoHorizontalOverflow(page);
+});
+
+test("PWA de produção mantém registro e fila após recarregar sem rede", async ({ page, context }) => {
+  test.skip(process.env.E2E_PRODUCTION !== "true", "Exige build e service worker de produção");
+  await page.addInitScript((snapshot) => localStorage.setItem("studyflow-offline-snapshot", JSON.stringify(snapshot)), offlineSnapshot);
+  await page.goto("/auth/login?mode=app");
+  await page.getByLabel("E-mail").fill("e2e@studyflow.local");
+  await page.getByRole("button", { name: "Entrar offline com dados salvos" }).click();
+  await expect(page).toHaveURL(/\/offline\/dashboard/);
+  await page.goto("/offline/registro");
+  await expect(page.getByRole("heading", { name: "Salvar sessão local" })).toBeVisible();
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Salvar sessão local" })).toBeVisible();
+  await page.getByRole("button", { name: "Videoaula", exact: true }).click();
+  await page.getByRole("button", { name: "Salvar videoaula localmente" }).click();
+  await expect(page.getByText(/pendente\(s\)/)).not.toContainText("0 pendente(s)");
+  await page.reload();
+  await expect(page.getByText(/pendente\(s\)/)).not.toContainText("0 pendente(s)");
 });
 
 test("tema escuro e foco por teclado permanecem funcionais", async ({ page }) => {
@@ -75,7 +95,8 @@ test("áreas online principais carregam sem alterar dados", async ({ page, conte
   test.skip(!user, "Nenhum usuário com guia ativo disponível para auditoria somente leitura");
   const token = await encode({ secret: process.env.NEXTAUTH_SECRET!, token: { id: user!.id, sub: user!.id, name: user!.name, email: user!.email }, maxAge: 3600 });
   await context.addCookies([{ name: "next-auth.session-token", value: token, domain: "127.0.0.1", path: "/", httpOnly: true, sameSite: "Lax" }]);
-  for (const [path, heading] of [["/dashboard", "Painel de Estudos"], ["/metas", "Metas"], ["/ciclo", "Meu Ciclo de Estudos"], ["/registro", "Estudar"], ["/simulados", "Simulados"], ["/planejamento", "Planejamento e edital"]] as const) {
+  if (process.env.E2E_PRODUCTION === "true") await context.addCookies([{ name: "__Secure-next-auth.session-token", value: token, domain: "127.0.0.1", path: "/", httpOnly: true, sameSite: "Lax", secure: true }]);
+  for (const [path, heading] of [["/dashboard", /^Olá,/], ["/metas", "Minhas metas"], ["/ciclo", "Sequência & Ritmo do Ciclo"], ["/registro", "Estudar"], ["/simulados", "Simulados"], ["/planejamento", "Planejamento e edital"]] as const) {
     await page.goto(path);
     await expect(page).toHaveURL(new RegExp(`${path.replace("/", "\\/")}$`));
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();

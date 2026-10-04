@@ -1,6 +1,6 @@
 "use client";
 
-export const OFFLINE_SESSION_SCHEMA_VERSION = 1;
+export const OFFLINE_SESSION_SCHEMA_VERSION = 2;
 export const OFFLINE_SESSION_DB_NAME = "studyflow-active-sessions";
 const OFFLINE_SESSION_CHANGE_EVENT = "studyflow-offline-session-change";
 
@@ -51,6 +51,7 @@ export type OfflineSessionPayload = {
 
 export type OfflineSessionOperation = {
   operationId: string;
+  dependsOnOperationId?: string;
   userId: string;
   studyGuideId: string;
   type: OfflineSessionOperationType;
@@ -78,6 +79,24 @@ export interface OfflineSessionQueueStorage {
   getSession(userId: string, studyGuideId: string): Promise<OfflineActiveStudySession | null>;
   updateOperation(operationId: string, patch: Partial<OfflineSessionOperation>): Promise<void>;
   updateOperationsForSession(localSessionId: string, patch: Partial<OfflineSessionPayload>): Promise<void>;
+  deleteOperations(operationIds: string[]): Promise<void>;
+}
+
+const COMPLETED_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+
+export function completedOperationIdsToPrune(operations: OfflineSessionOperation[], now = new Date(), protectedSessionId?: string) {
+  const cutoff = now.getTime() - COMPLETED_RETENTION_MS;
+  const expired = new Set(operations.filter((item) => item.status === "COMPLETED" && item.payload.localSessionId !== protectedSessionId && item.syncedAt && new Date(item.syncedAt).getTime() < cutoff).map((item) => item.operationId));
+  const required = new Set(operations.filter((item) => !expired.has(item.operationId)).map((item) => item.dependsOnOperationId).filter((id): id is string => Boolean(id)));
+  return [...expired].filter((id) => !required.has(id));
+}
+
+export async function pruneCompletedOfflineOperations(storage: OfflineSessionQueueStorage, userId: string, studyGuideId: string, now = new Date()) {
+  const activeSession = await storage.getSession(userId, studyGuideId);
+  const protectedSessionId = activeSession && ["ACTIVE", "PAUSED"].includes(activeSession.status) ? activeSession.localSessionId : undefined;
+  const ids = completedOperationIdsToPrune(await storage.getOperations(userId, studyGuideId), now, protectedSessionId);
+  if (ids.length) await storage.deleteOperations(ids);
+  return ids.length;
 }
 
 function uuid() {
@@ -104,6 +123,7 @@ function ensurePayload(payload: OfflineSessionPayload) {
 
 export function createOfflineSessionOperation(input: {
   operationId?: string;
+  dependsOnOperationId?: string;
   userId: string;
   studyGuideId: string;
   type: OfflineSessionOperationType;
@@ -113,6 +133,7 @@ export function createOfflineSessionOperation(input: {
   ensurePayload(input.payload);
   return {
     operationId: input.operationId ?? uuid(),
+    ...(input.dependsOnOperationId ? { dependsOnOperationId: input.dependsOnOperationId } : {}),
     userId: input.userId,
     studyGuideId: input.studyGuideId,
     type: input.type,
@@ -145,6 +166,7 @@ export class MemoryOfflineSessionQueue implements OfflineSessionQueueStorage {
   async updateOperationsForSession(localSessionId: string, patch: Partial<OfflineSessionPayload>) {
     for (const [id, operation] of this.operations) if (operation.payload.localSessionId === localSessionId) this.operations.set(id, { ...operation, payload: { ...operation.payload, ...structuredClone(patch) } });
   }
+  async deleteOperations(operationIds: string[]) { operationIds.forEach((id) => this.operations.delete(id)); }
 }
 
 type StoredSession = OfflineActiveStudySession & { storageKey: string };
@@ -159,6 +181,9 @@ function openDatabase() {
       const database = request.result;
       if (!database.objectStoreNames.contains("operations")) database.createObjectStore("operations", { keyPath: "operationId" });
       if (!database.objectStoreNames.contains("sessions")) database.createObjectStore("sessions", { keyPath: "storageKey" });
+      const operations = request.transaction?.objectStore("operations");
+      if (operations && !operations.indexNames.contains("byAccountGuide")) operations.createIndex("byAccountGuide", ["userId", "studyGuideId"]);
+      if (operations && !operations.indexNames.contains("byLocalSession")) operations.createIndex("byLocalSession", "payload.localSessionId");
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -178,8 +203,8 @@ async function transaction(storeName: "operations" | "sessions", mode: IDBTransa
 export class IndexedDbOfflineSessionQueue implements OfflineSessionQueueStorage {
   async putOperation(operation: OfflineSessionOperation) { await requestResult((await transaction("operations", "readwrite")).put(operation)); emitQueueChange(); }
   async getOperations(userId: string, studyGuideId: string) {
-    const values = await requestResult((await transaction("operations", "readonly")).getAll()) as OfflineSessionOperation[];
-    return values.filter((item) => item.userId === userId && item.studyGuideId === studyGuideId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const values = await requestResult((await transaction("operations", "readonly")).index("byAccountGuide").getAll(IDBKeyRange.only([userId, studyGuideId]))) as OfflineSessionOperation[];
+    return values.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
   async putSession(session: OfflineActiveStudySession) { await requestResult((await transaction("sessions", "readwrite")).put({ ...session, storageKey: sessionKey(session.userId, session.studyGuideId) } satisfies StoredSession)); emitQueueChange(); }
   async getSession(userId: string, studyGuideId: string) {
@@ -191,8 +216,13 @@ export class IndexedDbOfflineSessionQueue implements OfflineSessionQueueStorage 
     if (current) { await requestResult(store.put({ ...current, ...patch })); emitQueueChange(); }
   }
   async updateOperationsForSession(localSessionId: string, patch: Partial<OfflineSessionPayload>) {
-    const store = await transaction("operations", "readwrite"); const values = await requestResult(store.getAll()) as OfflineSessionOperation[];
-    await Promise.all(values.filter((item) => item.payload.localSessionId === localSessionId).map((item) => requestResult(store.put({ ...item, payload: { ...item.payload, ...patch } })))); emitQueueChange();
+    const store = await transaction("operations", "readwrite"); const values = await requestResult(store.index("byLocalSession").getAll(localSessionId)) as OfflineSessionOperation[];
+    await Promise.all(values.map((item) => requestResult(store.put({ ...item, payload: { ...item.payload, ...patch } })))); emitQueueChange();
+  }
+  async deleteOperations(operationIds: string[]) {
+    if (!operationIds.length) return;
+    const store = await transaction("operations", "readwrite");
+    await Promise.all(operationIds.map((id) => requestResult(store.delete(id)))); emitQueueChange();
   }
 }
 
@@ -242,7 +272,8 @@ export async function queueOfflineSessionOperation(input: {
     session.status = "CANCELLED"; session.finishedAt = now;
   }
   session.updatedAt = now; session.pendingSync = true;
-  const operation = createOfflineSessionOperation({ operationId: input.operationId, userId: input.userId, studyGuideId: input.studyGuideId, type: input.type, payload: session, createdAt: now });
+  const previous = (await storage.getOperations(input.userId, input.studyGuideId)).filter((item) => item.payload.localSessionId === session.localSessionId).at(-1);
+  const operation = createOfflineSessionOperation({ operationId: input.operationId, dependsOnOperationId: previous?.operationId, userId: input.userId, studyGuideId: input.studyGuideId, type: input.type, payload: session, createdAt: now });
   await storage.putOperation(operation);
   await storage.putSession(session);
   return { operation, session };

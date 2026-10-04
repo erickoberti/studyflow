@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { recalculateSubjectProgress } from "@/lib/subject-progress";
 
 export const STUDY_TIME_ZONE = "America/Sao_Paulo";
 
@@ -102,20 +103,12 @@ export async function createStandaloneStudySession(
   if (!discipline) throw new Error("Selecione uma disciplina ativa deste guia.");
   if (!subject) throw new Error("O assunto não pertence à disciplina selecionada ou está inativo.");
 
-  // StudySession ainda mantém cycleEntryId obrigatório por compatibilidade histórica.
-  // A entrada abaixo é apenas a âncora relacional; assunto, disciplina, data e métricas
-  // vêm exclusivamente do registro avulso e o cursor nunca é alterado.
-  const cycleEntry =
-    await tx.cycleEntry.findFirst({ where: { userId: input.userId, studyGuideId: input.studyGuideId, disciplineId: input.disciplineId }, orderBy: { orderIndex: "asc" }, select: { id: true } })
-    ?? await tx.cycleEntry.findFirst({ where: { userId: input.userId, studyGuideId: input.studyGuideId }, orderBy: { orderIndex: "asc" }, select: { id: true } });
-  if (!cycleEntry) throw new Error("O guia precisa ter ao menos uma posição de ciclo para armazenar o histórico.");
-
   const sessionDate = parseSaoPauloStudyDate(input.date, input.time, now);
   const created = await tx.studySession.create({
     data: {
       userId: input.userId,
       studyGuideId: input.studyGuideId,
-      cycleEntryId: cycleEntry.id,
+      cycleEntryId: null,
       subjectId: subject.id,
       scope: "SUBJECT",
       cyclePosition: null,
@@ -131,24 +124,7 @@ export async function createStandaloneStudySession(
     },
     include: { subject: { include: { discipline: true } } },
   });
-  const aggregate = await tx.studySession.aggregate({
-    where: { userId: input.userId, studyGuideId: input.studyGuideId, subjectId: subject.id },
-    _count: { id: true }, _sum: { questions: true, correct: true, wrong: true }, _max: { date: true },
-  });
-  const totalQuestions = aggregate._sum.questions ?? 0;
-  const totalCorrect = aggregate._sum.correct ?? 0;
-  await tx.subjectProgress.upsert({
-    where: { subjectId: subject.id },
-    create: {
-      userId: input.userId, studyGuideId: input.studyGuideId, subjectId: subject.id,
-      passages: aggregate._count.id, totalQuestions, correct: totalCorrect, wrong: aggregate._sum.wrong ?? 0,
-      averagePercentage: totalQuestions ? totalCorrect / totalQuestions * 100 : 0, lastStudiedAt: aggregate._max.date,
-    },
-    update: {
-      passages: aggregate._count.id, totalQuestions, correct: totalCorrect, wrong: aggregate._sum.wrong ?? 0,
-      averagePercentage: totalQuestions ? totalCorrect / totalQuestions * 100 : 0, lastStudiedAt: aggregate._max.date,
-    },
-  });
+  await recalculateSubjectProgress(tx, input.userId, input.studyGuideId, [subject.id]);
   return created;
 }
 

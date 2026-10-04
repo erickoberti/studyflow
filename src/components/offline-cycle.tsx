@@ -19,7 +19,7 @@ export function OfflineCycle() {
   const sessionsByEntry = useMemo(() => {
     const map = new Map<string, { questions: number; correct: number }>();
     for (const session of snapshot.sessions) {
-      if (session.syncStatus === "pending_delete" || !session.cycleEntryId) continue;
+      if (session.syncStatus === "pending_delete" || !session.cycleEntryId || session.scope === "SUBJECT" || session.scope === "GENERAL") continue;
       const current = map.get(session.cycleEntryId) ?? { questions: 0, correct: 0 };
       current.questions += session.questions;
       current.correct += session.correct;
@@ -31,13 +31,13 @@ export function OfflineCycle() {
   return (
     <div className="space-y-5 pb-10">
       <header>
-        <h2 className="text-3xl font-black">Ciclo local</h2>
-        <p className="mt-1 text-sm text-slate-500">Consulta offline do ciclo atual. Alterações estruturais continuam online.</p>
+        <h2 className="text-3xl font-semibold">Ciclo local</h2>
+        <p className="mt-1 text-sm text-textSecondary">Consulta offline do ciclo atual. Alterações estruturais continuam online.</p>
       </header>
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-surface shadow-sm dark:border-white/5 dark:bg-slate-950/70">
         <table className="w-full min-w-[860px] text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900">
+          <thead className="bg-slate-50 text-xs uppercase text-textSecondary dark:bg-elevated">
             <tr>
               <th className="px-4 py-3">Ordem</th>
               <th className="px-4 py-3">Disciplina</th>
@@ -54,13 +54,13 @@ export function OfflineCycle() {
 
               return (
                 <tr key={entry.id}>
-                  <td className="px-4 py-3 font-black">#{entry.orderIndex}</td>
+                  <td className="px-4 py-3 font-semibold">#{entry.orderIndex}</td>
                   <td className="px-4 py-3">{entry.subject.discipline.name}</td>
                   <td className="px-4 py-3">{entry.subject.name}</td>
                   <td className="px-4 py-3 text-right">{aggregate.questions}</td>
                   <td className="px-4 py-3 text-right">{percentage.toFixed(1)}%</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase ${entry.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
+                    <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase ${entry.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-textSecondary dark:bg-elevated dark:text-textSecondary"}`}>
                       {entry.active ? "ativo" : "inativo"}
                     </span>
                   </td>

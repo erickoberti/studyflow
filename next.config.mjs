@@ -5,13 +5,15 @@ const isDev = process.env.NODE_ENV === "development";
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: ["127.0.0.1"],
+  outputFileTracingRoot: process.cwd(),
   experimental: { serverActions: { bodySizeLimit: "2mb" } },
 };
 
 export default withPWA({
   dest: "public",
   disable: isDev,
-  register: true,
+  register: false,
   skipWaiting: true,
   clientsClaim: true,
   cleanupOutdatedCaches: true,
@@ -19,7 +21,11 @@ export default withPWA({
   cacheOnFrontEndNav: false,
   cacheStartUrl: false,
   dynamicStartUrl: false,
-  additionalManifestEntries: [{ url: "/offline/dashboard", revision: "phase4-offline-shell-v1" }],
+  additionalManifestEntries: [
+    { url: "/offline/dashboard", revision: "phase4-offline-shell-v1" },
+    { url: "/offline/registro", revision: "integrated-offline-pages-v1" },
+    { url: "/offline/registros", revision: "integrated-offline-pages-v1" },
+  ],
   runtimeCaching: [
     { urlPattern: /\/api\//i, handler: "NetworkOnly", method: "GET", options: {} },
     { urlPattern: /\/_next\/data\//i, handler: "NetworkOnly", options: {} },

@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Lexend } from "next/font/google";
+import { Inter, Lexend, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
 const lexend = Lexend({ subsets: ["latin"], variable: "--font-lexend" });
+const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   applicationName: "StudyFlow",
@@ -22,5 +24,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#895af6", colorScheme: "light dark" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="pt-BR" suppressHydrationWarning><body className={`${lexend.variable} font-sans antialiased`}><Providers>{children}</Providers></body></html>;
+  return <html lang="pt-BR" suppressHydrationWarning><body className={`${lexend.variable} ${inter.variable} ${jakarta.variable} font-sans antialiased`}><Providers>{children}</Providers></body></html>;
 }
+

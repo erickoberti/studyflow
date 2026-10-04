@@ -1,4 +1,5 @@
-import Link from "next/link";
+import styles from "./study-screen.module.css";
+
 import { StudySessionForm } from "@/components/forms/study-session-form";
 import { ActiveStudyPanel } from "@/components/study/active-study-panel";
 import { requireUser } from "@/lib/auth";
@@ -16,7 +17,8 @@ function preferredActivity(tipo?: string): StudyActivity {
   return "QUESTIONS";
 }
 
-export default async function RegistroPage({ searchParams }: { searchParams?: { novo?: string; tipo?: string } }) {
+export default async function RegistroPage({ searchParams }: { searchParams?: Promise<{ novo?: string; tipo?: string; modo?: string }> }) {
+  const params = await searchParams;
   const user = await requireUser(); const guide = await requireActiveStudyGuide(user.id);
   const [current, recentSessions, settings, active, dashboard, focusPreview, guides] = await Promise.all([
     cycleService.getCurrent(user.id, guide.id),
@@ -29,9 +31,12 @@ export default async function RegistroPage({ searchParams }: { searchParams?: { 
   const sessions = recentSessions.map((session) => ({ ...session, subjectName: session.scope === "GENERAL" ? "Revisão geral" : session.subject?.name ?? "Assunto legado indisponível", disciplineName: session.scope === "GENERAL" ? "Todas as matérias" : session.subject?.discipline.name ?? session.cycleEntry?.discipline?.name ?? "Disciplina" }));
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const todayData = dashboard.byDay.find((item) => item.date === today); const next = focusPreview[1];
-  return <div className="space-y-5 pb-20 lg:pb-0">
-    <header className="flex items-center justify-between"><div><h1 className="text-3xl font-black text-slate-900 dark:text-white">Estudar</h1><p className="mt-1 text-slate-500">Uma sessão por vez. O resto pode esperar.</p></div><Link href="/registros" className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-bold text-primary">Ver sessões</Link></header>
-    <ActiveStudyPanel userId={user.id} studyGuideId={guide.id} initialActive={active as never} suggestion={current as never} nextSuggestion={next ? { discipline: next.discipline.name, subject: next.subject.name } : null} defaultMinutes={settings.sessionMinutes} preferredActivity={preferredActivity(searchParams?.tipo)} summary={{ todayMinutes: todayData?.estimatedMinutes ?? 0, todayQuestions: todayData?.questions ?? 0, dailyGoal: dashboard.totals.dailyQuestionsGoal, streak: dashboard.totals.streakDays }} />
-    {searchParams?.novo === "1" ? <StudySessionForm guides={guides} initialGuideId={guide.id} recentSessions={sessions} dailyQuestionsGoal={settings.questionsPerSession} toggleHref="/registro" /> : <Link href="/registro?novo=1" className="inline-flex rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">Registrar estudo avulso</Link>}
+  const subjectId=active?.subject.id??current?.subject.id;
+  const [subject,positions]=await Promise.all([subjectId?prisma.subject.findFirst({where:{id:subjectId,userId:user.id,studyGuideId:guide.id},include:{progress:true}}):null,prisma.cycleEntry.count({where:{userId:user.id,studyGuideId:guide.id,active:true}})]);
+  return <div className={styles.screen}>
+    <h1 className="sr-only">Estudar</h1>
+    <ActiveStudyPanel userId={user.id} studyGuideId={guide.id} initialActive={active as never} suggestion={current as never} nextSuggestion={next ? { discipline: next.discipline.name, subject: next.subject.name, position: next.orderIndex } : null} referencePresentation={{positions,average:subject?.progress?.averagePercentage??0,lastStudiedAt:subject?.progress?.lastStudiedAt?.toISOString()??null}} initialVisualMode={params?.modo==="timer"?"TIMER":undefined} defaultMinutes={settings.sessionMinutes} preferredActivity={preferredActivity(params?.tipo)} showStandaloneLink={params?.novo !== "1"} summary={{ todayMinutes: todayData?.estimatedMinutes ?? 0, todayQuestions: todayData?.questions ?? 0, dailyGoal: dashboard.totals.dailyQuestionsGoal, streak: dashboard.totals.streakDays }} />
+    {params?.novo === "1" ? <StudySessionForm guides={guides} initialGuideId={guide.id} recentSessions={sessions} dailyQuestionsGoal={settings.questionsPerSession} toggleHref="/registro" /> : null}
   </div>;
 }
+

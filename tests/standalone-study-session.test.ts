@@ -14,13 +14,14 @@ function fakeTransaction(options: { subject?: boolean } = {}) {
   const calls: Array<{ resource: string; args: unknown }> = [];
   let created: Record<string, unknown> | null = null;
   const tx = {
+    $queryRaw: async (args: unknown) => { calls.push({ resource: "subjectLock", args }); return [{ id: "subject-1" }]; },
     studyGuide: { findFirst: async (args: unknown) => { calls.push({ resource: "guide", args }); return { id: "guide-1" }; } },
     discipline: { findFirst: async (args: unknown) => { calls.push({ resource: "discipline", args }); return { id: "discipline-1" }; } },
     subject: { findFirst: async (args: unknown) => { calls.push({ resource: "subject", args }); return options.subject === false ? null : { id: "subject-1" }; } },
     cycleEntry: { findFirst: async (args: unknown) => { calls.push({ resource: "cycleEntry", args }); return { id: "compat-entry" }; } },
     studySession: {
       create: async (args: { data: Record<string, unknown> }) => { calls.push({ resource: "studySession", args }); created = args.data; return { id: "session-1", ...args.data }; },
-      aggregate: async (args: unknown) => { calls.push({ resource: "sessionAggregate", args }); return { _count: { id: 1 }, _sum: { questions: 10, correct: 8, wrong: 2 }, _max: { date: new Date("2026-07-20T13:30:00.000Z") } }; },
+      groupBy: async (args: unknown) => { calls.push({ resource: "sessionAggregate", args }); return [{ subjectId: "subject-1", _count: { id: 1 }, _sum: { questions: 10, correct: 8, wrong: 2 }, _max: { date: new Date("2026-07-20T13:30:00.000Z") } }]; },
     },
     subjectProgress: { upsert: async (args: unknown) => { calls.push({ resource: "subjectProgress", args }); return {}; } },
   } as unknown as Prisma.TransactionClient;
@@ -41,10 +42,11 @@ test("persiste subjectId, guia, data, duração e resultados sem posição de ci
   const fake = fakeTransaction();
   await createStandaloneStudySession(fake.tx, base, new Date("2026-07-27T12:00:00Z"));
   assert.deepEqual(fake.created, {
-    userId: "user-1", studyGuideId: "guide-1", cycleEntryId: "compat-entry", subjectId: "subject-1", scope: "SUBJECT", cyclePosition: null, cycleRound: null,
+    userId: "user-1", studyGuideId: "guide-1", cycleEntryId: null, subjectId: "subject-1", scope: "SUBJECT", cyclePosition: null, cycleRound: null,
     date: new Date("2026-07-20T13:30:00.000Z"), questions: 10, correct: 8, wrong: 2, percentage: 80, estimatedMinutes: 20, activityType: "QUESTIONS", notes: "[Média] Revisar joins",
   });
   assert.equal(fake.calls.some((call) => call.resource === "studyGuideCycleState"), false);
+  assert.equal(fake.calls.some((call) => call.resource === "cycleEntry"), false);
   assert.match(JSON.stringify(fake.calls.find((call) => call.resource === "subjectProgress")), /2026-07-20T13:30:00.000Z/);
 });
 
@@ -129,7 +131,8 @@ test("finalização oferece videoaula, lei seca e PDF como atividades contabiliz
 test("analytics usa a data persistida e ignora avulso na progressão do ciclo", () => {
   const analytics = readFileSync(resolve(process.cwd(), "src/lib/analytics.ts"), "utf8");
   assert.match(analytics, /dayKey\(session\.date\)/);
-  assert.match(analytics, /cyclePosition:\s*\{\s*not:\s*null\s*\}/);
+  assert.match(analytics, /getCycleSuggestion\(userId, studyGuideId\)/);
+  assert.doesNotMatch(analytics, /cyclePosition:\s*\{\s*not:\s*null\s*\}/);
   assert.match(analytics, /session\.cyclePosition !== null/);
 });
 

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
+import { cycleService } from "@/lib/cycle-service";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -19,7 +20,7 @@ export async function GET() {
     prisma.studyGuide.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: "asc" },
-      select: { id: true, name: true, icon: true, color: true },
+      select: { id: true, name: true, icon: true, color: true, description: true },
     }),
     getActiveStudyGuideForUser(session.user.id),
   ]);
@@ -32,25 +33,32 @@ export async function GET() {
     return NextResponse.json({ message: "Selecione um guia ativo" }, { status: 409 });
   }
 
-  const [settings, disciplines, subjects, cycleEntries, sessions] = await Promise.all([
+  const [settings, disciplines, subjects, cycleEntries, sessions, cycleState] = await Promise.all([
     getStudyGuideSettings(user.id, activeGuide.id),
     prisma.discipline.findMany({
       where: { userId: user.id, studyGuideId: activeGuide.id },
       orderBy: [{ name: "asc" }],
+      select: { id: true, studyGuideId: true, name: true, category: true, sortOrder: true, active: true },
     }),
     prisma.subject.findMany({
       where: { userId: user.id, studyGuideId: activeGuide.id },
       orderBy: [{ name: "asc" }],
+      select: { id: true, studyGuideId: true, disciplineId: true, name: true, weight: true, notes: true, tecReference: true, active: true },
     }),
     prisma.cycleEntry.findMany({
       where: { userId: user.id, studyGuideId: activeGuide.id },
       orderBy: { orderIndex: "asc" },
+      select: { id: true, studyGuideId: true, subjectId: true, orderIndex: true, active: true },
     }),
     prisma.studySession.findMany({
       where: { userId: user.id, studyGuideId: activeGuide.id },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      select: { id: true, cycleEntryId: true, subjectId: true, scope: true, date: true, questions: true, correct: true, wrong: true, percentage: true, estimatedMinutes: true, activityType: true, notes: true, createdAt: true, updatedAt: true },
     }),
+    prisma.studyGuideCycleState.findUnique({ where: { studyGuideId: activeGuide.id }, select: { currentOrderIndex: true } }),
   ]);
+  const cycleSuggestions = cycleEntries.length ? await cycleService.preview(user.id, activeGuide.id, cycleEntries.length) : [];
+  const suggestedSubjectByEntry = new Map(cycleSuggestions.map((item) => [item.entryId, item.subject.id]));
 
   return NextResponse.json({
     user: {
@@ -63,6 +71,7 @@ export async function GET() {
       serverId: guide.id,
     })),
     activeGuideId: activeGuide.id,
+    cycleCursor: { guideId: activeGuide.id, currentOrderIndex: cycleState?.currentOrderIndex ?? 1 },
     settings,
     disciplines: disciplines.map((discipline) => ({
       id: discipline.id,
@@ -89,13 +98,14 @@ export async function GET() {
       id: entry.id,
       serverId: entry.id,
       guideId: entry.studyGuideId ?? activeGuide.id,
-      subjectId: entry.subjectId,
+      subjectId: suggestedSubjectByEntry.get(entry.id) ?? entry.subjectId ?? "",
       orderIndex: entry.orderIndex,
       active: entry.active,
     })),
     sessions: sessions.map((session) => ({
       id: session.id,
       cycleEntryId: session.cycleEntryId,
+      subjectId: session.subjectId,
       scope: session.scope,
       date: session.date.toISOString(),
       questions: session.questions,

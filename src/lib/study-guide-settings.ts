@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 type GuideSettingsShape = {
@@ -54,19 +55,19 @@ export async function ensureStudyGuideSettings(userId: string, studyGuideId: str
     };
   }
 
-  const existing = await delegate.findUnique({
-    where: { studyGuideId },
-  });
-
-  if (existing) return existing;
-
-  return delegate.create({
-    data: {
-      userId,
-      studyGuideId,
-      ...defaults,
-    },
-  });
+  try {
+    return await delegate.upsert({
+      where: { studyGuideId },
+      create: { userId, studyGuideId, ...defaults },
+      update: {},
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const existing = await delegate.findUnique({ where: { studyGuideId } });
+      if (existing?.userId === userId) return existing;
+    }
+    throw error;
+  }
 }
 
 export async function upsertStudyGuideSettings(

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildExamPlan, buildExplainableRecommendations, distributeQuestionsByWeight, summarizeMockExam } from "../src/lib/phase-five";
+import { buildExamPlan, buildExplainableRecommendations, distributeQuestionsByWeight, resolveSyllabusStatus, summarizeMockExam } from "../src/lib/phase-five";
 
 test("distribuição por peso preserva exatamente o total", () => {
   const result = distributeQuestionsByWeight(20, [{ id: "a", name: "A", weight: 3 }, { id: "b", name: "B", weight: 2 }, { id: "c", name: "C", weight: 1 }]);
@@ -23,7 +23,18 @@ test("resumo do simulado deriva erros e percentual", () => {
 
 test("planejamento calcula capacidade até a prova", () => {
   const plan = buildExamPlan({ now: new Date("2026-01-01T00:00:00Z"), examDate: new Date("2026-01-29T00:00:00Z"), totalSubjects: 20, completedSubjects: 8, inProgressSubjects: 3, weeklyQuestionsGoal: 200, sessionMinutes: 60, questionsPerSession: 20 });
-  assert.equal(plan.daysRemaining, 28); assert.equal(plan.weeksRemaining, 4); assert.equal(plan.questionsUntilExam, 800); assert.equal(plan.sessionsPerWeek, 10); assert.equal(plan.coveragePercentage, 40);
+  assert.equal(plan.daysRemaining, 28); assert.equal(plan.weeksRemaining, 4); assert.equal(plan.questionsUntilExam, 800); assert.equal(plan.sessionsPerWeek, 10); assert.equal(plan.coveragePercentage.toFixed(1), "55.0"); assert.equal(plan.remainingSubjects, 9);
+});
+
+test("cobertura considera assuntos em andamento e preserva conclusão explícita", () => {
+  const plan = buildExamPlan({ now: new Date("2026-01-01T00:00:00Z"), examDate: null, totalSubjects: 20, completedSubjects: 3, inProgressSubjects: 5, weeklyQuestionsGoal: 200, sessionMinutes: 60, questionsPerSession: 20 });
+  assert.equal(plan.coveredSubjects, 8);
+  assert.equal(plan.remainingSubjects, 12);
+  assert.equal(plan.pendingCompletionSubjects, 17);
+  assert.equal(plan.coveragePercentage, 40);
+  assert.equal(resolveSyllabusStatus(null, 2), "IN_PROGRESS");
+  assert.equal(resolveSyllabusStatus("NOT_STARTED", 2), "NOT_STARTED");
+  assert.equal(resolveSyllabusStatus("COMPLETED", 0), "COMPLETED");
 });
 
 test("recomendações possuem score e explicação auditável", () => {

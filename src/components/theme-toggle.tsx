@@ -16,15 +16,16 @@ export function ThemeToggle() {
   const activeTheme = mounted ? resolvedTheme : "light";
 
   return (
-    <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+    <div className="inline-flex items-center rounded-control border border-slate-300 bg-surface p-1 dark:border-white/10 dark:bg-elevated">
       <button
         type="button"
         onClick={() => setTheme("light")}
         className={cn(
-          "rounded-md px-2 py-1 text-xs font-semibold",
-          activeTheme === "light" ? "bg-primary text-white" : "text-slate-600 dark:text-slate-300",
+          "grid min-h-11 min-w-11 place-items-center rounded-lg text-xs font-semibold transition-colors",
+          activeTheme === "light" ? "bg-primary text-white" : "text-textSecondary hover:bg-slate-100 dark:text-textSecondary dark:hover:bg-slate-800",
         )}
         aria-label="Ativar modo claro"
+        aria-pressed={activeTheme === "light"}
       >
         <Sun size={14} />
       </button>
@@ -32,10 +33,11 @@ export function ThemeToggle() {
         type="button"
         onClick={() => setTheme("dark")}
         className={cn(
-          "rounded-md px-2 py-1 text-xs font-semibold",
-          activeTheme === "dark" ? "bg-primary text-white" : "text-slate-600 dark:text-slate-300",
+          "grid min-h-11 min-w-11 place-items-center rounded-lg text-xs font-semibold transition-colors",
+          activeTheme === "dark" ? "bg-primary text-white" : "text-textSecondary hover:bg-slate-100 dark:text-textSecondary dark:hover:bg-slate-800",
         )}
         aria-label="Ativar modo escuro"
+        aria-pressed={activeTheme === "dark"}
       >
         <Moon size={14} />
       </button>

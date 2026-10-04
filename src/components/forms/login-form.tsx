@@ -5,7 +5,7 @@ import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Github, Lock, Mail } from "lucide-react";
-import { getOfflineSnapshot, setOfflineAccess } from "@/lib/offline/store";
+import { getOfflineSnapshotForEmail, setOfflineAccess } from "@/lib/offline/store";
 
 export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
   const router = useRouter();
@@ -16,9 +16,13 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
   const [password, setPassword] = useState("");
 
   function continueOffline(candidateEmail?: string) {
-    const snapshot = getOfflineSnapshot();
-    const cachedEmail = snapshot.user?.email?.toLowerCase();
     const typedEmail = candidateEmail?.trim().toLowerCase() ?? "";
+    if (!typedEmail) {
+      setError("Informe o e-mail da conta sincronizada para entrar offline.");
+      return false;
+    }
+    const snapshot = getOfflineSnapshotForEmail(typedEmail);
+    const cachedEmail = snapshot.user?.email?.toLowerCase();
 
     if (!cachedEmail) {
       setError("Este dispositivo ainda não tem dados sincronizados para acesso offline.");
@@ -32,6 +36,7 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
 
     setOfflineAccess({
       email: snapshot.user?.email ?? "",
+      userId: snapshot.user?.id,
       name: snapshot.user?.name ?? "Aluno",
       unlockedAt: new Date().toISOString(),
     });
@@ -51,21 +56,30 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
     }
 
     try {
-      const response = await signIn("credentials", {
+      let response = await signIn("credentials", {
         email,
         password,
         redirect: false,
       });
 
+      const csrfFailed = (url?: string | null) => {
+        if (!url) return false;
+        const target = new URL(url, window.location.origin);
+        return target.pathname === "/api/auth/signin" && target.searchParams.has("csrf");
+      };
+      if (csrfFailed(response?.url)) {
+        response = await signIn("credentials", { email, password, redirect: false });
+      }
+
       setLoading(false);
 
-      if (response?.error) {
+      if (!response?.ok || response.error || csrfFailed(response.url)) {
         setError("Credenciais invalidas");
         return;
       }
 
+      setOfflineAccess({ email, userId: null, name: "Aluno", unlockedAt: new Date().toISOString() });
       router.push("/dashboard");
-      router.refresh();
     } catch {
       setLoading(false);
       if (!navigator.onLine && continueOffline(email)) {
@@ -76,16 +90,14 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
   }
 
   const isApp = mode === "app";
-  const inputCls = isApp
-    ? "h-12 rounded-lg border border-primary/25 bg-primary/10 pl-10 pr-4 text-base text-slate-900 outline-none focus:border-primary dark:text-white"
-    : "h-11 rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-900 outline-none focus:border-primary dark:border-primary/20 dark:bg-primary/10 dark:text-white";
+  const inputCls = `h-12 rounded-control border border-slate-300 pl-10 pr-4 text-base text-slate-900 outline-none focus:border-primary dark:border-white/10 dark:bg-elevated dark:text-white ${isApp ? "bg-primary/5" : "bg-surface"}`;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="login-email" className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">E-mail</label>
         <div className="relative">
-          <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-textSecondary" />
           <input
             id="login-email"
             name="email"
@@ -109,7 +121,7 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
           </Link>
         </div>
         <div className="relative">
-          <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-textSecondary" />
           <input
             id="login-password"
             name="password"
@@ -125,7 +137,7 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
           <button
             type="button"
             onClick={() => setShowPassword((prev) => !prev)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary"
+            className="absolute right-1 top-1/2 grid min-h-11 min-w-11 -translate-y-1/2 place-items-center rounded-control text-textSecondary hover:text-primary"
             aria-label="Mostrar ou ocultar senha"
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -138,7 +150,7 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
       <button
         type="submit"
         disabled={loading}
-        className="mt-1 min-h-12 w-full rounded-xl bg-primary py-3 text-base font-bold text-white shadow-soft transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-1 min-h-12 w-full rounded-control bg-primary py-3 text-base font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? "Entrando..." : "Entrar"}
       </button>
@@ -147,28 +159,28 @@ export function LoginForm({ mode = "web" }: { mode?: "web" | "app" }) {
         type="button"
         onClick={() => continueOffline(email)}
         disabled={loading}
-        className="min-h-11 w-full rounded-xl border border-primary/25 bg-transparent py-3 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:opacity-50"
+        className="min-h-11 w-full rounded-control border border-slate-300 bg-transparent py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-slate-800"
       >
         Entrar offline com dados salvos
       </button>
 
       <div className="my-4 flex items-center gap-3">
         <span className="h-px flex-1 bg-slate-200 dark:bg-primary/20" />
-        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">ou continue com</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-textSecondary">ou continue com</span>
         <span className="h-px flex-1 bg-slate-200 dark:bg-primary/20" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button type="button" disabled aria-label="Login com Google indisponível" title="Em breve" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-500 opacity-70 dark:border-primary/20 dark:bg-primary/5 dark:text-slate-400">
-          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-bold text-slate-700">G</span>
+        <button type="button" disabled aria-label="Login com Google indisponível" title="Em breve" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface py-2.5 text-sm font-medium text-textSecondary opacity-70 dark:border-primary/20 dark:bg-primary/5 dark:text-textSecondary">
+          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-surface text-[10px] font-bold text-slate-700">G</span>
           Google
         </button>
-        <button type="button" disabled aria-label="Login com GitHub indisponível" title="Em breve" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-500 opacity-70 dark:border-primary/20 dark:bg-primary/5 dark:text-slate-400">
+        <button type="button" disabled aria-label="Login com GitHub indisponível" title="Em breve" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface py-2.5 text-sm font-medium text-textSecondary opacity-70 dark:border-primary/20 dark:bg-primary/5 dark:text-textSecondary">
           <Github size={16} /> GitHub
         </button>
       </div>
 
-      <p className="pt-2 text-center text-sm text-slate-500 dark:text-slate-400">
+      <p className="pt-2 text-center text-sm text-textSecondary dark:text-textSecondary">
         Ainda não tem uma conta?{" "}
         <Link href="/auth/register" className="font-semibold text-primary hover:underline">
           Cadastre-se

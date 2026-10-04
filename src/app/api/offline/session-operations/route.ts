@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { CycleConflictError, cycleService } from "@/lib/cycle-service";
 import { canonicalSessionOperationPayload, claimOfflineOperation, completeOfflineOperation, failOfflineOperation } from "@/lib/offline-operation-ledger";
@@ -24,6 +25,20 @@ const operationSchema = z.object({
 
 function notes(payload: z.infer<typeof payloadSchema>) { return [payload.difficulty ? `[${payload.difficulty}]` : "", payload.notes?.trim() ?? ""].filter(Boolean).join(" ") || undefined; }
 
+async function executeStandaloneOperation(tx: Prisma.TransactionClient, userId: string, operation: z.infer<typeof operationSchema>) {
+  const payload = operation.payload;
+  const when = new Date(payload.date);
+  if (Number.isNaN(when.getTime())) throw new Error("A data do estudo avulso offline é inválida.");
+  const local = formatSaoPauloStudyInput(when);
+  const created = await (payload.scope === "GENERAL"
+      ? createGeneralReviewSession(tx, { userId, studyGuideId: operation.studyGuideId, ...local, correct: payload.correct, wrong: payload.wrong, estimatedMinutes: Math.max(1, Math.round(payload.accumulatedSeconds / 60)), difficulty: payload.difficulty ?? "Média", notes: payload.notes })
+      : (() => {
+          if (!payload.disciplineId || !payload.subjectId) throw new Error("O estudo avulso offline exige disciplina e assunto.");
+          return createStandaloneStudySession(tx, { userId, studyGuideId: operation.studyGuideId, disciplineId: payload.disciplineId, subjectId: payload.subjectId, ...local, correct: payload.correct, wrong: payload.wrong, estimatedMinutes: Math.max(1, Math.round(payload.accumulatedSeconds / 60)), difficulty: payload.difficulty ?? "Média", activityType: payload.activityType ?? "QUESTIONS", notes: payload.notes });
+        })());
+  return { operationId: operation.operationId, serverSessionId: created.id };
+}
+
 async function executeOperation(userId: string, operation: z.infer<typeof operationSchema>) {
   const payload = operation.payload;
   if (operation.type === "START_SESSION") {
@@ -31,24 +46,12 @@ async function executeOperation(userId: string, operation: z.infer<typeof operat
     const session = await cycleService.start(userId, operation.studyGuideId, { mode: payload.mode, disciplineId: payload.disciplineId, subjectId: payload.subjectId, operationId: operation.operationId, timerRunning: payload.status !== "PAUSED" });
     return { operationId: operation.operationId, session };
   }
-  if (operation.type === "CREATE_STANDALONE_SESSION") {
-    const when = new Date(payload.date);
-    if (Number.isNaN(when.getTime())) throw new Error("A data do estudo avulso offline é inválida.");
-    const local = formatSaoPauloStudyInput(when);
-    const created = await prisma.$transaction((tx) => payload.scope === "GENERAL"
-      ? createGeneralReviewSession(tx, { userId, studyGuideId: operation.studyGuideId, ...local, correct: payload.correct, wrong: payload.wrong, estimatedMinutes: Math.max(1, Math.round(payload.accumulatedSeconds / 60)), difficulty: payload.difficulty ?? "Média", notes: payload.notes })
-      : (() => {
-          if (!payload.disciplineId || !payload.subjectId) throw new Error("O estudo avulso offline exige disciplina e assunto.");
-          return createStandaloneStudySession(tx, { userId, studyGuideId: operation.studyGuideId, disciplineId: payload.disciplineId, subjectId: payload.subjectId, ...local, correct: payload.correct, wrong: payload.wrong, estimatedMinutes: Math.max(1, Math.round(payload.accumulatedSeconds / 60)), difficulty: payload.difficulty ?? "Média", activityType: payload.activityType ?? "QUESTIONS", notes: payload.notes });
-        })());
-    return { operationId: operation.operationId, serverSessionId: created.id };
-  }
   if (!payload.serverSessionId || payload.serverVersion === null) throw new CycleConflictError("A sessão ainda não existe no servidor.", "SESSION_NOT_SYNCHRONIZED");
   if (operation.type === "PAUSE_SESSION") return { operationId: operation.operationId, session: await cycleService.pause(userId, operation.studyGuideId, payload.serverSessionId, payload.serverVersion) };
   if (operation.type === "RESUME_SESSION") return { operationId: operation.operationId, session: await cycleService.resume(userId, operation.studyGuideId, payload.serverSessionId, payload.serverVersion) };
   if (operation.type === "CANCEL_SESSION") return { operationId: operation.operationId, ...(await cycleService.cancel(userId, operation.studyGuideId, payload.serverSessionId, payload.serverVersion)) };
   if (payload.questions < 0 || payload.correct + payload.wrong !== payload.questions) throw new Error("A finalização exige resultados consistentes.");
-  return { operationId: operation.operationId, ...(await cycleService.finish(userId, operation.studyGuideId, payload.serverSessionId, payload.serverVersion, { questions: payload.questions, correct: payload.correct, minutes: Math.max(1, Math.round(payload.accumulatedSeconds / 60)), activityType: payload.activityType ?? "QUESTIONS", advanceCycle: payload.advanceCycle ?? true, notes: notes(payload) })) };
+  return { operationId: operation.operationId, ...(await cycleService.finish(userId, operation.studyGuideId, payload.serverSessionId, payload.serverVersion, { questions: payload.questions, correct: payload.correct, minutes: Math.max(1, Math.round(payload.accumulatedSeconds / 60)), activityType: payload.activityType ?? "QUESTIONS", advanceCycle: payload.advanceCycle ?? true, notes: notes(payload), date: new Date(payload.date) })) };
 }
 
 export async function POST(request: Request) {
@@ -66,8 +69,14 @@ export async function POST(request: Request) {
   if (claim.kind === "PENDING") return NextResponse.json({ operationId: operation.operationId, pending: true }, { status: 202 });
   if (claim.kind === "CONFLICT") return NextResponse.json({ operationId: operation.operationId, message: claim.message, conflict: true }, { status: 409 });
   try {
-    const response = await executeOperation(auth.user.id, operation);
-    await completeOfflineOperation(claim.recordId, claim.version, response);
+    const response = operation.type === "CREATE_STANDALONE_SESSION"
+      ? await prisma.$transaction(async (tx) => {
+          const result = await executeStandaloneOperation(tx, auth.user.id, operation);
+          await completeOfflineOperation(claim.recordId, claim.version, result, tx);
+          return result;
+        })
+      : await executeOperation(auth.user.id, operation);
+    if (operation.type !== "CREATE_STANDALONE_SESSION") await completeOfflineOperation(claim.recordId, claim.version, response);
     return NextResponse.json(response);
   } catch (error) {
     const conflict = error instanceof CycleConflictError;

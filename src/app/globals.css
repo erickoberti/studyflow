@@ -3,15 +3,33 @@
 @tailwind utilities;
 
 :root {
-  --background: #f6f6f8;
-  --foreground: #111827;
+  --background: #fcf8ff; --foreground: #1b1b23;
+  --surface: #ffffff; --surface-elevated: #f5f2fe;
+  --surface-rgb: 255 255 255; --elevated-rgb: 245 242 254;
+  --foreground-rgb: 27 27 35; --primary-rgb: 70 72 212;
+  --navigation-rgb: 96 99 238;
+  --secondary-rgb: 89 88 101; --success-rgb: 16 185 129;
+  --warning-rgb: 245 158 11; --critical-rgb: 239 68 68;
+  --text-secondary: #595865; --border: #eeecf4;
 }
-
 .dark {
-  --background: #141121;
-  --foreground: #f8fafc;
+  color-scheme: dark;
+  --background: #0c0e15; --foreground: #f1f5f9;
+  --surface: #151927; --surface-elevated: #1d2436;
+  --surface-rgb: 21 25 39; --elevated-rgb: 29 36 54;
+  --foreground-rgb: 241 245 249; --primary-rgb: 99 102 241;
+  --navigation-rgb: 99 102 241;
+  --secondary-rgb: 148 163 184; --success-rgb: 52 211 153;
+  --warning-rgb: 251 191 36; --critical-rgb: 248 113 113;
+  --text-secondary: #94a3b8; --border: rgb(255 255 255 / 0.07);
 }
-
+@layer components {
+  .sf-surface { @apply rounded-card bg-surface; }
+  .sf-chip { @apply inline-flex items-center gap-1.5 rounded-control bg-elevated px-2.5 py-1 text-xs font-medium; }
+  .sf-eyebrow { @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-textSecondary; }
+  .sf-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:min-h-11; }
+  .sf-secondary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-control bg-elevated px-4 text-sm font-medium text-textPrimary transition-colors hover:bg-primary/10 sm:min-h-11; }
+}
 html,
 body {
   min-height: 100%;
@@ -37,23 +55,58 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-* {
-  border-color: rgb(203 213 225 / 0.65);
+:where(*) { border-color: var(--border); }
+.sf-content h1 { font-size: 1.5rem; line-height: 1.25; }
+.sf-content h1[class~="text-lg"] { font-size: 1.125rem; }
+.sf-content h2[class~="text-2xl"]:not(#study-subject) { font-size: 1.25rem; }
+@media (min-width: 640px) {
+  .sf-content h2[class~="sm:text-3xl"]:not(#study-subject) { font-size: 1.5rem; }
 }
-
-.dark * {
-  border-color: rgb(71 85 105 / 0.45);
+@media (min-width: 1280px) {
+  .study-context-strip [aria-label="Progresso de hoje"] {
+    display: grid; grid-template-columns: 1fr auto; column-gap: 0.75rem;
+  }
+  .study-context-strip [aria-label="Progresso de hoje"] > div { grid-column: 1 / -1; }
+  .study-context-strip [aria-label="Progresso de hoje"] > p:last-child {
+    grid-column: 2; grid-row: 1; align-self: center; margin-top: 0;
+  }
+  .study-context-strip [aria-label="Contexto do assunto"] dl { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 0.5rem; }
 }
-
+.sf-content > .space-y-8 { --tw-space-y-reverse: 0; }
+.sf-content > .space-y-8 > :not([hidden]) ~ :not([hidden]),
+.sf-content > .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.25rem; }
+@media (max-width: 639px) {
+  .sf-content h1 { font-size: 1.25rem; }
+}
 :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 3px solid rgb(137 90 246 / 0.75);
-  outline-offset: 2px;
+  outline: 3px solid rgb(var(--primary-rgb) / 0.8); outline-offset: 3px;
 }
-
+@layer base {
+  button, summary { min-height: 44px; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select { min-height: 44px; }
+  @media (max-width: 639px) {
+    button, summary { min-height: 48px; }
+    input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select { min-height: 48px; }
+  }
+}
 button:disabled,
 input:disabled,
 select:disabled {
   cursor: not-allowed;
+}
+
+main a[class*="rounded"][class*="px-"]:not([class*="flex"]):not([class*="grid"]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+@media (max-width: 639px) {
+  :where(button, summary)[class*="min-h-11"],
+  :where(button, summary)[class*="min-h-9"],
+  main a[class*="rounded"][class*="px-"] {
+    min-height: 48px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

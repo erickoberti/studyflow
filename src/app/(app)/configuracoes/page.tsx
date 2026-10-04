@@ -1,3 +1,5 @@
+import shell from "@/components/official-shell.module.css";
+import visual from "@/components/resource-screens.module.css";
 import {
   Bell,
   CalendarRange,
@@ -19,10 +21,10 @@ import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 
 function infoCardClassName(danger = false) {
-  return `rounded-[22px] border bg-white p-5 shadow-sm dark:bg-panelDark ${
+  return `rounded-card border bg-surface p-5 dark:bg-panelDark ${
     danger
       ? "border-red-200 dark:border-red-500/20"
-      : "border-slate-200 dark:border-slate-800"
+      : "border-slate-200 dark:border-white/5"
   }`;
 }
 
@@ -43,11 +45,11 @@ export default async function ConfiguracoesPage() {
   const examDate = settings?.examDate ? settings.examDate.toISOString().slice(0, 10) : "";
 
   return (
-    <div className="space-y-5 pb-10">
+    <div className={`${shell.screen} ${visual.page} ${visual.settings} space-y-5`}>
       <header className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Configurações</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">Configurações</h1>
+          <p className="text-sm text-textSecondary dark:text-textSecondary">
             Ajustes essenciais da conta e do seu ritmo de estudo em uma tela mais enxuta.
           </p>
         </div>
@@ -57,30 +59,30 @@ export default async function ConfiguracoesPage() {
         <section className={infoCardClassName()}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/15 text-primary">
+              <div className="settings-avatar flex h-20 w-20 items-center justify-center rounded-full bg-primary/15 text-primary">
                 <UserCircle2 className="h-10 w-10" />
               </div>
               <div>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">{user.name ?? "Usuário"}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
-                <div className="mt-2 inline-flex rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-primary">
-                  Plano Premium
+                <p className="text-2xl font-semibold text-slate-900 dark:text-white">{user.name ?? "Usuário"}</p>
+                <p className="text-sm text-textSecondary dark:text-textSecondary">{user.email}</p>
+                <div className="mt-2 inline-flex rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+                  {guide.name}
                 </div>
               </div>
             </div>
 
             <div className="grid gap-2 sm:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center dark:border-slate-700 dark:bg-slate-800/60">
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Meta diaria</p>
-                <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">{dailyGoal}</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center dark:border-white/10 dark:bg-elevated/60">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-textSecondary">Meta diária</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{dailyGoal}</p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center dark:border-slate-700 dark:bg-slate-800/60">
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Meta semanal</p>
-                <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">{weeklyGoal}</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center dark:border-white/10 dark:bg-elevated/60">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-textSecondary">Meta semanal</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{weeklyGoal}</p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center dark:border-slate-700 dark:bg-slate-800/60">
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Meta %</p>
-                <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">{target.toFixed(0)}%</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center dark:border-white/10 dark:bg-elevated/60">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-textSecondary">Meta %</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{target.toFixed(0)}%</p>
               </div>
             </div>
           </div>
@@ -90,28 +92,28 @@ export default async function ConfiguracoesPage() {
           <article className={infoCardClassName()}>
             <div className="mb-4 flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-black text-slate-900 dark:text-white">Preferências de estudo</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Preferências de estudo</h2>
             </div>
 
             <div className="space-y-3">
-              <label className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/60">
-                <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarRange className="h-4 w-4" /></span><div><p className="text-sm font-black text-slate-900 dark:text-white">Data da prova</p><p className="text-xs text-slate-500 dark:text-slate-400">Base do planejamento até o edital</p></div></div>
-                <input name="examDate" type="date" defaultValue={examDate} className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-black outline-none focus:border-primary dark:border-slate-600 dark:bg-[#120e20]" />
+              <label className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-elevated/60">
+                <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarRange className="h-4 w-4" /></span><div><p className="text-sm font-semibold text-slate-900 dark:text-white">Data da prova</p><p className="text-xs text-textSecondary dark:text-textSecondary">Base do planejamento até o edital</p></div></div>
+                <input name="examDate" type="date" defaultValue={examDate} className="h-11 rounded-xl border border-slate-300 bg-surface px-3 text-sm font-semibold outline-none focus:border-primary dark:border-slate-600 dark:bg-elevated" />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"><span className="text-xs font-bold text-slate-500">Minutos/sessão</span><input name="sessionMinutes" type="number" min={1} defaultValue={sessionMinutes} className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black dark:border-slate-600 dark:bg-[#120e20]" /></label>
-                <label className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"><span className="text-xs font-bold text-slate-500">Questões/sessão</span><input name="questionsPerSession" type="number" min={1} defaultValue={questionsPerSession} className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black dark:border-slate-600 dark:bg-[#120e20]" /></label>
+                <label className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-elevated/60"><span className="text-xs font-bold text-textSecondary">Minutos/sessão</span><input name="sessionMinutes" type="number" min={1} defaultValue={sessionMinutes} className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-surface px-3 text-center text-sm font-semibold dark:border-slate-600 dark:bg-elevated" /></label>
+                <label className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-elevated/60"><span className="text-xs font-bold text-textSecondary">Questões/sessão</span><input name="questionsPerSession" type="number" min={1} defaultValue={questionsPerSession} className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-surface px-3 text-center text-sm font-semibold dark:border-slate-600 dark:bg-elevated" /></label>
               </div>
 
-              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-elevated/60">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Target className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">Meta diaria</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Questões por dia</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">Meta diária</p>
+                    <p className="text-xs text-textSecondary dark:text-textSecondary">Questões por dia</p>
                   </div>
                 </div>
                 <input
@@ -119,18 +121,18 @@ export default async function ConfiguracoesPage() {
                   type="number"
                   min={1}
                   defaultValue={dailyGoal}
-                  className="h-11 w-24 rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black outline-none focus:border-primary dark:border-slate-600 dark:bg-[#120e20]"
+                  className="h-11 w-24 rounded-xl border border-slate-300 bg-surface px-3 text-center text-sm font-semibold outline-none focus:border-primary dark:border-slate-600 dark:bg-elevated"
                 />
               </label>
 
-              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-elevated/60">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <CalendarRange className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">Meta semanal</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Volume total da semana</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">Meta semanal</p>
+                    <p className="text-xs text-textSecondary dark:text-textSecondary">Volume total da semana</p>
                   </div>
                 </div>
                 <input
@@ -138,18 +140,18 @@ export default async function ConfiguracoesPage() {
                   type="number"
                   min={1}
                   defaultValue={weeklyGoal}
-                  className="h-11 w-24 rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black outline-none focus:border-primary dark:border-slate-600 dark:bg-[#120e20]"
+                  className="h-11 w-24 rounded-xl border border-slate-300 bg-surface px-3 text-center text-sm font-semibold outline-none focus:border-primary dark:border-slate-600 dark:bg-elevated"
                 />
               </label>
 
-              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-elevated/60">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Flame className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">Meta de acerto</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Percentual ideal de desempenho</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">Meta de acerto</p>
+                    <p className="text-xs text-textSecondary dark:text-textSecondary">Percentual ideal de desempenho</p>
                   </div>
                 </div>
                 <input
@@ -159,18 +161,18 @@ export default async function ConfiguracoesPage() {
                   max={100}
                   step="1"
                   defaultValue={target}
-                  className="h-11 w-24 rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black outline-none focus:border-primary dark:border-slate-600 dark:bg-[#120e20]"
+                  className="h-11 w-24 rounded-xl border border-slate-300 bg-surface px-3 text-center text-sm font-semibold outline-none focus:border-primary dark:border-slate-600 dark:bg-elevated"
                 />
               </label>
 
-              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-elevated/60">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <SlidersHorizontal className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">Viés de prioridade</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Peso extra para assuntos mais relevantes</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">Viés de prioridade</p>
+                    <p className="text-xs text-textSecondary dark:text-textSecondary">Peso extra para assuntos mais relevantes</p>
                   </div>
                 </div>
                 <input
@@ -178,7 +180,7 @@ export default async function ConfiguracoesPage() {
                   type="number"
                   step="0.05"
                   defaultValue={bias}
-                  className="h-11 w-24 rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black outline-none focus:border-primary dark:border-slate-600 dark:bg-[#120e20]"
+                  className="h-11 w-24 rounded-xl border border-slate-300 bg-surface px-3 text-center text-sm font-semibold outline-none focus:border-primary dark:border-slate-600 dark:bg-elevated"
                 />
               </label>
             </div>
@@ -187,18 +189,18 @@ export default async function ConfiguracoesPage() {
           <article className={infoCardClassName()}>
             <div className="mb-4 flex items-center gap-2">
               <Bell className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-black text-slate-900 dark:text-white">Interface e notificações</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Interface e notificações</h2>
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+              <div className="settings-theme-row flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-elevated/60">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <MoonStar className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">Modo de tema</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Controle rápido entre claro e escuro</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">Modo de tema</p>
+                    <p className="text-xs text-textSecondary dark:text-textSecondary">Controle rápido entre claro e escuro</p>
                   </div>
                 </div>
                 <ThemeToggle />
@@ -210,13 +212,13 @@ export default async function ConfiguracoesPage() {
                 {
                   icon: Mail,
                   title: "E-mails de lembrete",
-                  text: "Resumo e notificações por e-mail",
+                  text: "Ainda não disponível",
                   checked: true,
                 },
                 {
                   icon: Bell,
                   title: "Notificações push",
-                  text: "Alertas no navegador",
+                  text: "Ainda não disponível",
                   checked: true,
                 },
               ].map((item) => {
@@ -224,18 +226,18 @@ export default async function ConfiguracoesPage() {
                 return (
                   <label
                     key={item.title}
-                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60"
+                    className="settings-theme-row flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-elevated/60"
                   >
                     <div className="flex items-center gap-3">
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         <Icon className="h-4 w-4" />
                       </span>
                       <div>
-                        <p className="text-sm font-black text-slate-900 dark:text-white">{item.title}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{item.text}</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{item.title}</p>
+                        <p className="text-xs text-textSecondary dark:text-textSecondary">{item.text}</p>
                       </div>
                     </div>
-                    <input type="checkbox" defaultChecked={item.checked} className="h-4 w-4 accent-primary" />
+                    <input type="checkbox" disabled aria-label={`${item.title}: ainda não disponível`} title="Ainda não disponível" className="h-4 w-4 accent-primary" />
                   </label>
                 );
               })}
@@ -247,7 +249,7 @@ export default async function ConfiguracoesPage() {
           <article className={infoCardClassName()}>
             <div className="mb-4 flex items-center gap-2">
               <LockKeyhole className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-black text-slate-900 dark:text-white">Segurança</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Segurança</h2>
             </div>
 
             <div className="space-y-3">
@@ -255,31 +257,31 @@ export default async function ConfiguracoesPage() {
                 {
                   icon: LockKeyhole,
                   title: "Alterar senha",
-                  text: "Última alteração há 3 meses",
+                  text: "Ainda não disponível",
                 },
                 {
                   icon: ShieldCheck,
                   title: "Autenticação em 2 etapas",
-                  text: "Ativado via app",
+                  text: "Ainda não disponível",
                 },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
                   <button
                     key={item.title}
-                    type="button"
-                    className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-primary/30 dark:border-slate-700 dark:bg-slate-800/60"
+                    type="button" disabled title="Ainda não disponível"
+                    className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-primary/30 dark:border-white/10 dark:bg-elevated/60"
                   >
                     <div className="flex items-center gap-3">
                       <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         <Icon className="h-4 w-4" />
                       </span>
                       <div>
-                        <p className="text-sm font-black text-slate-900 dark:text-white">{item.title}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{item.text}</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{item.title}</p>
+                        <p className="text-xs text-textSecondary dark:text-textSecondary">{item.text}</p>
                       </div>
                     </div>
-                    <span className="text-sm font-black text-slate-400">›</span>
+                    <span className="text-sm font-semibold text-textSecondary">›</span>
                   </button>
                 );
               })}
@@ -290,50 +292,50 @@ export default async function ConfiguracoesPage() {
             <div className={infoCardClassName()}>
               <div className="mb-4 flex items-center gap-2">
                 <UserCircle2 className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-black text-slate-900 dark:text-white">Conta</h2>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Conta</h2>
               </div>
 
               <button
-                type="button"
-                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-primary/30 dark:border-slate-700 dark:bg-slate-800/60"
+                type="button" disabled title="Ainda não disponível"
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-primary/30 dark:border-white/10 dark:bg-elevated/60"
               >
                 <div className="flex items-center gap-3">
                   <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <UserCircle2 className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">Sessões ativas</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Gerencie dispositivos conectados</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">Sessões ativas</p>
+                    <p className="text-xs text-textSecondary dark:text-textSecondary">Ainda não disponível</p>
                   </div>
                 </div>
-                <span className="text-sm font-black text-slate-400">›</span>
+                <span className="text-sm font-semibold text-textSecondary">›</span>
               </button>
             </div>
 
             <div className={infoCardClassName(true)}>
               <div className="mb-4 flex items-center gap-2">
                 <Trash2 className="h-4 w-4 text-red-500" />
-                <h2 className="text-lg font-black text-slate-900 dark:text-white">Zona de perigo</h2>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Zona de perigo</h2>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-textSecondary dark:text-textSecondary">
                 Excluir sua conta remove dados de estudo, guias e histórico de forma permanente.
               </p>
               <button
-                type="button"
-                className="mt-4 rounded-xl border border-red-300 px-4 py-2 text-sm font-black text-red-600 dark:border-red-500/30 dark:text-red-300"
+                type="button" disabled title="Ainda não disponível"
+                className="mt-4 rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 dark:border-red-500/30 dark:text-red-300"
               >
-                Excluir conta
+                Excluir conta (indisponível)
               </button>
             </div>
           </article>
         </section>
 
-        <section className="flex items-center justify-end gap-3 border-t border-slate-200 pt-5 dark:border-slate-800">
+        <section className="flex items-center justify-end gap-3 border-t border-slate-200 pt-5 dark:border-white/5">
           <button
-            type="button"
-            className="rounded-xl border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300"
+            type="reset"
+            className="rounded-xl border border-slate-300 px-5 py-2 text-sm font-semibold text-textSecondary dark:border-white/10 dark:text-textSecondary"
           >
-            Cancelar
+            Desfazer alterações
           </button>
           <button type="submit" className="rounded-xl bg-primary px-6 py-2 text-sm font-bold text-white shadow-soft">
             Salvar alterações

@@ -1,0 +1,23 @@
+.screen { font-family: var(--font-inter), sans-serif; color: var(--foreground); }
+:global(body):has(.screen) { font-family: var(--font-inter), sans-serif; }
+:global(body):has(.screen) :global(#main-content) { max-width: none; padding: 32px; }
+:global(body):has(.screen) :global(aside.hidden.border-r) { position: sticky; top: 0; height: 100dvh; border: 0; box-shadow: 1px 0 8px #00000003; }
+:global(body):has(.screen) :global(aside.hidden.border-r > div:first-child) { padding: 20px 32px; }
+:global(body):has(.screen) :global(aside.hidden.border-r > div:last-child) { border: 0; padding: 32px; }
+:global(body):has(.screen) :global(aside nav a) { font-size: 14px; min-height: 44px; }
+:global(body):has(.screen) :global(header.sticky) { padding: 0 32px; border: 0; box-shadow: 0 2px 8px #00000002; }
+:global(body):has(.screen) :global(header.sticky > div) { height: 64px; }
+.screen h1 { font-size: 24px; letter-spacing: -.025em; font-weight: 650; line-height: 1.3; }
+@media(min-width:1024px) {
+  :global(body):has(.screen) > :global(div) > :global(div.grid) { grid-template-columns: 256px minmax(0,1fr); }
+}
+
+@media(max-width:767px) {
+  :global(body):has(.screen) :global(#main-content) { padding: 20px 16px 100px; }
+  :global(body):has(.screen) :global(header.sticky) { padding: 0 12px; }
+  .screen h1 { font-size: 24px; }
+}
+
+:global(body):has(.screen) :global(aside.hidden.border-r > div:last-child > div) { padding:8px; gap:8px; }
+:global(body):has(.screen) :global(aside.hidden.border-r > div:last-child button) { width:24px; }
+

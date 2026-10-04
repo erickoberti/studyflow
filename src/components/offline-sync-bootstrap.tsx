@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { refreshOfflineSnapshotFromServer, syncPendingOfflineSessions } from "@/lib/offline/sync";
-import { getOfflineSnapshot, subscribeOfflineStore } from "@/lib/offline/store";
+import { getOfflineSnapshot, setOfflineAccess, subscribeOfflineStore } from "@/lib/offline/store";
 import { offlineSessionQueue, subscribeOfflineSessionQueue } from "@/lib/offline/active-session-queue";
 
 export function OfflineSyncBootstrap() {
   const pathname = usePathname();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
@@ -18,7 +18,7 @@ export function OfflineSyncBootstrap() {
       const activeOperations = snapshot.user?.id && snapshot.activeGuideId ? await offlineSessionQueue.getOperations(snapshot.user.id, snapshot.activeGuideId).catch(() => []) : [];
       setPendingCount(
         snapshot.sessions.filter((session) => session.syncStatus !== "synced").length +
-          snapshot.pendingOperations.length + activeOperations.filter((item) => ["PENDING", "FAILED"].includes(item.status)).length,
+          snapshot.pendingOperations.length + activeOperations.filter((item) => ["PENDING", "SYNCING", "FAILED"].includes(item.status)).length,
       );
     }
 
@@ -28,7 +28,14 @@ export function OfflineSyncBootstrap() {
   }, []);
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (status !== "authenticated" || !session?.user?.email) return;
+
+    setOfflineAccess({
+      email: session.user.email,
+      userId: session.user.id,
+      name: session.user.name ?? "Aluno",
+      unlockedAt: new Date().toISOString(),
+    });
 
     let active = true;
 
@@ -54,12 +61,13 @@ export function OfflineSyncBootstrap() {
       active = false;
       window.removeEventListener("online", handleOnline);
     };
-  }, [status, pathname]);
+  }, [status, pathname, session?.user?.id, session?.user?.email, session?.user?.name]);
 
   useEffect(() => {
-    if (status !== "authenticated" || pendingCount === 0 || !navigator.onLine) return;
+    if (status !== "authenticated" || !session?.user?.email || pendingCount === 0 || !navigator.onLine) return;
+    if (getOfflineSnapshot().user?.email?.toLowerCase() !== session.user.email.toLowerCase()) return;
     syncPendingOfflineSessions().catch(() => undefined);
-  }, [pendingCount, status]);
+  }, [pendingCount, status, session?.user?.email]);
 
   return null;
 }

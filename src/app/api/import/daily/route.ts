@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import Papa from "papaparse";
+import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveStudyGuideForUser } from "@/lib/study-guide";
+import { parseDailyImportDate, processDailyImportRecord, validDailyImportResults } from "@/lib/daily-import";
+import { assertDailyImportSchema } from "@/lib/runtime-readiness";
 
 function parseCsvRows(text: string) {
   return Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, ""), {
@@ -28,23 +31,6 @@ function parseNumber(value: string | undefined | null): number | null {
   if (!cleaned) return null;
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
-}
-
-function parseDate(value: string | undefined | null): Date | null {
-  if (!value) return null;
-  const raw = value.trim();
-
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
-    const [dd, mm, yyyy] = raw.split("/").map(Number);
-    return new Date(Date.UTC(yyyy, mm - 1, dd));
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return new Date(`${raw}T00:00:00.000Z`);
-  }
-
-  const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function getField(row: Record<string, string>, aliases: string[]) {
@@ -77,6 +63,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Selecione um guia ativo" }, { status: 409 });
   }
 
+  try {
+    await assertDailyImportSchema(prisma);
+  } catch (error) {
+    console.error("daily-import", { status: "schema-unavailable", reason: error instanceof Error ? error.message : "unknown" });
+    return NextResponse.json({ ok: false, message: "Base incompatível ou migração pendente. A importação foi interrompida antes de gravar dados." }, { status: 503 });
+  }
+
   const form = await request.formData();
   const file = form.get("file") as File | null;
   if (!file) {
@@ -86,37 +79,42 @@ export async function POST(request: Request) {
   const text = await file.text();
   const parsed = parseCsvRows(text);
 
+  if (parsed.errors.length) return NextResponse.json({ ok: false, message: "CSV inválido; confira as colunas e aspas do arquivo." }, { status: 400 });
+
   const rows = parsed.data;
   if (!rows.length) {
     return NextResponse.json({ ok: false, message: "Planilha vazia." }, { status: 400 });
   }
 
+  console.info("daily-import", { status: "started", rows: rows.length });
+
   let importedRows = 0;
+  let updatedRows = 0;
   let validRows = 0;
   let skippedRows = 0;
+  let invalidRows = 0;
+  let conflictRows = 0;
 
   for (const row of rows) {
-    const date = parseDate(getField(row, ["Data"]));
+    const date = parseDailyImportDate(getField(row, ["Data"]));
     const disciplineName = getField(row, ["Disciplina"]);
     const subjectName = getField(row, ["Assunto"]);
 
-    if (!date || !disciplineName || !subjectName) continue;
+    if (!date || !disciplineName || !subjectName) { invalidRows += 1; continue; }
 
-    const weight = parseNumber(getField(row, ["Peso"])) ?? 1;
-    const questions = parseNumber(getField(row, ["Questoes", "Questões", "Quest", "Questo"])) ?? 0;
-    const correct = parseNumber(getField(row, ["Acertos", "Acerto"])) ?? 0;
-    let wrong = parseNumber(getField(row, ["Erros", "Erro"])) ?? 0;
+    const rawWeight = getField(row, ["Peso"]);
+    const rawQuestions = getField(row, ["Questoes", "Questões", "Quest", "Questo"]);
+    const rawCorrect = getField(row, ["Acertos", "Acerto"]);
+    const rawWrong = getField(row, ["Erros", "Erro"]);
+    const weight = rawWeight ? parseNumber(rawWeight) : 1;
+    const questions = rawQuestions ? parseNumber(rawQuestions) : 0;
+    const correct = rawCorrect ? parseNumber(rawCorrect) : 0;
+    const wrong = rawWrong ? parseNumber(rawWrong) : questions !== null && correct !== null ? Math.max(0, questions - correct) : null;
 
-    if (questions <= 0) continue;
+    if (weight === null || questions === null || correct === null || wrong === null || !Number.isInteger(weight) || weight <= 0 || !validDailyImportResults(questions, correct, wrong)) { invalidRows += 1; continue; }
     validRows += 1;
 
-    if (correct + wrong !== questions) {
-      wrong = Math.max(0, questions - correct);
-    }
-
-    const percentage =
-      parseNumber(getField(row, ["% Dia", "%Dia", "Percentual Dia", "Percentual"])) ??
-      (questions > 0 ? (correct / questions) * 100 : 0);
+    const percentage = (correct / questions) * 100;
 
     const target = parseNumber(getField(row, ["Meta %", "Meta%", "% Meta", "Meta"]));
 
@@ -132,102 +130,27 @@ export async function POST(request: Request) {
       .filter(Boolean)
       .join(" | ") || null;
 
-    const existingDiscipline = await prisma.discipline.findFirst({
-      where: {
-        userId: session.user.id,
-        studyGuideId: guide.id,
-        name: disciplineName,
-      },
-    });
-
-    const discipline =
-      existingDiscipline ??
-      (await prisma.discipline.create({
-        data: {
-          userId: session.user.id,
-          studyGuideId: guide.id,
-          name: disciplineName,
-          active: true,
-          category: null,
-        },
-      }));
-
-    const existingSubject = await prisma.subject.findFirst({
-      where: {
-        userId: session.user.id,
-        studyGuideId: guide.id,
-        disciplineId: discipline.id,
-        name: subjectName,
-      },
-    });
-
-    const subject =
-      existingSubject ??
-      (await prisma.subject.create({
-        data: {
-          userId: session.user.id,
-          studyGuideId: guide.id,
-          disciplineId: discipline.id,
-          name: subjectName,
-          weight,
-          active: true,
-        },
-      }));
-
-    let cycleEntry = await prisma.cycleEntry.findFirst({
-      where: { userId: session.user.id, studyGuideId: guide.id, subjectId: subject.id },
-      orderBy: { orderIndex: "asc" },
-    });
-
-    if (!cycleEntry) {
-      const last = await prisma.cycleEntry.findFirst({
-        where: { userId: session.user.id, studyGuideId: guide.id },
-        orderBy: { orderIndex: "desc" },
-      });
-
-      cycleEntry = await prisma.cycleEntry.create({
-        data: {
-          userId: session.user.id,
-          studyGuideId: guide.id,
-          subjectId: subject.id,
-          orderIndex: (last?.orderIndex ?? 0) + 1,
-          active: true,
-        },
-      });
-    }
-
     const estimatedMinutes = estimateMinutes(questions, weight);
-
-    const exists = await prisma.studySession.findFirst({
-      where: {
-        userId: session.user.id,
-        studyGuideId: guide.id,
-        cycleEntryId: cycleEntry.id,
-        date,
-        questions,
-        correct,
-        wrong,
-      },
-    });
-
-    if (!exists) {
-      await prisma.studySession.create({
-        data: {
-          userId: session.user.id,
-          studyGuideId: guide.id,
-          cycleEntryId: cycleEntry.id,
-          date,
-          questions,
-          correct,
-          wrong,
-          percentage,
-          estimatedMinutes,
-          notes,
-        },
-      });
-      importedRows += 1;
-    } else {
-      skippedRows += 1;
+    try {
+      let outcome: "inserted" | "updated" | "skipped" | "conflict" = "conflict";
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          outcome = await prisma.$transaction((tx) => processDailyImportRecord(tx, {
+            userId: session.user.id, studyGuideId: guide.id, disciplineName, subjectName, weight,
+            date, questions, correct, wrong, percentage, estimatedMinutes, notes,
+          }));
+          break;
+        } catch (error) {
+          if (attempt === 2 || !(error instanceof Prisma.PrismaClientKnownRequestError) || !["P2002", "P2034"].includes(error.code)) throw error;
+        }
+      }
+      if (outcome === "inserted") importedRows += 1;
+      else if (outcome === "updated") updatedRows += 1;
+      else if (outcome === "skipped") skippedRows += 1;
+      else conflictRows += 1;
+    } catch {
+      console.error("daily-import", { status: "failed", processed: validRows, inserted: importedRows, updated: updatedRows, skipped: skippedRows, invalid: invalidRows, conflicts: conflictRows });
+      return NextResponse.json({ ok: false, importedRows, updatedRows, skippedRows, invalidRows, conflictRows, message: "Falha ao importar uma linha. As linhas anteriores foram preservadas; reenvie o arquivo para continuar sem duplicá-las." }, { status: 503 });
     }
   }
 
@@ -242,20 +165,17 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!importedRows) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message: `O arquivo foi lido, mas nenhum registro novo foi importado. ${skippedRows} linha(s) já existiam no guia atual.`,
-      },
-      { status: 409 },
-    );
-  }
-
+  console.info("daily-import", { status: "complete", processed: rows.length, inserted: importedRows, updated: updatedRows, skipped: skippedRows, invalid: invalidRows, conflicts: conflictRows });
+  const partial = invalidRows > 0 || conflictRows > 0;
   return NextResponse.json({
-    ok: true,
+    ok: !partial,
     importedRows,
+    updatedRows,
     skippedRows,
-    message: `Registro diário importado com sucesso. ${importedRows} linha(s) nova(s) criada(s) e ${skippedRows} ignorada(s) por já existirem.`,
-  });
+    invalidRows,
+    conflictRows,
+    message: partial
+      ? `Importação parcial: ${importedRows} nova(s), ${updatedRows} atualizada(s), ${skippedRows} repetida(s), ${invalidRows} inválida(s) e ${conflictRows} com dados diferentes para o mesmo assunto e dia. Corrija as linhas pendentes antes de reenviar.`
+      : `Registro diário processado: ${importedRows} linha(s) nova(s), ${updatedRows} atualizada(s) e ${skippedRows} já existente(s).`,
+  }, { status: partial ? 207 : 200 });
 }

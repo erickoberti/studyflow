@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { recalculateSubjectProgress } from "@/lib/subject-progress";
 import {
   requireActiveStudyGuide,
   setActiveStudyGuide,
@@ -53,50 +54,12 @@ export async function registerUser(formData: FormData) {
   return { ok: true, message: "Conta criada com sucesso." };
 }
 
-export async function requestPasswordReset(formData: FormData) {
-  const email = String(formData.get("email") ?? "").toLowerCase();
-  const user = await prisma.user.findUnique({ where: { email } });
-
-  if (!user) {
-    return { ok: true, message: "Se o e-mail existir, um token será gerado." };
-  }
-
-  const token = crypto.randomUUID();
-  await prisma.passwordResetToken.create({
-    data: {
-      userId: user.id,
-      token,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 30),
-    },
-  });
-
-  return {
-    ok: true,
-    message: `Token gerado: ${token}`,
-  };
+export async function requestPasswordReset() {
+  return { ok: false, message: "A recuperação de senha está temporariamente indisponível." };
 }
 
-export async function resetPassword(formData: FormData) {
-  const token = String(formData.get("token") ?? "");
-  const password = String(formData.get("password") ?? "");
-
-  if (password.length < 6) {
-    return { ok: false, message: "Senha deve ter pelo menos 6 caracteres." };
-  }
-
-  const resetToken = await prisma.passwordResetToken.findUnique({ where: { token } });
-  if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
-    return { ok: false, message: "Token inválido ou expirado." };
-  }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: resetToken.userId }, data: { passwordHash } }),
-    prisma.passwordResetToken.update({ where: { id: resetToken.id }, data: { usedAt: new Date() } }),
-  ]);
-
-  return { ok: true, message: "Senha alterada com sucesso." };
+export async function resetPassword() {
+  return { ok: false, message: "A recuperação de senha está temporariamente indisponível." };
 }
 
 export async function signOutAction() {
@@ -420,6 +383,12 @@ export async function updateSubject(formData: FormData) {
   });
   if (!discipline) return;
 
+  const sourceSubject = await prisma.subject.findFirst({
+    where: { id: subjectId, userId: user.id, studyGuideId: guide.id },
+    select: { id: true },
+  });
+  if (!sourceSubject) return;
+
   let targetSubjectId = subjectId;
   const conflicting = await prisma.subject.findFirst({
     where: {
@@ -447,7 +416,7 @@ export async function updateSubject(formData: FormData) {
   } else {
     try {
       await prisma.subject.update({
-        where: { id: subjectId },
+        where: { id: sourceSubject.id, userId: user.id, studyGuideId: guide.id },
         data: {
           disciplineId,
           name,
@@ -679,13 +648,33 @@ export async function deleteCycleEntry(formData: FormData) {
   const entry = await prisma.cycleEntry.findFirst({ where: { id: entryId, userId: user.id, studyGuideId: guide.id } });
   if (!entry) return;
 
+  const openSession = await prisma.activeStudySession.findFirst({
+    where: {
+      userId: user.id,
+      studyGuideId: guide.id,
+      status: { in: [ActiveStudySessionStatus.ACTIVE, ActiveStudySessionStatus.PAUSED, ActiveStudySessionStatus.FINISHING] },
+    },
+    select: { id: true },
+  });
+  if (openSession) redirect("/ciclo?ajuste=sessao-ativa");
+
   await prisma.$transaction(async (tx) => {
-    await tx.studySession.deleteMany({ where: { cycleEntryId: entry.id, userId: user.id, studyGuideId: guide.id } });
+    if (entry.subjectId) {
+      await tx.studySession.updateMany({
+        where: { cycleEntryId: entry.id, userId: user.id, studyGuideId: guide.id, subjectId: null },
+        data: { subjectId: entry.subjectId },
+      });
+    }
+    await tx.studySession.updateMany({
+      where: { cycleEntryId: entry.id, userId: user.id, studyGuideId: guide.id },
+      data: { cycleEntryId: null },
+    });
     await tx.cycleEntry.delete({ where: { id: entry.id } });
     await tx.cycleEntry.updateMany({
       where: { userId: user.id, studyGuideId: guide.id, orderIndex: { gt: entry.orderIndex } },
       data: { orderIndex: { decrement: 1 } },
     });
+    if (entry.subjectId) await recalculateSubjectProgress(tx, user.id, guide.id, [entry.subjectId]);
   });
 
   revalidatePath("/ciclo");
@@ -758,13 +747,35 @@ export async function deleteAllCycleEntries() {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
 
+  const openSession = await prisma.activeStudySession.findFirst({
+    where: {
+      userId: user.id,
+      studyGuideId: guide.id,
+      status: { in: [ActiveStudySessionStatus.ACTIVE, ActiveStudySessionStatus.PAUSED, ActiveStudySessionStatus.FINISHING] },
+    },
+    select: { id: true },
+  });
+  if (openSession) redirect("/ciclo?ajuste=sessao-ativa");
+
   await prisma.$transaction(async (tx) => {
-    await tx.studySession.deleteMany({
-      where: { userId: user.id, studyGuideId: guide.id },
+    const entries = await tx.cycleEntry.findMany({
+      where: { userId: user.id, studyGuideId: guide.id, subjectId: { not: null } },
+      select: { id: true, subjectId: true },
+    });
+    for (const entry of entries) {
+      await tx.studySession.updateMany({
+        where: { cycleEntryId: entry.id, userId: user.id, studyGuideId: guide.id, subjectId: null },
+        data: { subjectId: entry.subjectId },
+      });
+    }
+    await tx.studySession.updateMany({
+      where: { userId: user.id, studyGuideId: guide.id, cycleEntryId: { not: null } },
+      data: { cycleEntryId: null },
     });
     await tx.cycleEntry.deleteMany({
       where: { userId: user.id, studyGuideId: guide.id },
     });
+    await recalculateSubjectProgress(tx, user.id, guide.id, entries.map((entry) => entry.subjectId ?? ""));
   });
 
   revalidatePath("/ciclo");

@@ -8,21 +8,40 @@ export function isTemporarySyncFailure(status: number) { return status === 202 |
 
 export async function synchronizeOfflineSessionQueue(input: {
   storage: OfflineSessionQueueStorage; userId: string; studyGuideId: string; transport: OfflineOperationTransport;
-  maxAttempts?: number; wait?: (milliseconds: number) => Promise<void>; now?: () => string;
+  maxAttempts?: number; wait?: (milliseconds: number) => Promise<void>; now?: () => string; assertAccount?: () => void;
 }) {
   const maxAttempts = input.maxAttempts ?? 3;
   const wait = input.wait ?? ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
   const now = input.now ?? (() => new Date().toISOString());
-  const candidates = (await input.storage.getOperations(input.userId, input.studyGuideId)).filter((item) => item.status === "PENDING" || item.status === "FAILED");
-  const completed: string[] = []; const conflicts: string[] = []; const failed: string[] = [];
+  const pending = (await input.storage.getOperations(input.userId, input.studyGuideId)).filter((item) => ["PENDING", "SYNCING", "FAILED"].includes(item.status));
+  const candidates: typeof pending = [];
+  while (pending.length) {
+    const index = pending.findIndex((item) => !pending.some((other) => other.operationId === item.dependsOnOperationId));
+    candidates.push(...pending.splice(index < 0 ? 0 : index, 1));
+  }
+  const completed: string[] = []; const conflicts: string[] = []; const failed: string[] = []; const blocked: string[] = [];
 
   for (const candidate of candidates) {
-    let operation = (await input.storage.getOperations(input.userId, input.studyGuideId)).find((item) => item.operationId === candidate.operationId) ?? candidate;
+    input.assertAccount?.();
+    const queue = await input.storage.getOperations(input.userId, input.studyGuideId);
+    const index = queue.findIndex((item) => item.operationId === candidate.operationId);
+    if (index < 0) continue;
+    let operation = queue[index];
+    if (!["PENDING", "SYNCING", "FAILED"].includes(operation.status)) continue;
+    const dependency = operation.dependsOnOperationId ? queue.find((item) => item.operationId === operation.dependsOnOperationId) : null;
+    const previousIncomplete = queue.slice(0, index).some((item) => item.payload.localSessionId === operation.payload.localSessionId && item.dependsOnOperationId !== operation.operationId && item.status !== "COMPLETED");
+    if ((operation.dependsOnOperationId && dependency?.status !== "COMPLETED") || previousIncomplete) {
+      await input.storage.updateOperation(operation.operationId, { lastError: "Aguardando a conclusão da operação anterior desta sessão." });
+      blocked.push(operation.operationId);
+      continue;
+    }
     let response: OfflineOperationTransportResponse | null = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      await input.storage.updateOperation(operation.operationId, { status: "SYNCING", attempts: operation.attempts + attempt, lastError: null });
+      input.assertAccount?.();
+      await input.storage.updateOperation(operation.operationId, { status: "SYNCING", attempts: operation.attempts + 1 });
       try { response = await input.transport(operation); }
       catch (error) { response = { status: 503, data: { message: error instanceof Error ? error.message : "Falha de conexão." } }; }
+      input.assertAccount?.();
       if (!isTemporarySyncFailure(response.status) || attempt === maxAttempts) break;
       await wait(retryDelay(attempt));
       operation = (await input.storage.getOperations(input.userId, input.studyGuideId)).find((item) => item.operationId === candidate.operationId) ?? operation;
@@ -43,12 +62,13 @@ export async function synchronizeOfflineSessionQueue(input: {
       completed.push(operation.operationId); continue;
     }
     if (response.status === 409) {
-      await input.storage.updateOperation(operation.operationId, { status: "CONFLICT", lastError: message }); conflicts.push(operation.operationId); break;
+      await input.storage.updateOperation(operation.operationId, { status: "CONFLICT", lastError: message }); conflicts.push(operation.operationId); continue;
     }
     if (response.status === 400 || response.status === 422) {
       await input.storage.updateOperation(operation.operationId, { status: "CANCELLED", lastError: message }); failed.push(operation.operationId); continue;
     }
-    await input.storage.updateOperation(operation.operationId, { status: "FAILED", lastError: message }); failed.push(operation.operationId); break;
+    await input.storage.updateOperation(operation.operationId, { status: "FAILED", lastError: message }); failed.push(operation.operationId);
+    if (response.status === 401 || response.status === 403) break;
   }
-  return { completed, conflicts, failed };
+  return { completed, conflicts, failed, blocked };
 }

@@ -1,11 +1,11 @@
+import shell from "@/components/official-shell.module.css";
+import { DisciplineCatalog } from "@/components/discipline-catalog";
 import Link from "next/link";
 import {
   createDiscipline,
   createSubject,
   deleteAllGuideDisciplinesAction,
   deleteAllSubjectsAction,
-  deleteGuideDisciplineAction,
-  deleteSubjectAction,
   updateDiscipline,
   updateSubject,
 } from "@/app/actions";
@@ -17,24 +17,26 @@ import { requireActiveStudyGuide } from "@/lib/study-guide";
 export default async function BasePage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
     page?: string;
+    discipline?: string;
     tab?: string;
     import?: string;
     novo?: string;
     edit?: string;
     editSubject?: string;
     saved?: string;
-  };
+  }>;
 }) {
+  const params = await searchParams;
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
-  const tab = searchParams?.tab === "disciplinas" ? "disciplinas" : "assuntos";
-  const showImport = searchParams?.import === "1";
-  const showForm = searchParams?.novo === "1";
-  const editDisciplineId = tab === "disciplinas" ? searchParams?.edit ?? "" : "";
-  const editSubjectId = tab === "assuntos" ? searchParams?.editSubject ?? "" : "";
-  const saved = searchParams?.saved ?? "";
+  const tab = params?.tab === "disciplinas" ? "disciplinas" : "assuntos";
+  const showImport = params?.import === "1";
+  const showForm = params?.novo === "1";
+  const editDisciplineId = tab === "disciplinas" ? params?.edit ?? "" : "";
+  const editSubjectId = tab === "assuntos" ? params?.editSubject ?? "" : "";
+  const saved = params?.saved ?? "";
 
   const [disciplines, subjectsRaw] = await Promise.all([
     prisma.discipline.findMany({
@@ -44,7 +46,7 @@ export default async function BasePage({
     prisma.subject.findMany({
       where: { userId: user.id, studyGuideId: guide.id },
       include: {
-        discipline: true,
+        discipline: true, progress: true,
         cycleEntries: {
           where: { userId: user.id, studyGuideId: guide.id },
           orderBy: { orderIndex: "asc" },
@@ -83,14 +85,6 @@ export default async function BasePage({
     : null;
   const editingSubject = editSubjectId ? subjects.find((subject) => subject.id === editSubjectId) ?? null : null;
 
-  const perPage = 10;
-  const page = Math.max(1, Number(searchParams?.page ?? 1) || 1);
-  const totalRows = tab === "disciplinas" ? sortedDisciplines.length : subjects.length;
-  const totalPages = Math.max(1, Math.ceil(totalRows / perPage));
-  const currentPage = Math.min(page, totalPages);
-
-  const pagedDisciplines = sortedDisciplines.slice((currentPage - 1) * perPage, currentPage * perPage);
-  const pagedSubjects = subjects.slice((currentPage - 1) * perPage, currentPage * perPage);
   const showDisciplineEditor = tab === "disciplinas" && (showForm || Boolean(editingDiscipline));
   const showSubjectEditor = tab === "assuntos" && (showForm || Boolean(editingSubject));
   const subjectRedirectTo = editingSubject ? "/base?tab=assuntos&saved=subject-updated" : "/base?tab=assuntos&saved=subject-created";
@@ -102,40 +96,20 @@ export default async function BasePage({
         : "";
 
   return (
-    <div className="space-y-6 pb-16 lg:pb-0">
+    <div className={`${shell.screen} space-y-6 pb-16 lg:pb-0`}>
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Cadastro</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Gerencie suas disciplinas e assuntos de estudo.
+          <p className="mb-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">Cadastro de matérias &amp; edital · {disciplines.length} disciplinas · {subjects.length} tópicos mapeados</p><h1 className="text-3xl font-semibold text-slate-900 dark:text-white">Disciplinas & Conteúdo Programático</h1>
+          <p className="mt-1 text-sm text-textSecondary dark:text-textSecondary">
+            Estruture seu edital com pesos, referências de questões e anotações estratégicas para guiar cada sessão de foco.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link
-            href="/api/export/csv"
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 dark:border-primary/20 dark:bg-[#161126] dark:text-slate-200"
-          >
-            Exportar
-          </Link>
-          <Link
-            href={`/base?tab=${tab}&novo=${showForm ? "0" : "1"}`}
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white"
-          >
-            {showForm ? "Fechar" : "Novo registro"}
-          </Link>
-          <Link
-            href={`/base?tab=${tab}&import=${showImport ? "0" : "1"}`}
-            className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-bold text-primary"
-          >
-            Importar
-          </Link>
-        </div>
-      </header>
+        <div className="flex shrink-0 gap-3"><Link href="/base?import=1" className="inline-flex max-w-48 items-center rounded-xl bg-surface px-5 py-3 text-center text-sm">Importar edital verticalizado</Link><Link href="/base?tab=disciplinas&novo=1" className="inline-flex max-w-40 items-center rounded-xl bg-primary px-5 py-3 text-center text-sm font-semibold text-white">＋ Adicionar disciplina</Link></div>      </header>
 
       {showImport ? (
-        <section className="rounded-xl border border-slate-200 bg-white p-5 dark:border-primary/20 dark:bg-[#161126]">
-          <h3 className="text-sm font-extrabold uppercase tracking-[0.12em] text-slate-500">Importar cadastro-base</h3>
-          <p className="mt-1 text-xs text-slate-500">Baixe o modelo, preencha as colunas e envie o CSV.</p>
+        <section className="space-y-4">
+          <h3 className="text-sm font-extrabold uppercase tracking-[0.12em] text-textSecondary">Importar cadastro-base</h3>
+          <p className="mt-1 text-xs text-textSecondary">Baixe o modelo, preencha as colunas e envie o CSV.</p>
           <ImportBaseForm />
         </section>
       ) : null}
@@ -146,26 +120,11 @@ export default async function BasePage({
         </section>
       ) : null}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 dark:border-primary/20 dark:bg-[#161126]">
-        <div className="mb-4 flex items-center gap-6 border-b border-slate-200 pb-3 dark:border-primary/15">
-          <Link
-            href="/base?tab=disciplinas"
-            className={`text-lg font-bold ${tab === "disciplinas" ? "text-primary" : "text-slate-500"}`}
-          >
-            Disciplinas
-          </Link>
-          <Link
-            href="/base?tab=assuntos"
-            className={`text-lg font-bold ${tab === "assuntos" ? "text-primary" : "text-slate-500"}`}
-          >
-            Assuntos
-          </Link>
-        </div>
-
+      <section className="space-y-4">
         <div className="space-y-6">
           {showDisciplineEditor ? (
             <div className="max-w-md">
-              <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-primary/20 dark:bg-[#120e20]">
+              <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-primary/20 dark:bg-elevated">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
                   {editingDiscipline ? "Editar disciplina" : "Nova disciplina"}
                 </h3>
@@ -176,7 +135,7 @@ export default async function BasePage({
                     placeholder="Nome da disciplina"
                     required
                     defaultValue={editingDiscipline?.name ?? ""}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-[#0e0b18] dark:text-white"
+                    className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                   />
                   <input
                     name="sortOrder"
@@ -184,7 +143,7 @@ export default async function BasePage({
                     min={1}
                     placeholder="Ordem da disciplina"
                     defaultValue={editingDiscipline?.sortOrder ?? ""}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-[#0e0b18] dark:text-white"
+                    className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                   />
                   <div className="flex gap-2">
                     <button className="flex-1 rounded-lg bg-primary py-2.5 text-sm font-bold text-white">
@@ -192,7 +151,7 @@ export default async function BasePage({
                     </button>
                     <Link
                       href="/base?tab=disciplinas"
-                      className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:border-primary/30 dark:text-slate-300"
+                      className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-textSecondary dark:border-primary/30 dark:text-textSecondary"
                     >
                       Cancelar
                     </Link>
@@ -203,19 +162,19 @@ export default async function BasePage({
           ) : null}
 
           {showSubjectEditor ? (
-            <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-primary/20 dark:bg-[#120e20]">
+            <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-primary/20 dark:bg-elevated">
               <div className="flex flex-col gap-1 border-b border-slate-200 pb-3 dark:border-primary/15 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
                     {editingSubject ? "Editar assunto" : "Novo assunto"}
                   </h3>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-1 text-xs text-textSecondary dark:text-textSecondary">
                     Ajuste disciplina, ordem, peso e referencias sem abrir um painel lateral separado.
                   </p>
                 </div>
                 <Link
                   href="/base?tab=assuntos"
-                  className="text-sm font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-300"
+                  className="text-sm font-semibold text-textSecondary hover:text-slate-700 dark:text-textSecondary"
                 >
                   Fechar
                 </Link>
@@ -225,7 +184,7 @@ export default async function BasePage({
                 <input type="hidden" name="redirectTo" value={subjectRedirectTo} />
                 <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr_120px_120px]">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
                       Assunto
                     </label>
                     <input
@@ -233,18 +192,18 @@ export default async function BasePage({
                       placeholder="Título do assunto"
                       required
                       defaultValue={editingSubject?.name ?? ""}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-[#0e0b18] dark:text-white"
+                      className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
                       Disciplina
                     </label>
                     <select
                       name="disciplineId"
                       required
-                      defaultValue={editingSubject?.disciplineId ?? disciplines[0]?.id}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-[#0e0b18] dark:text-white"
+                      defaultValue={editingSubject?.disciplineId ?? params?.discipline ?? disciplines[0]?.id}
+                      className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                     >
                       {disciplines.map((discipline) => (
                         <option key={discipline.id} value={discipline.id}>
@@ -254,7 +213,7 @@ export default async function BasePage({
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
                       Ordem
                     </label>
                     <input
@@ -263,11 +222,11 @@ export default async function BasePage({
                       min={1}
                       placeholder="Ordem"
                       defaultValue={editingSubject?.cycleEntries[0]?.orderIndex ?? ""}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-[#0e0b18] dark:text-white"
+                      className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
                       Peso
                     </label>
                     <input
@@ -276,24 +235,24 @@ export default async function BasePage({
                       min={1}
                       max={5}
                       defaultValue={editingSubject?.weight ?? 1}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-[#0e0b18] dark:text-white"
+                      className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                     />
                   </div>
                 </div>
                 <div className="grid gap-3 lg:grid-cols-[320px_1fr_auto]">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
                       Referencia TEC
                     </label>
                     <input
                       name="tecReference"
                       placeholder="Onde marcar no TEC"
                       defaultValue={editingSubject?.tecReference ?? ""}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-[#0e0b18] dark:text-white"
+                      className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
                       Observacoes
                     </label>
                     <textarea
@@ -301,7 +260,7 @@ export default async function BasePage({
                       rows={2}
                       placeholder="Observacoes do assunto"
                       defaultValue={editingSubject?.notes ?? ""}
-                      className="min-h-[68px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-[#0e0b18] dark:text-white"
+                      className="min-h-[68px] w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                     />
                   </div>
                   <div className="flex items-end gap-2 self-stretch">
@@ -310,7 +269,7 @@ export default async function BasePage({
                     </button>
                     <Link
                       href="/base?tab=assuntos"
-                      className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:border-primary/30 dark:text-slate-300"
+                      className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-textSecondary dark:border-primary/30 dark:text-textSecondary"
                     >
                       Cancelar
                     </Link>
@@ -320,153 +279,13 @@ export default async function BasePage({
             </section>
           ) : null}
 
-          <div>
-            {tab === "disciplinas" && sortedDisciplines.length > 0 ? (
-              <div className="mb-3 flex justify-end">
-                <form action={deleteAllGuideDisciplinesAction}>
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
-                  >
-                    Excluir todas disciplinas
-                  </button>
-                </form>
-              </div>
-            ) : null}
-            {tab === "assuntos" && subjects.length > 0 ? (
-              <div className="mb-3 flex justify-end">
-                <form action={deleteAllSubjectsAction}>
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
-                  >
-                    Excluir todos assuntos
-                  </button>
-                </form>
-              </div>
-            ) : null}
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-primary/20">
-              {tab === "disciplinas" ? (
-                <table className="w-full min-w-[760px] text-sm">
-                  <thead className="bg-slate-100 text-left text-xs font-bold uppercase tracking-wider text-slate-500 dark:bg-primary/5">
-                    <tr>
-                      <th className="px-5 py-3">Ordem</th>
-                      <th className="px-5 py-3">Disciplina</th>
-                      <th className="px-5 py-3">Assuntos</th>
-                      <th className="px-5 py-3 text-right">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-primary/10">
-                    {pagedDisciplines.map((discipline) => {
-                      const count = subjects.filter((subject) => subject.disciplineId === discipline.id).length;
-                      const order = discipline.sortOrder ?? disciplineOrderMap.get(discipline.id);
-                      return (
-                        <tr key={discipline.id}>
-                          <td className="px-5 py-3 text-slate-500">{order ?? "-"}</td>
-                          <td className="px-5 py-3 font-semibold text-slate-900 dark:text-white">{discipline.name}</td>
-                          <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{count}</td>
-                          <td className="px-5 py-3 text-right">
-                            <div className="flex justify-end gap-2">
-                              <Link
-                                href={`/base?tab=disciplinas&edit=${discipline.id}`}
-                                className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
-                              >
-                                Editar
-                              </Link>
-                              <form action={deleteGuideDisciplineAction}>
-                                <input type="hidden" name="disciplineId" value={discipline.id} />
-                                <button
-                                  type="submit"
-                                  className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
-                                >
-                                  Excluir
-                                </button>
-                              </form>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              ) : (
-                <table className="w-full min-w-[860px] text-sm">
-                  <thead className="bg-slate-100 text-left text-xs font-bold uppercase tracking-wider text-slate-500 dark:bg-primary/5">
-                    <tr>
-                      <th className="px-5 py-3">Ordem</th>
-                      <th className="px-5 py-3">Assunto</th>
-                      <th className="px-5 py-3">Disciplina</th>
-                      <th className="px-5 py-3">Peso</th>
-                      <th className="px-5 py-3">Observacoes</th>
-                      <th className="px-5 py-3 text-right">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-primary/10">
-                    {pagedSubjects.map((subject) => (
-                      <tr key={subject.id}>
-                        <td className="px-5 py-3 text-slate-500">{subject.cycleEntries[0]?.orderIndex ?? "-"}</td>
-                        <td className="px-5 py-3 font-semibold text-slate-900 dark:text-white">{subject.name}</td>
-                        <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{subject.discipline.name}</td>
-                        <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{subject.weight}</td>
-                        <td className="px-5 py-3 text-slate-500">{subject.tecReference ?? subject.notes ?? "-"}</td>
-                        <td className="px-5 py-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Link
-                              href={`/base?tab=assuntos&editSubject=${subject.id}`}
-                              className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
-                            >
-                              Editar
-                            </Link>
-                            <form action={deleteSubjectAction}>
-                              <input type="hidden" name="subjectId" value={subject.id} />
-                              <button
-                                type="submit"
-                                className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
-                              >
-                                Excluir
-                              </button>
-                            </form>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            <div className="mt-4 flex items-center justify-center">
-              <div className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-primary/20 dark:bg-[#120e20]">
-                <Link
-                  href={`/base?tab=${tab}&page=${Math.max(1, currentPage - 1)}${showForm ? "&novo=1" : ""}${editDisciplineId ? `&edit=${editDisciplineId}` : ""}${editSubjectId ? `&editSubject=${editSubjectId}` : ""}`}
-                  className="rounded-md px-3 py-2 text-xs font-bold text-slate-500 hover:bg-primary/10"
-                >
-                  {"<"}
-                </Link>
-                {Array.from({ length: totalPages }).map((_, idx) => {
-                  const nextPage = idx + 1;
-                  const active = nextPage === currentPage;
-                  return (
-                    <Link
-                      key={nextPage}
-                      href={`/base?tab=${tab}&page=${nextPage}${showForm ? "&novo=1" : ""}${editDisciplineId ? `&edit=${editDisciplineId}` : ""}${editSubjectId ? `&editSubject=${editSubjectId}` : ""}`}
-                      className={`rounded-md px-3 py-2 text-xs font-bold ${active ? "bg-primary text-white" : "text-slate-500 hover:bg-primary/10"}`}
-                    >
-                      {nextPage}
-                    </Link>
-                  );
-                })}
-                <Link
-                  href={`/base?tab=${tab}&page=${Math.min(totalPages, currentPage + 1)}${showForm ? "&novo=1" : ""}${editDisciplineId ? `&edit=${editDisciplineId}` : ""}${editSubjectId ? `&editSubject=${editSubjectId}` : ""}`}
-                  className="rounded-md px-3 py-2 text-xs font-bold text-slate-500 hover:bg-primary/10"
-                >
-                  {">"}
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
+          <DisciplineCatalog groups={sortedDisciplines.map(discipline => ({id:discipline.id,name:discipline.name,topics:subjects.filter(s=>s.disciplineId===discipline.id).map(s=>({id:s.id,name:s.name,weight:s.weight,notes:s.notes,tecReference:s.tecReference,active:s.active,questions:s.progress?.totalQuestions??0,percentage:s.progress?.averagePercentage??0,studied:Boolean(s.progress?.lastStudiedAt)}))}))} />
+          <details className="mt-6 rounded-xl border p-4"><summary className="cursor-pointer text-sm">Gerenciar cadastro e exportação</summary><div className="flex flex-wrap gap-4 pt-4"><Link href="/api/export/csv" className="sf-secondary">Exportar</Link><Link href="/base?tab=assuntos&novo=1" className="sf-secondary">Novo assunto</Link><form action={deleteAllGuideDisciplinesAction}><button className="text-sm text-danger">Excluir todas disciplinas</button></form><form action={deleteAllSubjectsAction}><button className="text-sm text-danger">Excluir todos assuntos</button></form></div></details>        </div>
       </section>
     </div>
   );
 }
+
+
+
+

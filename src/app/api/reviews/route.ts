@@ -13,7 +13,10 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json()); if (!parsed.success) return NextResponse.json({ message: "Dados inválidos." }, { status: 400 });
   const review = await prisma.reviewSchedule.findFirst({ where: { id: parsed.data.id, userId: session.user.id, studyGuideId: guide.id, status: ReviewStatus.PENDING } });
   if (!review) return NextResponse.json({ message: "Revisão indisponível." }, { status: 404 });
-  const data = parsed.data.action === "complete" ? { status: ReviewStatus.COMPLETED, completedAt: new Date() } : parsed.data.action === "dismiss" ? { status: ReviewStatus.DISMISSED, dismissedAt: new Date() } : { dueAt: new Date(Date.now() + 86_400_000) };
-  await prisma.reviewSchedule.update({ where: { id: review.id }, data });
+  const now = new Date();
+  const relatedDue = { userId: session.user.id, studyGuideId: guide.id, subjectId: review.subjectId, status: ReviewStatus.PENDING, OR: [{ dueAt: { lte: now } }, { id: review.id }] };
+  if (parsed.data.action === "complete") await prisma.reviewSchedule.updateMany({ where: relatedDue, data: { status: ReviewStatus.COMPLETED, completedAt: now } });
+  else if (parsed.data.action === "postpone") await prisma.reviewSchedule.updateMany({ where: relatedDue, data: { dueAt: new Date(now.getTime() + 86_400_000) } });
+  else await prisma.reviewSchedule.update({ where: { id: review.id }, data: { status: ReviewStatus.DISMISSED, dismissedAt: now } });
   return NextResponse.json({ ok: true });
 }

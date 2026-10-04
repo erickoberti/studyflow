@@ -10,7 +10,9 @@ import type {
   OfflineSubject,
 } from "@/lib/offline/types";
 
-const SNAPSHOT_KEY = "studyflow-offline-snapshot";
+const LEGACY_SNAPSHOT_KEY = "studyflow-offline-snapshot";
+const SNAPSHOT_KEY_PREFIX = `${LEGACY_SNAPSHOT_KEY}:`;
+const ACCOUNT_KEY_PREFIX = "studyflow-offline-account:";
 const ACCESS_KEY = "studyflow-offline-access";
 const CHANGE_EVENT = "studyflow-offline-change";
 const SNAPSHOT_VERSION = 2;
@@ -21,6 +23,7 @@ function fallbackSnapshot(): OfflineSnapshot {
     user: null,
     guides: [],
     activeGuideId: null,
+    cycleCursor: null,
     settings: null,
     disciplines: [],
     subjects: [],
@@ -33,6 +36,18 @@ function fallbackSnapshot(): OfflineSnapshot {
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function normalizedEmail(email: string | null | undefined) {
+  return email?.trim().toLowerCase() ?? "";
+}
+
+function snapshotKey(userId: string) {
+  return `${SNAPSHOT_KEY_PREFIX}${encodeURIComponent(userId)}`;
+}
+
+function accountKey(email: string) {
+  return `${ACCOUNT_KEY_PREFIX}${encodeURIComponent(normalizedEmail(email))}`;
 }
 
 function emitChange() {
@@ -55,13 +70,18 @@ function sortCycleEntries(cycleEntries: OfflineCycleEntry[]) {
 
 function setSnapshot(snapshot: OfflineSnapshot) {
   if (!canUseStorage()) return;
+  const email = normalizedEmail(snapshot.user?.email);
+  const userId = snapshot.user?.id;
+  const access = getOfflineAccess();
+  if (!email || !userId || email !== normalizedEmail(access?.email) || userId !== access?.userId) return;
   window.localStorage.setItem(
-    SNAPSHOT_KEY,
+    snapshotKey(userId),
     JSON.stringify({
       ...snapshot,
       version: SNAPSHOT_VERSION,
     }),
   );
+  window.localStorage.setItem(accountKey(email), userId);
   emitChange();
 }
 
@@ -145,17 +165,33 @@ export function subscribeOfflineStore(listener: () => void) {
   return () => window.removeEventListener(CHANGE_EVENT, listener);
 }
 
-export function getOfflineSnapshot() {
+export function getOfflineSnapshotForEmail(email: string) {
   if (!canUseStorage()) return fallbackSnapshot();
 
+  const accountEmail = normalizedEmail(email);
+  if (!accountEmail) return fallbackSnapshot();
+
   try {
-    const raw = window.localStorage.getItem(SNAPSHOT_KEY);
+    let userId = window.localStorage.getItem(accountKey(accountEmail));
+    let raw = userId ? window.localStorage.getItem(snapshotKey(userId)) : null;
+    if (!raw) {
+      const legacyRaw = window.localStorage.getItem(LEGACY_SNAPSHOT_KEY);
+      const legacyUser = legacyRaw ? (JSON.parse(legacyRaw) as Partial<OfflineSnapshot>).user : null;
+      if (legacyUser?.id && normalizedEmail(legacyUser.email) === accountEmail) {
+        userId = legacyUser.id;
+        window.localStorage.setItem(snapshotKey(userId), legacyRaw as string);
+        window.localStorage.setItem(accountKey(accountEmail), userId);
+        window.localStorage.removeItem(LEGACY_SNAPSHOT_KEY);
+        raw = legacyRaw;
+      }
+    }
     if (!raw) return fallbackSnapshot();
     const parsed = JSON.parse(raw) as Partial<OfflineSnapshot>;
+    if (normalizedEmail(parsed.user?.email) !== accountEmail || parsed.user?.id !== userId) return fallbackSnapshot();
     return {
       ...fallbackSnapshot(),
       ...parsed,
-      guides: Array.isArray(parsed.guides) ? parsed.guides : [],
+      guides: Array.isArray(parsed.guides) ? parsed.guides.map((guide) => ({ ...guide, description: guide.description ?? null })) : [],
       disciplines: Array.isArray(parsed.disciplines) ? parsed.disciplines : [],
       subjects: Array.isArray(parsed.subjects) ? parsed.subjects : [],
       cycleEntries: Array.isArray(parsed.cycleEntries) ? sortCycleEntries(parsed.cycleEntries) : [],
@@ -167,6 +203,13 @@ export function getOfflineSnapshot() {
   }
 }
 
+export function getOfflineSnapshot() {
+  const access = getOfflineAccess();
+  if (!access?.userId) return fallbackSnapshot();
+  const snapshot = getOfflineSnapshotForEmail(access.email);
+  return snapshot.user?.id === access.userId ? snapshot : fallbackSnapshot();
+}
+
 export function setOfflineSnapshot(snapshot: OfflineSnapshot) {
   replaceSnapshot(snapshot);
 }
@@ -176,7 +219,10 @@ export function getOfflineAccess() {
 
   try {
     const raw = window.localStorage.getItem(ACCESS_KEY);
-    return raw ? (JSON.parse(raw) as OfflineAccessSession) : null;
+    if (!raw) return null;
+    const access = JSON.parse(raw) as OfflineAccessSession;
+    if (!("userId" in access)) access.userId = getOfflineSnapshotForEmail(access.email).user?.id;
+    return access;
   } catch {
     return null;
   }
@@ -184,7 +230,7 @@ export function getOfflineAccess() {
 
 export function setOfflineAccess(access: OfflineAccessSession) {
   if (!canUseStorage()) return;
-  window.localStorage.setItem(ACCESS_KEY, JSON.stringify(access));
+  window.localStorage.setItem(ACCESS_KEY, JSON.stringify({ ...access, email: normalizedEmail(access.email) }));
   emitChange();
 }
 
@@ -195,13 +241,18 @@ export function clearOfflineAccess() {
 }
 
 export function mergeServerSnapshot(serverSnapshot: OfflineSnapshot) {
+  const access = getOfflineAccess();
+  if (normalizedEmail(serverSnapshot.user?.email) !== normalizedEmail(access?.email) || serverSnapshot.user?.id !== access?.userId) {
+    throw new Error("A conta mudou durante a sincronização offline.");
+  }
   const local = getOfflineSnapshot();
+  const sameUser = local.user?.id === serverSnapshot.user?.id;
   const pendingByServerId = new Map(
-    local.sessions
+    (sameUser ? local.sessions : [])
       .filter((session) => session.serverId && session.syncStatus !== "synced")
       .map((session) => [session.serverId as string, session]),
   );
-  const pendingLocalOnly = local.sessions.filter((session) => !session.serverId && session.syncStatus !== "synced");
+  const pendingLocalOnly = (sameUser ? local.sessions : []).filter((session) => !session.serverId && session.syncStatus !== "synced");
 
   const mergedSessions = serverSnapshot.sessions.map((session) => {
     const localPending = pendingByServerId.get(session.serverId ?? "");
@@ -210,14 +261,15 @@ export function mergeServerSnapshot(serverSnapshot: OfflineSnapshot) {
 
   replaceSnapshot({
     ...serverSnapshot,
-    guides: local.pendingOperations.length > 0 ? local.guides : serverSnapshot.guides,
-    activeGuideId: local.pendingOperations.length > 0 ? local.activeGuideId : serverSnapshot.activeGuideId,
-    settings: local.pendingOperations.length > 0 ? local.settings : serverSnapshot.settings,
-    disciplines: local.pendingOperations.length > 0 ? local.disciplines : serverSnapshot.disciplines,
-    subjects: local.pendingOperations.length > 0 ? local.subjects : serverSnapshot.subjects,
-    cycleEntries: local.pendingOperations.length > 0 ? local.cycleEntries : serverSnapshot.cycleEntries,
-    pendingOperations: local.pendingOperations,
-    sessions: sortSessions([...mergedSessions, ...pendingLocalOnly]),
+    guides: sameUser && local.pendingOperations.length > 0 ? local.guides : serverSnapshot.guides,
+    activeGuideId: sameUser && local.pendingOperations.length > 0 ? local.activeGuideId : serverSnapshot.activeGuideId,
+    cycleCursor: serverSnapshot.cycleCursor,
+    settings: sameUser && local.pendingOperations.length > 0 ? local.settings : serverSnapshot.settings,
+    disciplines: sameUser && local.pendingOperations.length > 0 ? local.disciplines : serverSnapshot.disciplines,
+    subjects: sameUser && local.pendingOperations.length > 0 ? local.subjects : serverSnapshot.subjects,
+    cycleEntries: sameUser && local.pendingOperations.length > 0 ? local.cycleEntries : serverSnapshot.cycleEntries,
+    pendingOperations: sameUser ? local.pendingOperations : [],
+    sessions: sameUser ? sortSessions([...mergedSessions, ...pendingLocalOnly]) : serverSnapshot.sessions,
   });
 }
 
@@ -237,6 +289,7 @@ export function createOfflineSession(input: {
     id: crypto.randomUUID(),
     serverId: null,
     cycleEntryId: input.cycleEntryId,
+    subjectId: snapshot.cycleEntries.find((entry) => entry.id === input.cycleEntryId)?.subjectId ?? null,
     date: new Date(`${input.date}T12:00:00-03:00`).toISOString(),
     questions: input.questions,
     correct: input.correct,
@@ -263,6 +316,7 @@ export function updateOfflineSession(
   sessionId: string,
   input: {
     cycleEntryId: string | null;
+    subjectId?: string | null;
     scope?: "CYCLE" | "SUBJECT" | "GENERAL";
     date: string;
     questions: number;
@@ -280,6 +334,7 @@ export function updateOfflineSession(
     return {
       ...session,
       cycleEntryId: input.cycleEntryId,
+      subjectId: input.subjectId !== undefined ? input.subjectId : session.subjectId,
       scope: input.scope ?? session.scope,
       date: new Date(`${input.date}T12:00:00-03:00`).toISOString(),
       questions: input.questions,
@@ -306,14 +361,6 @@ export function deleteOfflineSession(sessionId: string) {
   const target = snapshot.sessions.find((session) => session.id === sessionId);
   if (!target) return;
 
-  if (!target.serverId) {
-    replaceSnapshot({
-      ...snapshot,
-      sessions: snapshot.sessions.filter((session) => session.id !== sessionId),
-    });
-    return;
-  }
-
   const updatedAt = new Date().toISOString();
   replaceSnapshot({
     ...snapshot,
@@ -336,6 +383,7 @@ export function hydrateOfflineSessionsFromServer(input: {
   user: OfflineSnapshot["user"];
   guides: OfflineSnapshot["guides"];
   activeGuideId: string | null;
+  cycleCursor?: OfflineSnapshot["cycleCursor"];
   settings: OfflineSnapshot["settings"];
   disciplines: OfflineSnapshot["disciplines"];
   subjects: OfflineSnapshot["subjects"];
@@ -343,6 +391,7 @@ export function hydrateOfflineSessionsFromServer(input: {
   sessions: Array<{
     id: string;
     cycleEntryId: string | null;
+    subjectId?: string | null;
     scope?: "CYCLE" | "SUBJECT" | "GENERAL";
     date: string;
     questions: number;
@@ -361,6 +410,7 @@ export function hydrateOfflineSessionsFromServer(input: {
     user: input.user,
     guides: input.guides,
     activeGuideId: input.activeGuideId,
+    cycleCursor: input.cycleCursor ?? null,
     settings: input.settings,
     disciplines: input.disciplines,
     subjects: input.subjects,
@@ -378,8 +428,14 @@ export function hydrateOfflineSessionsFromServer(input: {
   mergeServerSnapshot(serverSnapshot);
 }
 
-export function markSessionSynced(localId: string, serverId: string) {
+export function markSessionSynced(localId: string, serverId: string, sentSession: OfflineStudySession) {
   const snapshot = getOfflineSnapshot();
+  const current = snapshot.sessions.find((session) => session.id === localId);
+  if (!current) return;
+  const unchanged = current.updatedAt === sentSession.updatedAt &&
+    (["cycleEntryId", "subjectId", "scope", "date", "questions", "correct", "wrong", "estimatedMinutes", "activityType", "notes"] as const)
+      .every((key) => current[key] === sentSession[key]);
+  const syncStatus = current.syncStatus === "pending_delete" ? "pending_delete" : unchanged ? "synced" : "pending_update";
   replaceSnapshot({
     ...snapshot,
     lastSyncedAt: new Date().toISOString(),
@@ -389,13 +445,14 @@ export function markSessionSynced(localId: string, serverId: string) {
           ? {
               ...session,
               serverId,
-              syncStatus: "synced",
+              syncStatus,
               syncError: null,
             }
           : session,
       ),
     ),
   });
+  return syncStatus;
 }
 
 export function removeOfflineSession(localId: string) {
@@ -425,11 +482,12 @@ export function markSessionError(localId: string, message: string) {
   });
 }
 
-export function clearPendingOperations() {
+export function clearPendingOperations(confirmedIds: string[]) {
   const snapshot = getOfflineSnapshot();
+  const confirmed = new Set(confirmedIds);
   replaceSnapshot({
     ...snapshot,
-    pendingOperations: [],
+    pendingOperations: snapshot.pendingOperations.filter((operation) => !confirmed.has(operation.id)),
   });
 }
 

@@ -42,8 +42,20 @@ export type ExamPlanInput = {
   questionsPerSession: number;
 };
 
+export type EffectiveSyllabusStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+
+export function resolveSyllabusStatus(
+  explicitStatus: EffectiveSyllabusStatus | null | undefined,
+  passages: number,
+): EffectiveSyllabusStatus {
+  if (explicitStatus) return explicitStatus;
+  return passages > 0 ? "IN_PROGRESS" : "NOT_STARTED";
+}
+
 export function buildExamPlan(input: ExamPlanInput) {
-  const remainingSubjects = Math.max(0, input.totalSubjects - input.completedSubjects);
+  const coveredSubjects = Math.min(input.totalSubjects, input.completedSubjects + input.inProgressSubjects);
+  const remainingSubjects = Math.max(0, input.totalSubjects - coveredSubjects);
+  const pendingCompletionSubjects = Math.max(0, input.totalSubjects - input.completedSubjects);
   const milliseconds = input.examDate ? input.examDate.getTime() - input.now.getTime() : 0;
   const daysRemaining = input.examDate ? Math.max(0, Math.ceil(milliseconds / 86_400_000)) : null;
   const weeksRemaining = daysRemaining === null ? null : Math.max(1, Math.ceil(daysRemaining / 7));
@@ -51,9 +63,9 @@ export function buildExamPlan(input: ExamPlanInput) {
   const sessionsPerWeek = Math.max(1, Math.ceil(Math.max(0, input.weeklyQuestionsGoal) / Math.max(1, input.questionsPerSession)));
   const minutesPerWeek = sessionsPerWeek * Math.max(1, input.sessionMinutes);
   const subjectsPerWeek = weeksRemaining === null ? null : remainingSubjects / weeksRemaining;
-  const coveragePercentage = input.totalSubjects ? input.completedSubjects / input.totalSubjects * 100 : 0;
+  const coveragePercentage = input.totalSubjects ? coveredSubjects / input.totalSubjects * 100 : 0;
   const onTrack = daysRemaining === null ? null : remainingSubjects === 0 || daysRemaining >= remainingSubjects;
-  return { ...input, remainingSubjects, daysRemaining, weeksRemaining, questionsUntilExam, sessionsPerWeek, minutesPerWeek, subjectsPerWeek, coveragePercentage, onTrack };
+  return { ...input, coveredSubjects, remainingSubjects, pendingCompletionSubjects, daysRemaining, weeksRemaining, questionsUntilExam, sessionsPerWeek, minutesPerWeek, subjectsPerWeek, coveragePercentage, onTrack };
 }
 
 export type RecommendationInput = {

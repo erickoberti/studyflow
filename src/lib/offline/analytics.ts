@@ -1,5 +1,6 @@
 import type { OfflineSettings, OfflineSnapshot, OfflineStudySession } from "@/lib/offline/types";
 import { expandOfflineEntry, getDisciplineMap, getOfflineCycleEntries, getSubjectMap } from "@/lib/offline/selectors";
+import { selectCurrentCycleEntry } from "@/lib/cycle-engine";
 
 function dayKey(date: Date) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -27,7 +28,7 @@ function activeEntries(snapshot: OfflineSnapshot) {
   return getOfflineCycleEntries(snapshot, snapshot.activeGuideId)
     .filter((entry) => entry.active)
     .map((entry) => expandOfflineEntry(entry, subjectMap, disciplineMap))
-    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry?.subject.active && entry.subject.discipline.active));
 }
 
 function activeSessions(sessions: OfflineStudySession[]) {
@@ -42,23 +43,25 @@ function activeSessions(sessions: OfflineStudySession[]) {
 
 export function getOfflineNextSuggestion(snapshot: OfflineSnapshot) {
   const entries = activeEntries(snapshot);
-  const sessions = activeSessions(snapshot.sessions);
+  const sessions = activeSessions(snapshot.sessions).filter((session) => session.scope === "CYCLE" || (!session.scope && !!session.cycleEntryId));
 
   if (!entries.length) {
     return { last: null, next: null };
   }
 
+  const cursor = snapshot.cycleCursor?.guideId === snapshot.activeGuideId ? snapshot.cycleCursor.currentOrderIndex : null;
   const lastSession = sessions[0];
+  const selectedByCursor = cursor === null ? null : selectCurrentCycleEntry(entries, cursor);
   if (!lastSession) {
-    return { last: null, next: entries[0] };
+    return { last: null, next: selectedByCursor ?? entries[0] };
   }
 
   const currentEntry = entries.find((entry) => entry.id === lastSession.cycleEntryId) ?? null;
   if (!currentEntry) {
-    return { last: null, next: entries[0] };
+    return { last: null, next: selectedByCursor ?? entries[0] };
   }
 
-  const next = entries.find((entry) => entry.orderIndex > currentEntry.orderIndex) ?? entries[0];
+  const next = selectedByCursor ?? selectCurrentCycleEntry(entries, currentEntry.orderIndex + 1);
   return { last: currentEntry, next };
 }
 
@@ -100,25 +103,28 @@ export function getOfflineDashboard(snapshot: OfflineSnapshot) {
     byDay.set(sessionDayKey, dayData);
 
     const entry = session.cycleEntryId ? entryMap.get(session.cycleEntryId) : null;
-    if (!entry) continue;
+    const subject = subjectMap.get(session.subjectId ?? entry?.subject.id ?? "");
+    if (!subject) continue;
+    const discipline = disciplineMap.get(subject.disciplineId);
+    if (!discipline) continue;
     const dayDistance = diffCalendarDaysUTC(todayKey, sessionDayKey);
-    if (dayDistance >= 0 && dayDistance <= 29) recentByEntry.set(entry.id, (recentByEntry.get(entry.id) ?? 0) + 1);
+    if (entry && (session.scope === "CYCLE" || (!session.scope && !!session.cycleEntryId)) && dayDistance >= 0 && dayDistance <= 29) recentByEntry.set(entry.id, (recentByEntry.get(entry.id) ?? 0) + 1);
 
-    const disciplineName = entry.subject.discipline.name;
-    const disciplineData = byDiscipline.get(disciplineName) ?? { discipline: disciplineName, questions: 0, correct: 0 };
+    const disciplineName = discipline.name;
+    const disciplineData = byDiscipline.get(discipline.id) ?? { discipline: disciplineName, questions: 0, correct: 0 };
     disciplineData.questions += session.questions;
     disciplineData.correct += session.correct;
-    byDiscipline.set(disciplineName, disciplineData);
+    byDiscipline.set(discipline.id, disciplineData);
 
-    const subjectKey = `${disciplineName}::${entry.subject.name}`;
+    const subjectKey = subject.id;
     const subjectData =
       bySubject.get(subjectKey) ??
       {
         discipline: disciplineName,
-        subject: entry.subject.name,
+        subject: subject.name,
         questions: 0,
         correct: 0,
-        weight: entry.subject.weight,
+        weight: subject.weight,
       };
     subjectData.questions += session.questions;
     subjectData.correct += session.correct;

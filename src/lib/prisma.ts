@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { assertRuntimeConfiguration } from "@/lib/runtime-readiness";
+
+if (process.env.NODE_ENV === "production") assertRuntimeConfiguration(process.env);
 
 declare global {
   // eslint-disable-next-line no-var

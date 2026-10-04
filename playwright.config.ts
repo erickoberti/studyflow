@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import { loadEnvConfig } from "@next/env";
 
 loadEnvConfig(process.cwd());
+const productionE2E = process.env.E2E_PRODUCTION === "true";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -12,11 +13,11 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
-  use: { baseURL: "http://127.0.0.1:3100", channel: "chrome", trace: "retain-on-failure", screenshot: "only-on-failure" },
+  use: { baseURL: "http://127.0.0.1:3100", channel: process.env.CI ? undefined : "chrome", trace: "retain-on-failure", screenshot: "only-on-failure" },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], channel: "chrome" } },
-    { name: "tablet", use: { viewport: { width: 820, height: 1180 }, channel: "chrome" } },
-    { name: "mobile", use: { ...devices["Pixel 5"], channel: "chrome" } },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], channel: process.env.CI ? undefined : "chrome" } },
+    { name: "tablet", use: { viewport: { width: 820, height: 1180 }, channel: process.env.CI ? undefined : "chrome" } },
+    { name: "mobile", use: { ...devices["Pixel 5"], channel: process.env.CI ? undefined : "chrome" } },
   ],
-  webServer: { command: "npm run dev -- -p 3100", url: "http://127.0.0.1:3100/auth/login", reuseExistingServer: false, timeout: 120_000, stdout: "ignore", stderr: "pipe", env: { NEXTAUTH_URL: "http://127.0.0.1:3100" } },
+  webServer: { command: productionE2E ? "npm run start -- -p 3100" : "npm run dev -- -p 3100", url: "http://127.0.0.1:3100/auth/login", reuseExistingServer: false, timeout: 120_000, stdout: "ignore", stderr: "pipe", env: { NEXTAUTH_URL: productionE2E ? "https://ci.example.invalid" : "http://127.0.0.1:3100" } },
 });

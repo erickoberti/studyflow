@@ -123,8 +123,13 @@ test("consultas isolam usuário e guia, atualização é revalidada e formulári
 
 test("falha de rede é tratada sem marcar revisão e migration é aditiva", () => {
   const review = readFileSync(resolve(process.cwd(), "src/components/review-actions.tsx"), "utf8");
+  const cycle = readFileSync(resolve(process.cwd(), "src/lib/cycle-service.ts"), "utf8");
+  const reviewPage = readFileSync(resolve(process.cwd(), "src/app/(app)/revisao/page.tsx"), "utf8");
   const migration = readFileSync(resolve(process.cwd(), "prisma/migrations/20260804120000_daily_goals/migration.sql"), "utf8");
   assert.match(review, /catch[\s\S]*Falha de rede/);
+  assert.match(cycle, /reviewSchedule\.updateMany[\s\S]*status: "COMPLETED"/);
+  assert.match(cycle, /pendingReviews === 0/);
+  assert.match(reviewPage, /nextBySubject/);
   assert.doesNotMatch(migration, /DROP\s+(?:TABLE|COLUMN|TYPE)|TRUNCATE|DELETE\s+FROM|ALTER\s+COLUMN/i);
   assert.match(migration, /CREATE TABLE "DailyGoalSettings"/);
 });

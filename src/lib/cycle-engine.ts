@@ -3,6 +3,11 @@ export type CycleEngineSubject = {
   currentWeight: number; passages: number; averagePercentage: number; lastStudiedAt: Date | null;
 };
 
+export function selectCurrentCycleEntry<T extends { orderIndex: number }>(entries: T[], currentOrderIndex: number): T | null {
+  const ordered = [...entries].sort((a, b) => a.orderIndex - b.orderIndex);
+  return ordered.find((entry) => entry.orderIndex >= currentOrderIndex) ?? ordered[0] ?? null;
+}
+
 export function selectWeightedSubject(subjects: CycleEngineSubject[], lastSubjectId?: string) {
   const eligible = subjects.length > 1 ? subjects.filter((item) => item.id !== lastSubjectId) : subjects;
   return [...(eligible.length ? eligible : subjects)].sort((a, b) => {

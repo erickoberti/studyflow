@@ -1,30 +1,6 @@
-"use client";
+import { BrainCircuit } from "lucide-react";
+import { cn } from "@/lib/cn";
 
-import Image from "next/image";
-import { useState } from "react";
-
-export function BrandLogo({
-  className,
-  alt = "StudyFlow",
-}: {
-  className?: string;
-  alt?: string;
-}) {
-  const sources = ["/brand/studyflow-logo.png", "/studyflow-logo.png", "/brand/studyflow-logo.svg"];
-  const [index, setIndex] = useState(0);
-
-  return (
-    <Image
-      src={sources[index]}
-      alt={alt}
-      width={64}
-      height={64}
-      className={className}
-      onError={() => {
-        if (index < sources.length - 1) {
-          setIndex((prev) => prev + 1);
-        }
-      }}
-    />
-  );
+export function BrandLogo({ className, alt = "StudyFlow" }: { className?: string; alt?: string }) {
+  return <span role="img" aria-label={alt} className={cn("inline-flex shrink-0 items-center justify-center rounded-control bg-primary text-white", className)}><BrainCircuit aria-hidden className="h-[60%] w-[60%]" strokeWidth={1.8} /></span>;
 }

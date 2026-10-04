@@ -56,45 +56,21 @@ export async function getNextCycleSuggestion(userId: string, studyGuideId: strin
   if (intelligent?.subject && intelligent.entry.discipline) {
     return { last: null, next: { id: intelligent.entry.id, orderIndex: intelligent.entry.orderIndex, subject: { ...intelligent.subject, notes: null, discipline: intelligent.entry.discipline } } };
   }
-  const activeEntries = await prisma.cycleEntry.findMany({
-    where: { userId, studyGuideId, active: true, subject: { active: true, discipline: { active: true } } },
-    include: { subject: { include: { discipline: true } } },
-    orderBy: { orderIndex: "asc" },
-  });
-
-  if (!activeEntries.length) {
-    return { last: null, next: null };
-  }
-
-  const lastSession = await prisma.studySession.findFirst({
-    where: { userId, studyGuideId, cyclePosition: { not: null } },
-    include: { cycleEntry: { include: { subject: { include: { discipline: true } } } } },
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-  });
-
-  if (!lastSession) {
-    return { last: null, next: activeEntries[0] };
-  }
-
-  const currentOrder = lastSession.cycleEntry?.orderIndex;
-  if (currentOrder === undefined) return { last: null, next: activeEntries[0] };
-  const next = activeEntries.find((entry) => entry.orderIndex > currentOrder) ?? activeEntries[0];
-
-  return { last: lastSession.cycleEntry, next };
+  return { last: null, next: null };
 }
 
 export async function getDashboardData(userId: string, studyGuideId: string) {
   const [sessions, settings, activeEntries] = await Promise.all([
     prisma.studySession.findMany({
       where: { userId, studyGuideId },
-      include: {
-        subject: { include: { discipline: true } },
+      select: {
+        date: true, questions: true, correct: true, wrong: true, estimatedMinutes: true,
+        cyclePosition: true, cycleEntryId: true,
+        subject: { select: { id: true, name: true, weight: true, discipline: { select: { id: true, name: true } } } },
         cycleEntry: {
-          include: {
+          select: {
             subject: {
-              include: {
-                discipline: true,
-              },
+              select: { id: true, name: true, weight: true, discipline: { select: { id: true, name: true } } },
             },
           },
         },
@@ -150,14 +126,15 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
       sessionsByActiveEntryRecent.set(session.cycleEntryId, (sessionsByActiveEntryRecent.get(session.cycleEntryId) ?? 0) + 1);
     }
 
-    const discData = byDiscipline.get(disciplineName) ?? { discipline: disciplineName, questions: 0, correct: 0, wrong: 0, estimatedMinutes: 0 };
+    const disciplineId = studiedSubject.discipline.id;
+    const discData = byDiscipline.get(disciplineId) ?? { discipline: disciplineName, questions: 0, correct: 0, wrong: 0, estimatedMinutes: 0 };
     discData.questions += session.questions;
     discData.correct += session.correct;
     discData.wrong += session.wrong;
     discData.estimatedMinutes += session.estimatedMinutes;
-    byDiscipline.set(disciplineName, discData);
+    byDiscipline.set(disciplineId, discData);
 
-    const subjData = bySubject.get(subjectName) ?? {
+    const subjData = bySubject.get(studiedSubject.id) ?? {
       subject: subjectName,
       discipline: disciplineName,
       questions: 0,
@@ -168,7 +145,7 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
     subjData.questions += session.questions;
     subjData.correct += session.correct;
     subjData.estimatedMinutes += session.estimatedMinutes;
-    bySubject.set(subjectName, subjData);
+    bySubject.set(studiedSubject.id, subjData);
   }
 
   const disciplineStats = Array.from(byDiscipline.values()).map((row) => {
@@ -256,7 +233,7 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
 export async function getReviewSuggestions(userId: string, studyGuideId: string) {
   const subjects = await prisma.subject.findMany({
     where: { userId, studyGuideId, active: true },
-    include: { discipline: true, sessions: { orderBy: { date: "desc" }, take: 20 } },
+    select: { id: true, name: true, weight: true, discipline: { select: { name: true } }, sessions: { orderBy: { date: "desc" }, take: 20, select: { date: true, questions: true, correct: true, wrong: true } } },
   });
 
   const result = subjects.map((subject) => {

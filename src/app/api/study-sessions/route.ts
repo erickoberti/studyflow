@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 import { createGeneralReviewSession, createStandaloneStudySession } from "@/lib/standalone-study-session";
+import { recalculateSubjectProgress } from "@/lib/subject-progress";
 
 const generalReviewCreateSchema = z.object({
   scope: z.literal("GENERAL"),
@@ -46,6 +47,7 @@ const legacySessionSchema = z.object({
 
 const updateSchema = legacySessionSchema.extend({
   id: z.string().min(1),
+  cycleEntryId: z.string().min(1).nullable(),
 });
 
 const generalReviewUpdateSchema = z.object({
@@ -130,7 +132,11 @@ export async function POST(request: Request) {
   if (!entry || !subjectId) return NextResponse.json({ message: "O registro offline legado não possui posição ou assunto válido." }, { status: 400 });
   const subject = await prisma.subject.findFirst({ where: { id: subjectId, userId: session.user.id, studyGuideId: guide.id, disciplineId: entry.disciplineId ?? undefined, active: true } });
   if (!subject) return NextResponse.json({ message: "O assunto do registro offline não pertence ao guia ativo." }, { status: 400 });
-  const created = await prisma.studySession.create({ data: { userId: session.user.id, studyGuideId: guide.id, cycleEntryId: entry.id, subjectId: subject.id, cyclePosition: null, cycleRound: null, date: new Date(`${date}T12:00:00-03:00`), questions, correct, wrong, percentage: questions ? correct / questions * 100 : 0, estimatedMinutes: estimatedMinutes ?? Math.max(1, Math.round(questions * 1.5)), activityType: activityType ?? "QUESTIONS", notes } });
+  const created = await prisma.$transaction(async (tx) => {
+    const result = await tx.studySession.create({ data: { userId: session.user.id, studyGuideId: guide.id, cycleEntryId: null, subjectId: subject.id, scope: "SUBJECT", cyclePosition: null, cycleRound: null, date: new Date(`${date}T12:00:00-03:00`), questions, correct, wrong, percentage: questions ? correct / questions * 100 : 0, estimatedMinutes: estimatedMinutes ?? Math.max(1, Math.round(questions * 1.5)), activityType: activityType ?? "QUESTIONS", notes } });
+    await recalculateSubjectProgress(tx, session.user.id, guide.id, [subject.id]);
+    return result;
+  });
   return NextResponse.json(created, { status: 201 });
 }
 
@@ -162,7 +168,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ message: "Dados inválidos" }, { status: 400 });
   }
 
-  const { id, date, cycleEntryId, questions, correct, wrong, notes, estimatedMinutes, activityType } = parsed.data;
+  const { id, date, cycleEntryId, subjectId, questions, correct, wrong, notes, estimatedMinutes, activityType } = parsed.data;
 
   if (correct + wrong !== questions) {
     return NextResponse.json({ message: "Questões deve ser igual a acertos + erros" }, { status: 400 });
@@ -176,31 +182,43 @@ export async function PUT(request: Request) {
     return NextResponse.json({ message: "Registro não encontrado" }, { status: 404 });
   }
 
-  const cycleEntry = await prisma.cycleEntry.findFirst({
+  const cycleEntry = cycleEntryId ? await prisma.cycleEntry.findFirst({
     where: {
       id: cycleEntryId,
       userId: session.user.id,
       studyGuideId: guide.id,
     },
-  });
+  }) : null;
 
-  if (!cycleEntry) {
+  if (cycleEntryId && !cycleEntry) {
     return NextResponse.json({ message: "Entrada de ciclo não encontrada" }, { status: 404 });
   }
+  if (existing.scope === "CYCLE" && !cycleEntryId) return NextResponse.json({ message: "O registro do ciclo exige uma posição." }, { status: 400 });
 
-  const updated = await prisma.studySession.update({
-    where: { id },
-    data: {
-      cycleEntryId,
-      date: new Date(`${date}T12:00:00-03:00`),
-      questions,
-      correct,
-      wrong,
-      percentage: questions > 0 ? (correct / questions) * 100 : 0,
-      estimatedMinutes: estimatedMinutes ?? Math.round(questions * 1.5),
-      activityType: activityType ?? existing.activityType,
-      notes,
-    },
+  const selectedSubjectId = subjectId ?? existing.subjectId;
+  if (existing.scope === "SUBJECT" && !selectedSubjectId) return NextResponse.json({ message: "O registro avulso exige um assunto válido." }, { status: 400 });
+  if (selectedSubjectId && !(await prisma.subject.count({ where: { id: selectedSubjectId, userId: session.user.id, studyGuideId: guide.id } }))) {
+    return NextResponse.json({ message: "Assunto não pertence ao guia ativo." }, { status: 400 });
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.studySession.update({
+      where: { id },
+      data: {
+        cycleEntryId: existing.scope === "SUBJECT" ? null : cycleEntryId,
+        subjectId: selectedSubjectId,
+        date: new Date(`${date}T12:00:00-03:00`),
+        questions,
+        correct,
+        wrong,
+        percentage: questions > 0 ? (correct / questions) * 100 : 0,
+        estimatedMinutes: estimatedMinutes ?? Math.round(questions * 1.5),
+        activityType: activityType ?? existing.activityType,
+        notes,
+      },
+    });
+    await recalculateSubjectProgress(tx, session.user.id, guide.id, [existing.subjectId ?? "", result.subjectId ?? ""]);
+    return result;
   });
 
   return NextResponse.json(updated, { status: 200 });
@@ -224,15 +242,16 @@ export async function DELETE(request: Request) {
 
   const existing = await prisma.studySession.findFirst({
     where: { id: parsed.data.id, userId: session.user.id, studyGuideId: guide.id },
-    select: { id: true },
+    select: { id: true, subjectId: true },
   });
 
   if (!existing) {
     return NextResponse.json({ message: "Registro não encontrado" }, { status: 404 });
   }
 
-  await prisma.studySession.delete({
-    where: { id: existing.id },
+  await prisma.$transaction(async (tx) => {
+    await tx.studySession.delete({ where: { id: existing.id } });
+    await recalculateSubjectProgress(tx, session.user.id, guide.id, [existing.subjectId ?? ""]);
   });
 
   return NextResponse.json({ ok: true }, { status: 200 });

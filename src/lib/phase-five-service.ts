@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
-import { buildExamPlan, buildExplainableRecommendations, distributeQuestionsByWeight } from "@/lib/phase-five";
+import { buildExamPlan, buildExplainableRecommendations, distributeQuestionsByWeight, resolveSyllabusStatus } from "@/lib/phase-five";
 
 export async function getPhaseFiveData(userId: string, studyGuideId: string) {
   const [disciplines, exams, settings] = await Promise.all([
@@ -34,7 +34,7 @@ export async function getPhaseFiveData(userId: string, studyGuideId: string) {
     weight: subject.weight,
     discipline: { id: discipline.id, name: discipline.name },
     progress: subject.progress,
-    syllabusStatus: subject.syllabusProgress?.status ?? "NOT_STARTED" as const,
+    syllabusStatus: resolveSyllabusStatus(subject.syllabusProgress?.status, subject.progress?.passages ?? 0),
     syllabusNotes: subject.syllabusProgress?.notes ?? null,
   })));
   const completedSubjects = subjects.filter((item) => item.syllabusStatus === "COMPLETED").length;
@@ -88,7 +88,7 @@ export async function getPhaseFiveDashboard(userId: string, studyGuideId: string
     prisma.subject.findMany({ where: { userId, studyGuideId, active: true, discipline: { active: true } }, select: { id: true, name: true, weight: true, discipline: { select: { name: true } }, progress: { select: { averagePercentage: true, passages: true, lastStudiedAt: true } }, syllabusProgress: { select: { status: true } } } }),
     getStudyGuideSettings(userId, studyGuideId),
   ]);
-  const normalized = subjects.map((subject) => ({ subjectId: subject.id, subject: subject.name, discipline: subject.discipline.name, weight: subject.weight, status: subject.syllabusProgress?.status ?? "NOT_STARTED" as const, percentage: subject.progress?.averagePercentage ?? 0, passages: subject.progress?.passages ?? 0, lastStudiedAt: subject.progress?.lastStudiedAt ?? null }));
+  const normalized = subjects.map((subject) => ({ subjectId: subject.id, subject: subject.name, discipline: subject.discipline.name, weight: subject.weight, status: resolveSyllabusStatus(subject.syllabusProgress?.status, subject.progress?.passages ?? 0), percentage: subject.progress?.averagePercentage ?? 0, passages: subject.progress?.passages ?? 0, lastStudiedAt: subject.progress?.lastStudiedAt ?? null }));
   const completedSubjects = normalized.filter((item) => item.status === "COMPLETED").length;
   const inProgressSubjects = normalized.filter((item) => item.status === "IN_PROGRESS").length;
   const plan = buildExamPlan({ now: new Date(), examDate: settings.examDate, totalSubjects: normalized.length, completedSubjects, inProgressSubjects, weeklyQuestionsGoal: settings.weeklyQuestionsGoal, sessionMinutes: settings.sessionMinutes, questionsPerSession: settings.questionsPerSession });

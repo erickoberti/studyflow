@@ -15,7 +15,7 @@ test("manifest possui identidade, standalone e ícones instaláveis", () => {
 test("cache mantém APIs e dados autenticados em NetworkOnly", () => {
   const config = readFileSync(resolve(root, "next.config.mjs"), "utf8");
   assert.match(config, /\/\\\/api\\\/\/i, handler: "NetworkOnly"/); assert.match(config, /_next\\\/data/); assert.match(config, /cleanupOutdatedCaches: true/); assert.match(config, /skipWaiting: true/); assert.match(config, /clientsClaim: true/);
-  assert.match(config, /cacheStartUrl: false/); assert.match(config, /dynamicStartUrl: false/); assert.match(config, /additionalManifestEntries: \[\{ url: "\/offline\/dashboard"/);
+  assert.match(config, /cacheStartUrl: false/); assert.match(config, /dynamicStartUrl: false/); assert.match(config, /additionalManifestEntries: \[\s*\{ url: "\/offline\/dashboard"/);
   assert.doesNotMatch(config, /\/api.*(?:CacheFirst|NetworkFirst|StaleWhileRevalidate)/);
 });
 
@@ -23,14 +23,17 @@ test("service worker gerado não persiste a rota inicial autenticada", () => {
   const worker = readFileSync(resolve(root, "public/sw.js"), "utf8");
   assert.doesNotMatch(worker, /cacheName:"start-url"/);
   assert.match(worker, /url:"\/offline\/dashboard",revision:"phase4-offline-shell-v1"/);
+  assert.match(worker, /url:"\/offline\/registro",revision:"integrated-offline-pages-v1"/);
+  assert.match(worker, /url:"\/offline\/registros",revision:"integrated-offline-pages-v1"/);
   assert.match(worker, /registerRoute\(\/\\\/api\\\/\/i,new \w+\.NetworkOnly/);
   assert.match(worker, /registerRoute\(\/\\\/_next\\\/data\\\/\/i,new \w+\.NetworkOnly/);
   assert.match(worker, /NetworkOnly\(\{plugins:\[new \w+\.PrecacheFallbackPlugin\(\{fallbackURL:"\/offline\/dashboard"\}\)\]\}\)/);
 });
 
 test("assets essenciais do PWA são públicos e atualização é verificada", () => {
-  const middleware = readFileSync(resolve(root, "src/middleware.ts"), "utf8"); const status = readFileSync(resolve(root, "src/components/pwa-connection-status.tsx"), "utf8");
-  for (const path of ["/manifest.webmanifest", "/brand", "/sw.js", "/workbox-"]) assert.ok(middleware.includes(`"${path}"`));
+  const proxy = readFileSync(resolve(root, "src/proxy.ts"), "utf8"); const status = readFileSync(resolve(root, "src/components/pwa-connection-status.tsx"), "utf8");
+  for (const path of ["/manifest.webmanifest", "/brand", "/sw.js", "/workbox-"]) assert.ok(proxy.includes(`"${path}"`));
   for (const label of ["Online", "Offline", "Sincronizando", "pendência", "Erro de sincronização", "conflito"]) assert.ok(status.includes(label));
   assert.ok(status.includes("registration?.update()")); assert.ok(status.includes("controllerchange"));
+  assert.ok(status.includes('navigator.serviceWorker.register("/sw.js")'));
 });

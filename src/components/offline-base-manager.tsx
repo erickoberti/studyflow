@@ -101,41 +101,41 @@ export function OfflineBaseManager() {
   return (
     <div className="space-y-6 pb-10">
       <div className="flex gap-2">
-        <button type="button" onClick={() => setTab("disciplinas")} className={`rounded-full px-4 py-2 text-sm font-black ${tab === "disciplinas" ? "bg-primary text-white" : "border border-slate-300"}`}>
+        <button type="button" onClick={() => setTab("disciplinas")} className={`rounded-full px-4 py-2 text-sm font-semibold ${tab === "disciplinas" ? "bg-primary text-white" : "border border-slate-300"}`}>
           Disciplinas
         </button>
-        <button type="button" onClick={() => setTab("assuntos")} className={`rounded-full px-4 py-2 text-sm font-black ${tab === "assuntos" ? "bg-primary text-white" : "border border-slate-300"}`}>
+        <button type="button" onClick={() => setTab("assuntos")} className={`rounded-full px-4 py-2 text-sm font-semibold ${tab === "assuntos" ? "bg-primary text-white" : "border border-slate-300"}`}>
           Assuntos
         </button>
       </div>
 
       {tab === "disciplinas" ? (
         <section className="grid gap-6 lg:grid-cols-[360px_1fr]">
-          <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-            <h2 className="text-xl font-black">Disciplina offline</h2>
+          <article className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm dark:border-white/5 dark:bg-slate-950/70">
+            <h2 className="text-xl font-semibold">Disciplina offline</h2>
             <div className="mt-4 space-y-3">
               <input value={disciplineForm.name} onChange={(event) => setDisciplineForm((current) => ({ ...current, name: event.target.value }))} placeholder="Nome" className="h-11 w-full rounded-2xl border border-slate-300 px-3" />
               <input value={disciplineForm.category} onChange={(event) => setDisciplineForm((current) => ({ ...current, category: event.target.value }))} placeholder="Categoria" className="h-11 w-full rounded-2xl border border-slate-300 px-3" />
               <input value={disciplineForm.sortOrder} onChange={(event) => setDisciplineForm((current) => ({ ...current, sortOrder: event.target.value }))} placeholder="Ordem" type="number" className="h-11 w-full rounded-2xl border border-slate-300 px-3" />
-              <button type="button" onClick={saveDiscipline} className="rounded-full bg-primary px-4 py-2 text-sm font-black text-white">
+              <button type="button" onClick={saveDiscipline} className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white">
                 {disciplineForm.id ? "Salvar disciplina" : "Criar disciplina"}
               </button>
             </div>
           </article>
 
-          <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-            <h2 className="text-xl font-black">Disciplinas do guia</h2>
+          <article className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm dark:border-white/5 dark:bg-slate-950/70">
+            <h2 className="text-xl font-semibold">Disciplinas do guia</h2>
             <div className="mt-4 space-y-3">
               {disciplines.map((discipline) => (
                 <div key={discipline.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="font-black">{discipline.name}</p>
-                    <p className="text-xs text-slate-500">{discipline.category ?? "Sem categoria"} | ordem {discipline.sortOrder ?? "-"}</p>
+                    <p className="font-semibold">{discipline.name}</p>
+                    <p className="text-xs text-textSecondary">{discipline.category ?? "Sem categoria"} | ordem {discipline.sortOrder ?? "-"}</p>
                   </div>
-                  <button type="button" onClick={() => setDisciplineForm({ id: discipline.id, name: discipline.name, category: discipline.category ?? "", sortOrder: discipline.sortOrder?.toString() ?? "" })} className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-black text-primary">
+                  <button type="button" onClick={() => setDisciplineForm({ id: discipline.id, name: discipline.name, category: discipline.category ?? "", sortOrder: discipline.sortOrder?.toString() ?? "" })} className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                     Editar
                   </button>
-                  <button type="button" onClick={() => deleteOfflineDiscipline(discipline.id)} className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1 text-xs font-black text-rose-600">
+                  <button type="button" onClick={() => deleteOfflineDiscipline(discipline.id)} className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600">
                     Excluir
                   </button>
                 </div>
@@ -145,8 +145,8 @@ export function OfflineBaseManager() {
         </section>
       ) : (
         <section className="grid gap-6 lg:grid-cols-[380px_1fr]">
-          <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-            <h2 className="text-xl font-black">Assunto offline</h2>
+          <article className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm dark:border-white/5 dark:bg-slate-950/70">
+            <h2 className="text-xl font-semibold">Assunto offline</h2>
             <div className="mt-4 space-y-3">
               <input value={subjectForm.name} onChange={(event) => setSubjectForm((current) => ({ ...current, name: event.target.value }))} placeholder="Assunto" className="h-11 w-full rounded-2xl border border-slate-300 px-3" />
               <select value={subjectForm.disciplineId} onChange={(event) => setSubjectForm((current) => ({ ...current, disciplineId: event.target.value }))} className="h-11 w-full rounded-2xl border border-slate-300 px-3">
@@ -161,22 +161,22 @@ export function OfflineBaseManager() {
               </div>
               <input value={subjectForm.tecReference} onChange={(event) => setSubjectForm((current) => ({ ...current, tecReference: event.target.value }))} placeholder="Referencia TEC" className="h-11 w-full rounded-2xl border border-slate-300 px-3" />
               <textarea value={subjectForm.notes} onChange={(event) => setSubjectForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notas" rows={4} className="w-full rounded-2xl border border-slate-300 p-3" />
-              <button type="button" onClick={saveSubject} className="rounded-full bg-primary px-4 py-2 text-sm font-black text-white">
+              <button type="button" onClick={saveSubject} className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white">
                 {subjectForm.id ? "Salvar assunto" : "Criar assunto"}
               </button>
             </div>
           </article>
 
-          <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-            <h2 className="text-xl font-black">Assuntos do guia</h2>
+          <article className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm dark:border-white/5 dark:bg-slate-950/70">
+            <h2 className="text-xl font-semibold">Assuntos do guia</h2>
             <div className="mt-4 space-y-3">
               {subjects.map((subject) => {
                 const discipline = disciplines.find((item) => item.id === subject.disciplineId);
                 return (
                   <div key={subject.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3">
                     <div className="min-w-0 flex-1">
-                      <p className="font-black">{subject.name}</p>
-                      <p className="text-xs text-slate-500">{discipline?.name ?? "-"} | peso {subject.weight} | ordem {subject.orderIndex ?? "-"}</p>
+                      <p className="font-semibold">{subject.name}</p>
+                      <p className="text-xs text-textSecondary">{discipline?.name ?? "-"} | peso {subject.weight} | ordem {subject.orderIndex ?? "-"}</p>
                     </div>
                     <button
                       type="button"
@@ -191,7 +191,7 @@ export function OfflineBaseManager() {
                           notes: subject.notes ?? "",
                         })
                       }
-                      className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-black text-primary"
+                      className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
                     >
                       Editar
                     </button>

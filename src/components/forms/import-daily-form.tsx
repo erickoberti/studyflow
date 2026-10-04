@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, FileSpreadsheet, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
+import { refreshOfflineSnapshotFromServer } from "@/lib/offline/sync";
 
 type FeedbackState =
   | { tone: "success"; text: string }
@@ -41,16 +42,18 @@ export function ImportDailyForm() {
       });
 
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
+      if (!response.ok || data?.ok === false) {
         const errorMessage = data?.message ?? "Erro ao importar registro diário.";
         setFeedback({ tone: "error", text: errorMessage });
         toast.error(errorMessage);
+        if (data?.importedRows > 0 || data?.updatedRows > 0) { void refreshOfflineSnapshotFromServer().catch(() => undefined); router.refresh(); }
         return;
       }
 
       const successMessage = data?.message ?? "Registro diário importado com sucesso.";
       setFeedback({ tone: "success", text: successMessage });
       toast.success(successMessage);
+      void refreshOfflineSnapshotFromServer().catch(() => undefined);
       setFileName("");
       if (fileRef.current) fileRef.current.value = "";
       setTimeout(() => {
@@ -67,21 +70,21 @@ export function ImportDailyForm() {
 
   return (
     <form onSubmit={onSubmit} className="mt-3 space-y-4">
-      <label className="block cursor-pointer rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-primary/40 hover:bg-primary/5 dark:border-white/10 dark:bg-[#120e20] dark:hover:border-primary/50 dark:hover:bg-primary/10">
+      <label className="block cursor-pointer rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-primary/40 hover:bg-primary/5 dark:border-white/10 dark:bg-elevated dark:hover:border-primary/50 dark:hover:bg-primary/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <FileSpreadsheet className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-black text-slate-900 dark:text-white">Arquivo de sessões</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Arquivo de sessões</p>
+              <p className="truncate text-xs text-textSecondary dark:text-textSecondary">
                 {fileName || "Selecione um CSV com Data, Disciplina, Assunto, Peso, Questões, Acertos e Erros."}
               </p>
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-black text-primary">
+          <div className="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
             <UploadCloud className="h-4 w-4" />
             {fileName ? "Trocar arquivo" : "Escolher CSV"}
           </div>

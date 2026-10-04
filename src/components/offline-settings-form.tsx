@@ -44,9 +44,9 @@ export function OfflineSettingsForm() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px] pb-10">
-      <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-        <h2 className="text-2xl font-black">Configurações offline</h2>
-        <p className="mt-1 text-sm text-slate-500">Esses valores ficam locais e entram na próxima sincronização.</p>
+      <article className="rounded-3xl border border-slate-200 bg-surface p-5 shadow-sm dark:border-white/5 dark:bg-slate-950/70">
+        <h2 className="text-2xl font-semibold">Configurações offline</h2>
+        <p className="mt-1 text-sm text-textSecondary">Esses valores ficam locais e entram na próxima sincronização.</p>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <label className="text-sm font-semibold">
@@ -67,14 +67,14 @@ export function OfflineSettingsForm() {
           </label>
         </div>
 
-        <button type="button" onClick={save} className="mt-5 rounded-full bg-primary px-5 py-3 text-sm font-black text-white">
+        <button type="button" onClick={save} className="mt-5 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white">
           Salvar localmente
         </button>
       </article>
 
       <article className="rounded-3xl bg-slate-950 p-5 text-white shadow-sm">
         <p className="text-sm text-white/70">Guia ativo</p>
-        <p className="mt-2 text-2xl font-black">{activeGuide?.name ?? "Sem guia"}</p>
+        <p className="mt-2 text-2xl font-semibold">{activeGuide?.name ?? "Sem guia"}</p>
         <p className="mt-3 text-sm text-white/80">{snapshot.pendingOperations.length} alteração(ões) estrutural(is) aguardando sincronização.</p>
       </article>
     </div>

@@ -50,8 +50,8 @@ export async function claimOfflineOperation(input: { operationId: string; userId
   return { kind: "PROCESS", recordId: existing.id, version: existing.version + 1 };
 }
 
-export async function completeOfflineOperation(recordId: string, version: number, response: unknown) {
-  const result = await prisma.offlineOperation.updateMany({ where: { id: recordId, version, status: "SYNCING" }, data: { status: "COMPLETED", response: response as Prisma.InputJsonValue, syncedAt: new Date(), lastError: null, version: { increment: 1 } } });
+export async function completeOfflineOperation(recordId: string, version: number, response: unknown, tx?: Prisma.TransactionClient) {
+  const result = await (tx ?? prisma).offlineOperation.updateMany({ where: { id: recordId, version, status: "SYNCING" }, data: { status: "COMPLETED", response: response as Prisma.InputJsonValue, syncedAt: new Date(), lastError: null, version: { increment: 1 } } });
   if (!result.count) throw new Error("O ledger da operação foi alterado concorrentemente.");
 }
 

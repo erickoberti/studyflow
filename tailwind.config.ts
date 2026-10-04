@@ -10,20 +10,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        backgroundLight: "#f6f6f8",
-        backgroundDark: "#141121",
-        panelDark: "#1a1c2e",
-        primary: "#3b19e6",
-        primarySoft: "#7f67ff",
+        backgroundLight: "#fcf8ff",
+        backgroundDark: "#0c0e15",
+        panelDark: "rgb(var(--surface-rgb) / <alpha-value>)",
+        surface: "rgb(var(--surface-rgb) / <alpha-value>)",
+        elevated: "rgb(var(--elevated-rgb) / <alpha-value>)",
+        primary: "rgb(var(--primary-rgb) / <alpha-value>)",
+        primarySoft: "rgb(var(--primary-rgb) / <alpha-value>)",
+        navigation: "rgb(var(--navigation-rgb) / <alpha-value>)",
+        textPrimary: "rgb(var(--foreground-rgb) / <alpha-value>)",
+        textSecondary: "rgb(var(--secondary-rgb) / <alpha-value>)",
+        success: "rgb(var(--success-rgb) / <alpha-value>)",
+        pending: "rgb(var(--warning-rgb) / <alpha-value>)",
+        danger: "rgb(var(--critical-rgb) / <alpha-value>)",
+        info: "rgb(var(--primary-rgb) / <alpha-value>)",
       },
       borderRadius: {
-        card: "1rem",
+        control: "0.5rem",
+        card: "0.75rem",
+        feature: "0.875rem",
       },
       fontFamily: {
         sans: ["var(--font-lexend)", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        soft: "0 16px 34px rgba(59, 25, 230, 0.22)",
+        soft: "0 2px 5px rgb(15 23 42 / 0.06)",
       },
     },
   },

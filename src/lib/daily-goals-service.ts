@@ -38,14 +38,14 @@ export async function getDailyGoalsData(userId: string, studyGuideId: string, no
   const todayKey = dayKeyInTimeZone(now, settings.timeZone);
   const [sessions, reviews, activeSessions, mockExams, manualGoals, checks, reflection, guideSettings, reviewsDue] = await Promise.all([
     prisma.studySession.findMany({ where: { userId, studyGuideId }, select: { date: true, estimatedMinutes: true, correct: true, wrong: true, cyclePosition: true } }),
-    prisma.reviewSchedule.findMany({ where: { userId, studyGuideId, status: "COMPLETED" }, select: { completedAt: true } }),
+    prisma.reviewSchedule.findMany({ where: { userId, studyGuideId, status: "COMPLETED" }, select: { subjectId: true, completedAt: true } }),
     prisma.activeStudySession.findMany({ where: { userId, studyGuideId, status: { not: "CANCELLED" } }, select: { startedAt: true } }),
     prisma.mockExam.findMany({ where: { userId, studyGuideId }, select: { takenAt: true, durationMinutes: true, totalQuestions: true } }),
     prisma.manualDailyGoal.findMany({ where: { userId, studyGuideId, active: true }, orderBy: { createdAt: "asc" } }),
     prisma.manualDailyGoalCheck.findMany({ where: { userId, studyGuideId, dayKey: { lte: todayKey } } }),
     prisma.dailyReflection.findFirst({ where: { userId, studyGuideId, dayKey: todayKey } }),
     getStudyGuideSettings(userId, studyGuideId),
-    prisma.reviewSchedule.count({ where: { userId, studyGuideId, status: "PENDING", dueAt: { lte: now } } }),
+    prisma.reviewSchedule.findMany({ where: { userId, studyGuideId, status: "PENDING", dueAt: { lte: now } }, distinct: ["subjectId"], select: { subjectId: true } }),
   ]);
   const sources = new Map<string, DaySource>();
   const sourceFor = (key: string) => {
@@ -59,7 +59,15 @@ export async function getDailyGoalsData(userId: string, studyGuideId: string, no
     const source = sourceFor(dayKeyInTimeZone(session.date, settings.timeZone));
     applyStudySession(source, session);
   }
-  for (const review of reviews) if (review.completedAt) sourceFor(dayKeyInTimeZone(review.completedAt, settings.timeZone)).reviews += 1;
+  const completedReviewKeys = new Set<string>();
+  for (const review of reviews) {
+    if (!review.completedAt) continue;
+    const dayKey = dayKeyInTimeZone(review.completedAt, settings.timeZone);
+    const key = `${dayKey}:${review.subjectId}`;
+    if (completedReviewKeys.has(key)) continue;
+    completedReviewKeys.add(key);
+    sourceFor(dayKey).reviews += 1;
+  }
   for (const active of activeSessions) {
     const source = sourceFor(dayKeyInTimeZone(active.startedAt, settings.timeZone));
     if (!source.firstStudyAt || active.startedAt < source.firstStudyAt) source.firstStudyAt = active.startedAt;
@@ -107,7 +115,7 @@ export async function getDailyGoalsData(userId: string, studyGuideId: string, no
     questionsThisWeek,
     questionsRemaining,
     suggestedQuestionsToday: questionsRemaining ? Math.ceil(questionsRemaining / activeDaysRemaining) : 0,
-    reviewsDue,
+    reviewsDue: reviewsDue.length,
     examDate: guideSettings.examDate,
   };
   return { settings, targets: targetsForWeekday(settings, today.weekday), weekdayTargets, saturdayTargets: parseTargets(settings.saturdayTargets, weekdayTargets), sundayTargets: parseTargets(settings.sundayTargets, weekdayTargets), today, week, days: days.slice(-28), streak, rhythm, weekTotals, plan, manualGoals: manualGoals.map((goal) => ({ ...goal, checkedToday: checkSet.has(`${goal.id}:${todayKey}`) })), reflection };

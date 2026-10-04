@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureStudyGuideSettings, upsertStudyGuideSettings } from "@/lib/study-guide-settings";
+import { structuralOperationKeys, type StructuralOperationResult } from "@/lib/offline/structural-sync-result";
 
 type PendingOperation = {
   id: string;
@@ -100,178 +102,201 @@ async function upsertPrimaryCycleEntry(userId: string, studyGuideId: string, sub
   });
 }
 
+class RejectedOperationError extends Error {}
+
+async function executeStructuralOperation(userId: string, operation: PendingOperation, clientIdMap: Map<string, string>): Promise<Omit<StructuralOperationResult, "id">> {
+  const resolveId = (value: unknown) => clientIdMap.get(asString(value)) ?? asString(value);
+  const ownsGuide = (guideId: string) => prisma.studyGuide.count({ where: { id: guideId, userId } });
+  const ownsDiscipline = (disciplineId: string, guideId: string | null) => prisma.discipline.count({
+    where: { id: disciplineId, userId, studyGuideId: guideId },
+  });
+  const input = operation.payload;
+
+  if (operation.entity === "guide" && operation.action === "create") {
+    const clientId = asString(input.clientId);
+    if (!clientId) throw new RejectedOperationError("ID local do guia ausente.");
+    let guide = await prisma.studyGuide.findUnique({ where: { id: clientId } });
+    let alreadyProcessed = Boolean(guide);
+    if (!guide) {
+      try {
+        guide = await prisma.studyGuide.create({
+          data: { id: clientId, userId, name: asString(input.name), description: asNullableString(input.description), icon: asString(input.icon) || "book-open", color: asString(input.color) || "#6366f1" },
+        });
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+        guide = await prisma.studyGuide.findUnique({ where: { id: clientId } });
+        if (!guide) throw error;
+        alreadyProcessed = true;
+      }
+    }
+    if (guide.userId !== userId) throw new RejectedOperationError("O guia pertence a outra conta.");
+    await ensureStudyGuideSettings(userId, guide.id);
+    clientIdMap.set(clientId, guide.id);
+    return { status: alreadyProcessed ? "already_processed" : "completed", serverId: guide.id };
+  }
+
+  if (operation.entity === "guide" && operation.action === "update") {
+    const id = resolveId(input.id);
+    const updated = await prisma.studyGuide.updateMany({
+      where: { id, userId },
+      data: { name: asString(input.name), description: asNullableString(input.description), icon: asString(input.icon) || "book-open", color: asString(input.color) || "#6366f1" },
+    });
+    if (!updated.count) throw new RejectedOperationError("Guia não encontrado nesta conta.");
+    return { status: "completed" };
+  }
+
+  if (operation.entity === "guide" && operation.action === "delete") {
+    const id = resolveId(input.id);
+    if (!id) throw new RejectedOperationError("ID do guia ausente.");
+    const guide = await prisma.studyGuide.findUnique({ where: { id }, select: { userId: true } });
+    if (!guide) return { status: "already_processed" };
+    if (guide.userId !== userId) throw new RejectedOperationError("O guia pertence a outra conta.");
+    const deleted = await prisma.studyGuide.deleteMany({ where: { id, userId } });
+    return { status: deleted.count ? "completed" : "already_processed" };
+  }
+
+  if (operation.entity === "guide-selection" && operation.action === "select") {
+    const id = resolveId(input.id);
+    if (!(await ownsGuide(id))) throw new RejectedOperationError("Guia selecionado não pertence à conta.");
+    await prisma.user.update({ where: { id: userId }, data: { activeStudyGuideId: id } });
+    return { status: "completed" };
+  }
+
+  if (operation.entity === "discipline" && operation.action === "create") {
+    const clientId = asString(input.clientId);
+    const guideId = resolveId(input.guideId);
+    if (!clientId || !(await ownsGuide(guideId))) throw new RejectedOperationError("Guia ou ID local da disciplina inválido.");
+    let discipline = await prisma.discipline.findUnique({ where: { id: clientId } });
+    let alreadyProcessed = Boolean(discipline);
+    if (!discipline) {
+      try {
+        discipline = await prisma.discipline.create({
+          data: { id: clientId, userId, studyGuideId: guideId, name: asString(input.name), category: asNullableString(input.category), sortOrder: input.sortOrder == null ? null : asNumber(input.sortOrder), active: true },
+        });
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+        discipline = await prisma.discipline.findUnique({ where: { id: clientId } });
+        if (!discipline) throw error;
+        alreadyProcessed = true;
+      }
+    }
+    if (discipline.userId !== userId || discipline.studyGuideId !== guideId) throw new RejectedOperationError("Disciplina pertence a outro contexto.");
+    clientIdMap.set(clientId, discipline.id);
+    return { status: alreadyProcessed ? "already_processed" : "completed", serverId: discipline.id };
+  }
+
+  if (operation.entity === "discipline" && operation.action === "update") {
+    const id = resolveId(input.id);
+    const updated = await prisma.discipline.updateMany({
+      where: { id, userId },
+      data: { name: asString(input.name), category: asNullableString(input.category), sortOrder: input.sortOrder == null ? null : asNumber(input.sortOrder), active: Boolean(input.active) },
+    });
+    if (!updated.count) throw new RejectedOperationError("Disciplina não encontrada nesta conta.");
+    return { status: "completed" };
+  }
+
+  if (operation.entity === "discipline" && operation.action === "delete") {
+    const id = resolveId(input.id);
+    if (!id) throw new RejectedOperationError("ID da disciplina ausente.");
+    const discipline = await prisma.discipline.findUnique({ where: { id }, select: { userId: true } });
+    if (!discipline) return { status: "already_processed" };
+    if (discipline.userId !== userId) throw new RejectedOperationError("Disciplina pertence a outra conta.");
+    const deleted = await prisma.discipline.deleteMany({ where: { id, userId } });
+    return { status: deleted.count ? "completed" : "already_processed" };
+  }
+
+  if (operation.entity === "subject" && operation.action === "create") {
+    const clientId = asString(input.clientId);
+    const guideId = resolveId(input.guideId);
+    const disciplineId = resolveId(input.disciplineId);
+    if (!clientId || !(await ownsGuide(guideId))) throw new RejectedOperationError("Guia ou ID local do assunto inválido.");
+    let subject = await prisma.subject.findUnique({ where: { id: clientId } });
+    let alreadyProcessed = Boolean(subject);
+    if (!subject) {
+      if (!(await ownsDiscipline(disciplineId, guideId))) throw new RejectedOperationError("Disciplina não pertence ao guia do assunto.");
+      try {
+        subject = await prisma.subject.create({
+          data: { id: clientId, userId, studyGuideId: guideId, disciplineId, name: asString(input.name), weight: asNumber(input.weight, 1), notes: asNullableString(input.notes), tecReference: asNullableString(input.tecReference), active: true },
+        });
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+        subject = await prisma.subject.findUnique({ where: { id: clientId } });
+        if (!subject) throw error;
+        alreadyProcessed = true;
+      }
+    }
+    if (subject.userId !== userId || subject.studyGuideId !== guideId) {
+      throw new RejectedOperationError("Assunto pertence a outro contexto.");
+    }
+    const existingPosition = alreadyProcessed ? await prisma.cycleEntry.count({ where: { userId, studyGuideId: guideId, subjectId: subject.id } }) : 0;
+    if (!alreadyProcessed || (!existingPosition && asNumber(input.orderIndex) > 0)) {
+      await upsertPrimaryCycleEntry(userId, guideId, subject.id, input.orderIndex == null ? null : asNumber(input.orderIndex));
+    }
+    clientIdMap.set(clientId, subject.id);
+    return { status: alreadyProcessed ? "already_processed" : "completed", serverId: subject.id };
+  }
+
+  if (operation.entity === "subject" && operation.action === "update") {
+    const subjectId = resolveId(input.id);
+    const disciplineId = resolveId(input.disciplineId);
+    const subject = await prisma.subject.findFirst({ where: { id: subjectId, userId }, select: { studyGuideId: true } });
+    if (!subject) throw new RejectedOperationError("Assunto não encontrado nesta conta.");
+    if (!(await ownsDiscipline(disciplineId, subject.studyGuideId))) throw new RejectedOperationError("Disciplina não pertence ao guia do assunto.");
+    await prisma.subject.updateMany({
+      where: { id: subjectId, userId },
+      data: { disciplineId, name: asString(input.name), weight: asNumber(input.weight, 1), notes: asNullableString(input.notes), tecReference: asNullableString(input.tecReference), active: Boolean(input.active) },
+    });
+    await upsertPrimaryCycleEntry(userId, subject.studyGuideId ?? "", subjectId, input.orderIndex == null ? null : asNumber(input.orderIndex));
+    return { status: "completed" };
+  }
+
+  if (operation.entity === "settings" && operation.action === "upsert") {
+    const guideId = resolveId(input.guideId);
+    if (!guideId || !(await ownsGuide(guideId))) throw new RejectedOperationError("Guia das configurações não pertence à conta.");
+    await upsertStudyGuideSettings(userId, guideId, {
+      targetPercentage: asNumber(input.targetPercentage, 80),
+      dailyQuestionsGoal: asNumber(input.dailyQuestionsGoal, 30),
+      weeklyQuestionsGoal: asNumber(input.weeklyQuestionsGoal, 200),
+      weightPriorityBias: asNumber(input.weightPriorityBias, 1.25),
+    });
+    return { status: "completed" };
+  }
+
+  throw new RejectedOperationError("Operação estrutural não suportada.");
+}
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ message: "Não autenticado" }, { status: 401 });
+  const body = await request.json().catch(() => null);
+  if (!body || !Array.isArray(body.operations)) return NextResponse.json({ message: "Lote inválido." }, { status: 400 });
+  const operations = body.operations as PendingOperation[];
+  const ids = new Set<string>();
+  for (const operation of operations) {
+    if (!operation || typeof operation.id !== "string" || !operation.id || ids.has(operation.id) || typeof operation.createdAt !== "string" || !operation.payload || typeof operation.payload !== "object" || Array.isArray(operation.payload)) {
+      return NextResponse.json({ message: "Operação estrutural inválida ou repetida no lote." }, { status: 400 });
+    }
+    ids.add(operation.id);
   }
 
-  const payload = await request.json().catch(() => ({}));
-  const operations = Array.isArray(payload.operations) ? (payload.operations as PendingOperation[]) : [];
+  const userId = session.user.id;
   const clientIdMap = new Map<string, string>();
-
-  for (const operation of operations.sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-    if (operation.entity === "guide" && operation.action === "create") {
-      const created = await prisma.studyGuide.create({
-        data: {
-          userId: session.user.id,
-          name: asString(operation.payload.name),
-          description: asNullableString(operation.payload.description),
-          icon: asString(operation.payload.icon) || "book-open",
-          color: asString(operation.payload.color) || "#6366f1",
-        },
-      });
-      await ensureStudyGuideSettings(session.user.id, created.id);
-      clientIdMap.set(asString(operation.payload.clientId), created.id);
+  const blockedKeys = new Set<string>();
+  const results: StructuralOperationResult[] = [];
+  for (const operation of [...operations].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+    const { target, references } = structuralOperationKeys(operation);
+    if (references.some((key) => blockedKeys.has(key))) {
+      results.push({ id: operation.id, status: "blocked", message: "Aguardando operação estrutural anterior." });
       continue;
     }
-
-    if (operation.entity === "guide" && operation.action === "update") {
-      const guideId = clientIdMap.get(asString(operation.payload.id)) ?? asString(operation.payload.id);
-      await prisma.studyGuide.updateMany({
-        where: { id: guideId, userId: session.user.id },
-        data: {
-          name: asString(operation.payload.name),
-          description: asNullableString(operation.payload.description),
-          icon: asString(operation.payload.icon) || "book-open",
-          color: asString(operation.payload.color) || "#6366f1",
-        },
-      });
-      continue;
-    }
-
-    if (operation.entity === "guide" && operation.action === "delete") {
-      const guideId = clientIdMap.get(asString(operation.payload.id)) ?? asString(operation.payload.id);
-      await prisma.studyGuide.deleteMany({
-        where: { id: guideId, userId: session.user.id },
-      });
-      continue;
-    }
-
-    if (operation.entity === "guide-selection" && operation.action === "select") {
-      const guideId = clientIdMap.get(asString(operation.payload.id)) ?? asString(operation.payload.id);
-      await prisma.user.update({
-        where: { id: session.user.id },
-        data: { activeStudyGuideId: guideId },
-      });
-      continue;
-    }
-
-    if (operation.entity === "discipline" && operation.action === "create") {
-      const guideId = clientIdMap.get(asString(operation.payload.guideId)) ?? asString(operation.payload.guideId);
-      const created = await prisma.discipline.create({
-        data: {
-          userId: session.user.id,
-          studyGuideId: guideId,
-          name: asString(operation.payload.name),
-          category: asNullableString(operation.payload.category),
-          sortOrder: operation.payload.sortOrder == null ? null : asNumber(operation.payload.sortOrder),
-          active: true,
-        },
-      });
-      clientIdMap.set(asString(operation.payload.clientId), created.id);
-      continue;
-    }
-
-    if (operation.entity === "discipline" && operation.action === "update") {
-      const disciplineId = clientIdMap.get(asString(operation.payload.id)) ?? asString(operation.payload.id);
-      await prisma.discipline.updateMany({
-        where: { id: disciplineId, userId: session.user.id },
-        data: {
-          name: asString(operation.payload.name),
-          category: asNullableString(operation.payload.category),
-          sortOrder: operation.payload.sortOrder == null ? null : asNumber(operation.payload.sortOrder),
-          active: Boolean(operation.payload.active),
-        },
-      });
-      continue;
-    }
-
-    if (operation.entity === "discipline" && operation.action === "delete") {
-      const disciplineId = clientIdMap.get(asString(operation.payload.id)) ?? asString(operation.payload.id);
-      await prisma.discipline.deleteMany({
-        where: { id: disciplineId, userId: session.user.id },
-      });
-      continue;
-    }
-
-    if (operation.entity === "subject" && operation.action === "create") {
-      const guideId = clientIdMap.get(asString(operation.payload.guideId)) ?? asString(operation.payload.guideId);
-      const disciplineId =
-        clientIdMap.get(asString(operation.payload.disciplineId)) ?? asString(operation.payload.disciplineId);
-
-      const created = await prisma.subject.create({
-        data: {
-          userId: session.user.id,
-          studyGuideId: guideId,
-          disciplineId,
-          name: asString(operation.payload.name),
-          weight: asNumber(operation.payload.weight, 1),
-          notes: asNullableString(operation.payload.notes),
-          tecReference: asNullableString(operation.payload.tecReference),
-          active: true,
-        },
-      });
-
-      await upsertPrimaryCycleEntry(
-        session.user.id,
-        guideId,
-        created.id,
-        operation.payload.orderIndex == null ? null : asNumber(operation.payload.orderIndex),
-      );
-
-      clientIdMap.set(asString(operation.payload.clientId), created.id);
-      continue;
-    }
-
-    if (operation.entity === "subject" && operation.action === "update") {
-      const subjectId = clientIdMap.get(asString(operation.payload.id)) ?? asString(operation.payload.id);
-      const disciplineId =
-        clientIdMap.get(asString(operation.payload.disciplineId)) ?? asString(operation.payload.disciplineId);
-
-      const subject = await prisma.subject.findFirst({
-        where: { id: subjectId, userId: session.user.id },
-        select: { studyGuideId: true },
-      });
-
-      if (!subject) {
-        continue;
-      }
-
-      await prisma.subject.updateMany({
-        where: { id: subjectId, userId: session.user.id },
-        data: {
-          disciplineId,
-          name: asString(operation.payload.name),
-          weight: asNumber(operation.payload.weight, 1),
-          notes: asNullableString(operation.payload.notes),
-          tecReference: asNullableString(operation.payload.tecReference),
-          active: Boolean(operation.payload.active),
-        },
-      });
-
-      await upsertPrimaryCycleEntry(
-        session.user.id,
-        subject.studyGuideId ?? "",
-        subjectId,
-        operation.payload.orderIndex == null ? null : asNumber(operation.payload.orderIndex),
-      );
-      continue;
-    }
-
-    if (operation.entity === "settings" && operation.action === "upsert") {
-      const guideId = clientIdMap.get(asString(operation.payload.guideId)) ?? asString(operation.payload.guideId);
-      if (!guideId) continue;
-
-      await upsertStudyGuideSettings(session.user.id, guideId, {
-        targetPercentage: asNumber(operation.payload.targetPercentage, 80),
-        dailyQuestionsGoal: asNumber(operation.payload.dailyQuestionsGoal, 30),
-        weeklyQuestionsGoal: asNumber(operation.payload.weeklyQuestionsGoal, 200),
-        weightPriorityBias: asNumber(operation.payload.weightPriorityBias, 1.25),
-      });
-      continue;
+    try {
+      const outcome = await executeStructuralOperation(userId, operation, clientIdMap);
+      results.push({ id: operation.id, ...outcome });
+    } catch (error) {
+      const rejected = error instanceof RejectedOperationError;
+      results.push({ id: operation.id, status: rejected ? "rejected" : "error", message: rejected && error instanceof Error ? error.message : "Falha ao processar operação; tente novamente." });
+      blockedKeys.add(target);
     }
   }
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: results.every((result) => result.status === "completed" || result.status === "already_processed"), userId, results });
 }
