@@ -7,3 +7,5 @@ Cada histórico possui `activityType`: `QUESTIONS`, `CLASS`, `READING` ou `REVIE
 `StudySession.scope` distingue sessões de ciclo (`CYCLE`), registros ligados a um assunto (`SUBJECT`) e revisões gerais (`GENERAL`). A revisão geral aceita acertos, erros e duração sem `subjectId` ou `cycleEntryId`: entra nos totais, metas e calendário, mas não atualiza `SubjectProgress`, não conclui `ReviewSchedule` e não altera o cursor.
 
 O endpoint legado `/api/study-sessions` é registro avulso de compatibilidade e não avança o ciclo. O fluxo de ciclo usa `/api/active-study-session`.
+
+A finalização mantém histórico, progresso, revisões e cursor em uma única transação, com prazo de 20 segundos para acomodar latência do banco remoto. Os totais são recalculados uma única vez a partir do histórico. Após bloquear os assuntos, os pesos são atualizados em lotes por incremento, evitando uma escrita por assunto. Repetir uma finalização já concluída não duplica o registro nem avança novamente o ciclo.

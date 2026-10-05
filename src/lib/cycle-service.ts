@@ -2,7 +2,7 @@ import { ActiveStudySessionStatus, Prisma, StudyActivityType, StudySessionMode }
 import { prisma } from "@/lib/prisma";
 import { advanceWeightedState, selectCurrentCycleEntry, selectWeightedSubject, type CycleEngineSubject } from "@/lib/cycle-engine";
 import { calculateElapsedSeconds } from "@/lib/study-timer";
-import { lockSubjectsForProgress, recalculateSubjectProgress } from "@/lib/subject-progress";
+import { advanceSubjectWeights, lockSubjectsForProgress, recalculateSubjectProgress } from "@/lib/subject-progress";
 
 export type CycleSessionDTO = {
   id: string; mode: "CYCLE" | "AVULSO"; status: "ACTIVE" | "PAUSED" | "FINISHING" | "FINISHED" | "CANCELLED";
@@ -129,6 +129,8 @@ export class CycleService {
 
   async finish(userId: string, studyGuideId: string, id: string, version: number, input: { questions: number; correct: number; minutes?: number; notes?: string; activityType?: StudyActivityType; advanceCycle?: boolean; date?: Date }) {
     if (input.questions < 0 || input.correct > input.questions || input.correct < 0) throw new Error("Informe valores válidos para a atividade estudada.");
+    // Remote database round trips can exceed Prisma's default five seconds.
+    // Keep history, weights, reviews and cursor atomic, with a bounded budget.
     return prisma.$transaction(async (tx) => {
       const active = await tx.activeStudySession.findFirst({ where: { id, userId, studyGuideId } , include: { completedSession: true } });
       if (!active) throw new Error("Sessão não encontrada.");
@@ -147,8 +149,15 @@ export class CycleService {
       const progressSubjectIds = shouldAdvance
         ? (await tx.subject.findMany({ where: { userId, studyGuideId, disciplineId: active.disciplineId, active: true }, select: { id: true } })).map((subject) => subject.id)
         : [active.subjectId];
-      await lockSubjectsForProgress(tx, userId, studyGuideId, progressSubjectIds);
-      await this.updateProgress(tx, userId, studyGuideId, active.subjectId, input.questions, input.correct, wrong, shouldAdvance);
+      await lockSubjectsForProgress(tx, userId, studyGuideId, [...progressSubjectIds, active.subjectId]);
+      if (shouldAdvance) {
+        const subjects = await tx.subject.findMany({
+          where: { userId, studyGuideId, disciplineId: active.disciplineId, active: true },
+          select: { id: true, weight: true },
+        });
+        await advanceSubjectWeights(tx, userId, studyGuideId, subjects, active.subjectId);
+      }
+      // Derive totals once from history, including backdated sessions.
       await recalculateSubjectProgress(tx, userId, studyGuideId, [active.subjectId]);
       const reviewedAt = new Date();
       await tx.reviewSchedule.updateMany({
@@ -162,14 +171,7 @@ export class CycleService {
       if (shouldAdvance) await this.advanceCursor(tx, userId, studyGuideId, active.cycleEntryId!);
       await tx.activeStudySession.update({ where: { id }, data: { status: ActiveStudySessionStatus.FINISHED, completedAt: new Date(), accumulatedSeconds: Math.max(active.accumulatedSeconds, minutes * 60), pausedAt: null, version: { increment: 1 } } });
       return { sessionId: created.id, idempotent: false };
-    });
-  }
-
-  private async updateProgress(tx: Prisma.TransactionClient, userId: string, studyGuideId: string, subjectId: string, questions: number, correct: number, wrong: number, cycleMode: boolean) {
-    const chosen = await tx.subject.findUnique({ where: { id: subjectId }, include: { progress: true } }); if (!chosen) throw new Error("Assunto não encontrado.");
-    if (cycleMode) { const all = await tx.subject.findMany({ where: { userId, studyGuideId, disciplineId: chosen.disciplineId, active: true }, include: { progress: true } }); const next = advanceWeightedState(all.map(toEngine), subjectId); await Promise.all(next.map((item) => tx.subjectProgress.upsert({ where: { subjectId: item.id }, create: { userId, studyGuideId, subjectId: item.id, currentWeight: item.currentWeight }, update: { currentWeight: item.currentWeight } }))); }
-    const prior = chosen.progress; const total = (prior?.totalQuestions ?? 0) + questions; const hits = (prior?.correct ?? 0) + correct;
-    await tx.subjectProgress.upsert({ where: { subjectId }, create: { userId, studyGuideId, subjectId, passages: 1, totalQuestions: questions, correct, wrong, averagePercentage: questions ? correct / questions * 100 : 0, lastStudiedAt: new Date() }, update: { passages: { increment: 1 }, totalQuestions: total, correct: hits, wrong: (prior?.wrong ?? 0) + wrong, averagePercentage: total ? hits / total * 100 : 0, lastStudiedAt: new Date() } });
+    }, { timeout: 20_000 });
   }
 
   private async advanceCursor(tx: Prisma.TransactionClient, userId: string, studyGuideId: string, entryId: string) {

@@ -9,7 +9,7 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:e2e",
-    "test:unit": "tsx --test tests/backup.test.ts tests/base-import.test.ts tests/cycle-engine.test.ts tests/cycle-selection-and-homonyms.test.ts tests/cycle-validator.test.ts tests/daily-goals.test.ts tests/daily-import.test.ts tests/migration-baseline.test.ts tests/offline-active-session-queue.test.ts tests/offline-cache-isolation.test.ts tests/offline-structural-sync.test.ts tests/offline-synchronization.test.ts tests/pwa.test.ts tests/phase-five.test.ts tests/stabilization.test.ts tests/standalone-study-session.test.ts tests/study-timer.test.ts tests/subject-progress.test.ts tests/runtime-readiness.test.ts",
+    "test:unit": "tsx --test tests/backup.test.ts tests/base-import.test.ts tests/cycle-engine.test.ts tests/cycle-finish.test.ts tests/cycle-selection-and-homonyms.test.ts tests/cycle-validator.test.ts tests/daily-goals.test.ts tests/daily-import.test.ts tests/migration-baseline.test.ts tests/offline-active-session-queue.test.ts tests/offline-cache-isolation.test.ts tests/offline-structural-sync.test.ts tests/offline-synchronization.test.ts tests/pwa.test.ts tests/phase-five.test.ts tests/stabilization.test.ts tests/standalone-study-session.test.ts tests/study-timer.test.ts tests/subject-progress.test.ts tests/runtime-readiness.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test e2e/core-flows.spec.ts --grep \"rota protegida|login offline|tema escuro|manifesto\"",
     "prisma:generate": "prisma generate",

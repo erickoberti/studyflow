@@ -1,5 +1,36 @@
 import { Prisma } from "@prisma/client";
 
+// Call after locking the discipline's subjects in the enclosing transaction.
+// Group equal increments so saving does not issue one upsert per subject.
+export async function advanceSubjectWeights(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  studyGuideId: string,
+  subjects: Array<{ id: string; weight: number }>,
+  selectedId: string,
+) {
+  if (!subjects.length) return;
+  await tx.subjectProgress.createMany({
+    data: subjects.map((subject) => ({ userId, studyGuideId, subjectId: subject.id })),
+    skipDuplicates: true,
+  });
+  const totalWeight = subjects.reduce((sum, subject) => sum + subject.weight, 0);
+  const groups = new Map<number, string[]>();
+  for (const subject of subjects) {
+    const increment = subject.weight - (subject.id === selectedId ? totalWeight : 0);
+    const group = groups.get(increment) ?? [];
+    group.push(subject.id);
+    groups.set(increment, group);
+  }
+  for (const [increment, subjectIds] of groups) {
+    if (increment === 0) continue;
+    await tx.subjectProgress.updateMany({
+      where: { userId, studyGuideId, subjectId: { in: subjectIds } },
+      data: { currentWeight: { increment } },
+    });
+  }
+}
+
 export async function lockSubjectsForProgress(
   tx: Prisma.TransactionClient,
   userId: string,
