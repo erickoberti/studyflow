@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureStudyGuideSettings, upsertStudyGuideSettings } from "@/lib/study-guide-settings";
 import { structuralOperationKeys, type StructuralOperationResult } from "@/lib/offline/structural-sync-result";
+import { createStudyDiscipline, setStudyDisciplineActive } from "@/lib/discipline-setup";
 
 type PendingOperation = {
   id: string;
@@ -170,8 +171,9 @@ async function executeStructuralOperation(userId: string, operation: PendingOper
     let alreadyProcessed = Boolean(discipline);
     if (!discipline) {
       try {
-        discipline = await prisma.discipline.create({
-          data: { id: clientId, userId, studyGuideId: guideId, name: asString(input.name), category: asNullableString(input.category), sortOrder: input.sortOrder == null ? null : asNumber(input.sortOrder), active: true },
+        discipline = await createStudyDiscipline(userId, guideId, {
+          id: clientId, name: asString(input.name), category: asNullableString(input.category),
+          sortOrder: input.sortOrder == null ? null : asNumber(input.sortOrder),
         });
       } catch (error) {
         if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
@@ -187,11 +189,12 @@ async function executeStructuralOperation(userId: string, operation: PendingOper
 
   if (operation.entity === "discipline" && operation.action === "update") {
     const id = resolveId(input.id);
-    const updated = await prisma.discipline.updateMany({
-      where: { id, userId },
-      data: { name: asString(input.name), category: asNullableString(input.category), sortOrder: input.sortOrder == null ? null : asNumber(input.sortOrder), active: Boolean(input.active) },
+    const discipline = await prisma.discipline.findFirst({ where: { id, userId }, select: { studyGuideId: true } });
+    if (!discipline?.studyGuideId) throw new RejectedOperationError("Disciplina não encontrada nesta conta.");
+    const updated = await setStudyDisciplineActive(userId, discipline.studyGuideId, id, Boolean(input.active), {
+      name: asString(input.name), category: asNullableString(input.category), sortOrder: input.sortOrder == null ? null : asNumber(input.sortOrder),
     });
-    if (!updated.count) throw new RejectedOperationError("Disciplina não encontrada nesta conta.");
+    if (!updated) throw new RejectedOperationError("Disciplina não encontrada nesta conta.");
     return { status: "completed" };
   }
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import { Check, FolderKanban, PencilLine, Plus, Rows3, Trash2, X } from "lucide-react";
 import {
   createGuideDisciplineAction,
@@ -9,7 +11,7 @@ import {
   deleteStudyGuideAction,
   resetStudyGuideAction,
   selectStudyGuideAction,
-  toggleGuideDisciplineAction,
+  setGuideDisciplineActiveAction,
   updateGuideDisciplineAction,
   updateStudyGuideAction,
 } from "@/app/actions";
@@ -31,6 +33,23 @@ type GuideItem = {
   description: string | null;
   disciplines: GuideDiscipline[];
 };
+
+function DisciplineActiveButton({ discipline }: { discipline: GuideDiscipline }) {
+  const { pending } = useFormStatus();
+  const label = discipline.active ? "Pausar" : "Ativar";
+  return (
+    <button
+      type="submit"
+      formAction={setGuideDisciplineActiveAction}
+      disabled={pending}
+      aria-label={`${label} ${discipline.name}`}
+      title={discipline.active ? "Retirar esta matéria do ciclo temporariamente, preservando o histórico." : "Incluir esta matéria nos estudos do ciclo."}
+      className="min-h-11 rounded-md border border-primary/20 px-3 py-1 text-xs font-semibold text-primary disabled:cursor-wait disabled:opacity-60"
+    >
+      {pending ? "Salvando…" : label}
+    </button>
+  );
+}
 
 function GuidePreview({
   name,
@@ -517,8 +536,8 @@ export function GuideManager({
                     <Rows3 className="h-4 w-4" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold leading-none text-slate-900 dark:text-white">Assuntos / matérias</h2>
-                    <p className="mt-1 text-xs text-textSecondary">Gerencie as disciplinas vinculadas a este guia.</p>
+                    <h2 className="text-lg font-semibold leading-none text-slate-900 dark:text-white">Disciplinas do guia</h2>
+                    <p className="mt-1 text-xs text-textSecondary">Cada matéria entra no ciclo com Estudo geral. Detalhar os assuntos é opcional.</p>
                   </div>
                 </div>
 
@@ -549,12 +568,14 @@ export function GuideManager({
                       className="grid grid-cols-12 items-center gap-3 rounded-xl border border-slate-200 bg-surface p-3 transition hover:border-primary/30 hover:shadow-sm dark:border-white/10 dark:bg-elevated"
                     >
                       <input type="hidden" name="disciplineId" value={discipline.id} />
+                      <input type="hidden" name="active" value={String(!discipline.active)} />
                       <div className="col-span-12 lg:col-span-3">
                         <input
                           name="name"
                           defaultValue={discipline.name}
                           className="w-full border-none bg-transparent p-0 text-sm font-semibold text-slate-700 outline-none focus:ring-0 dark:text-white"
                         />
+                        <p className="mt-1 text-xs text-textSecondary">{discipline.active ? "Matéria ativa" : "Matéria pausada"}</p>
                       </div>
 
                       <div className="col-span-12 lg:col-span-3">
@@ -568,32 +589,21 @@ export function GuideManager({
 
                       <div className="col-span-12 text-center lg:col-span-2">
                         {discipline.subjectCount > 0 ? (
-                          <span className="inline-flex items-center rounded-md border border-amber-100 bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
-                            {discipline.subjectCount} matérias vinculadas
-                          </span>
+                          <Link href={`/base?tab=assuntos&novo=1&discipline=${discipline.id}`} className="inline-flex min-h-11 items-center rounded-md border border-primary/20 px-2 py-1 text-xs font-medium text-primary">
+                            Detalhar assuntos ({discipline.subjectCount})
+                          </Link>
                         ) : (
-                          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-textSecondary dark:bg-surface/10 dark:text-textSecondary">
-                            Sem vinculos
-                          </span>
+                          <Link href={`/base?tab=assuntos&novo=1&discipline=${discipline.id}`} className="inline-flex min-h-11 items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                            Adicionar assuntos
+                          </Link>
                         )}
                       </div>
 
-                      <div className="col-span-12 flex items-center justify-end gap-2 lg:col-span-4">
+                      <div className="col-span-12 flex flex-wrap items-center justify-end gap-2 lg:col-span-4">
                         <button className="rounded-md bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
                           Salvar
                         </button>
-                        <button
-                          formAction={toggleGuideDisciplineAction}
-                          name="disciplineId"
-                          value={discipline.id}
-                          className={`rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                            discipline.active
-                              ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"
-                              : "bg-slate-100 text-textSecondary dark:bg-surface/10 dark:text-textSecondary"
-                          }`}
-                        >
-                          {discipline.active ? "Ativa" : "Inativa"}
-                        </button>
+                        <DisciplineActiveButton discipline={discipline} />
                         <button
                           type="submit"
                           formAction={deleteGuideDisciplineAction}

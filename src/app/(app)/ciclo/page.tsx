@@ -12,6 +12,7 @@ import {
 } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { GuideSetupNotice } from "@/components/guide-setup-notice";
 import { prisma } from "@/lib/prisma";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
@@ -134,7 +135,8 @@ export default async function CicloPage({
   const visibleEntries=params?.todas==="1"?displayEntries:displayEntries.slice(nearbyStart,nearbyStart+5);
   return (
     <div className={`${shell.screen} ${styles.screen}`}>
-      <header className={styles.header}><div className={styles.context}><span>● Meu ciclo de estudos · volta {cycleState?.roundNumber??1} · Posição {currentOrder??'—'} de {activeEntries.length}</span><small>Planejamento ativo: <b>{guide.name}</b></small></div><div className={styles.heading}><div><h1>Sequência &amp; Ritmo do Ciclo</h1><p>Continue pela ordem do seu ciclo, com os pesos e as metas definidos para cada matéria.</p></div><section aria-label="Métricas do ciclo" className={styles.metrics}><article><Clock3 size={20}/><div><small>Tempo total</small><b>{(totalMinutes/60).toFixed(1)}h totais</b></div></article><article><Target size={20}/><div><small>Meta semanal</small><b>{weeklyProgress.toFixed(0)}%</b><span>({weeklyQuestions}/{weeklyGoal} q.)</span></div></article><article><RefreshCcw size={20}/><div><small>Status</small><b>Volta {cycleState?.roundNumber??1} em curso</b></div></article></section></div></header>      {showAdd ? (
+      <GuideSetupNotice name={guide.name} {...guide._count} />
+      <header className={styles.header}><div className={styles.context}><span>● Meu ciclo de estudos · volta {cycleState?.roundNumber??1} · Posição {currentOrder??'—'} de {activeEntries.length}</span><small>Planejamento ativo: <b>{guide.name}</b></small></div><div className={styles.heading}><div><h1>Sequência &amp; Ritmo do Ciclo</h1><p>Continue pela ordem do seu ciclo, com os pesos e as metas definidos para cada matéria.</p></div><section aria-label="Métricas do ciclo" className={styles.metrics}><article><Clock3 size={20}/><div><small>Tempo total</small><b>{(totalMinutes/60).toFixed(1)}h totais</b></div></article><article><Target size={20}/><div><small>Meta semanal</small><b>{weeklyProgress.toFixed(0)}%</b><span>({weeklyQuestions}/{weeklyGoal} q.)</span></div></article><article><RefreshCcw size={20}/><div><small>Status</small><b>{currentCycle ? `Volta ${cycleState?.roundNumber ?? 1} em curso` : "Aguardando configuração"}</b></div></article></section></div></header>      {showAdd && subjects.length > 0 ? (
         <section className="rounded-xl border border-slate-200 bg-surface p-5 dark:border-white/5 dark:bg-panelDark">
           <form action={addCycleEntry} className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="flex-1 text-sm font-semibold text-slate-700 dark:text-textSecondary">
@@ -277,10 +279,10 @@ export default async function CicloPage({
           <div className="p-8 text-center">
             <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary"><BookOpen size={21} /></span>
             <h4 className="mt-4 text-lg font-semibold">Seu ciclo ainda está vazio</h4>
-            <p className="mx-auto mt-1 max-w-md text-sm text-textSecondary">Importe sua planilha para criar matérias, assuntos e a ordem do ciclo de uma vez.</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-textSecondary">Adicione matérias para começar ou monte o ciclo com as que já estão salvas em Guias. Detalhar assuntos é opcional.</p>
             <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
-              <Link href="/base" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">Importar planilha</Link>
-              <Link href="/ciclo?novo=1" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold dark:border-white/10">Adicionar manualmente</Link>
+              <Link href="/base?import=1" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">Importar planilha</Link>
+              <Link href={guide._count.disciplines ? "/guias" : "/base?tab=disciplinas&novo=1"} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold dark:border-white/10">{guide._count.disciplines ? "Montar ciclo com minhas matérias" : "Adicionar matéria"}</Link>
             </div>
           </div>
         )}

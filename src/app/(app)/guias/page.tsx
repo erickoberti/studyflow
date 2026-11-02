@@ -1,6 +1,7 @@
 import shell from "@/components/official-shell.module.css";
 import visual from "@/components/resource-screens.module.css";
 import { GuideManager } from "@/components/guide-manager";
+import { GuideSetupNotice } from "@/components/guide-setup-notice";
 import { requireUser } from "@/lib/auth";
 import { getStudyGuidesWithDisciplines, STUDY_GUIDE_COLORS, STUDY_GUIDE_ICONS } from "@/lib/study-guide";
 
@@ -24,11 +25,20 @@ export default async function GuiasPage() {
   }));
 
   return (
-    <div className={`${shell.screen} ${visual.page} ${visual.guides}`}><GuideManager
-      guides={guides}
-      activeGuideId={state.activeGuide?.id ?? ""}
-      iconOptions={STUDY_GUIDE_ICONS}
-      colorOptions={STUDY_GUIDE_COLORS}
-    /></div>
+    <div className={`${shell.screen} ${visual.page} ${visual.guides}`}>
+      {state.activeGuide ? <GuideSetupNotice
+        name={state.activeGuide.name}
+        {...state.activeGuide._count}
+        studyGuideId={state.activeGuide.id}
+        activeDisciplineNames={state.guides.find((guide) => guide.id === state.activeGuide?.id)?.disciplines.filter((discipline) => discipline.active).map((discipline) => discipline.name) ?? []}
+      /> : null}
+      <GuideManager
+        key={state.activeGuide?.id ?? "no-guide"}
+        guides={guides}
+        activeGuideId={state.activeGuide?.id ?? ""}
+        iconOptions={STUDY_GUIDE_ICONS}
+        colorOptions={STUDY_GUIDE_COLORS}
+      />
+    </div>
   );
 }

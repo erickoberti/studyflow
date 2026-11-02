@@ -1,5 +1,6 @@
 "use client";
 
+import { GENERAL_STUDY_SUBJECT_NAME, generalStudySubjectId, initialCycleEntryId } from "@/lib/study-defaults";
 import type {
   OfflineAccessSession,
   OfflineCycleEntry,
@@ -570,6 +571,29 @@ export function deleteOfflineGuide(guideId: string) {
   );
 }
 
+function ensureOfflineDisciplineStudy(snapshot: OfflineSnapshot, disciplineId: string): OfflineSnapshot {
+  const discipline = snapshot.disciplines.find((item) => item.id === disciplineId);
+  if (!discipline?.active) return snapshot;
+  const subjects = snapshot.subjects.filter((item) => item.guideId === discipline.guideId && item.disciplineId === disciplineId);
+  let subject = subjects.find((item) => item.active);
+  if (subjects.length && !subject) return snapshot;
+  const orderIndex = Math.max(0, ...snapshot.cycleEntries.filter((entry) => entry.guideId === discipline.guideId).map((entry) => entry.orderIndex)) + 1;
+  let next = snapshot;
+  if (!subject) {
+    subject = {
+      id: generalStudySubjectId(disciplineId), serverId: null, guideId: discipline.guideId, disciplineId,
+      name: GENERAL_STUDY_SUBJECT_NAME, weight: 1, notes: null, tecReference: null, active: true, orderIndex,
+    };
+    next = { ...snapshot, subjects: [...snapshot.subjects, subject] };
+  }
+  const existing = next.cycleEntries.some((entry) => entry.guideId === discipline.guideId && next.subjects.some((item) => item.id === entry.subjectId && item.disciplineId === disciplineId));
+  if (existing) return next;
+  return { ...next, cycleEntries: [...next.cycleEntries, {
+    id: initialCycleEntryId(disciplineId), serverId: null, guideId: discipline.guideId,
+    subjectId: subject.id, orderIndex, active: true,
+  }] };
+}
+
 export function createOfflineDiscipline(input: {
   guideId: string;
   name: string;
@@ -590,10 +614,10 @@ export function createOfflineDiscipline(input: {
 
   replaceSnapshot(
     withOperation(
-      {
+      ensureOfflineDisciplineStudy({
         ...snapshot,
         disciplines: [...snapshot.disciplines, discipline],
-      },
+      }, disciplineId),
       nextOperation("discipline", "create", {
         clientId: disciplineId,
         ...input,
@@ -607,19 +631,14 @@ export function updateOfflineDiscipline(
   input: { name: string; category: string | null; sortOrder: number | null; active: boolean },
 ) {
   const snapshot = getOfflineSnapshot();
+  const reactivating = input.active && snapshot.disciplines.find((discipline) => discipline.id === disciplineId)?.active === false;
+  const next = {
+    ...snapshot,
+    disciplines: snapshot.disciplines.map((discipline) => discipline.id === disciplineId ? { ...discipline, ...input } : discipline),
+  };
   replaceSnapshot(
     withOperation(
-      {
-        ...snapshot,
-        disciplines: snapshot.disciplines.map((discipline) =>
-          discipline.id === disciplineId
-            ? {
-                ...discipline,
-                ...input,
-              }
-            : discipline,
-        ),
-      },
+      reactivating ? ensureOfflineDisciplineStudy(next, disciplineId) : next,
       nextOperation("discipline", "update", { id: disciplineId, ...input }),
     ),
   );

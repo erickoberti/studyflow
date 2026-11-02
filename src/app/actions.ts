@@ -16,6 +16,7 @@ import {
   STUDY_GUIDE_ICONS,
 } from "@/lib/study-guide";
 import { ensureStudyGuideSettings, upsertStudyGuideSettings } from "@/lib/study-guide-settings";
+import { buildStudyGuideCycle, createStudyDiscipline, setStudyDisciplineActive } from "@/lib/discipline-setup";
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -74,56 +75,13 @@ export async function createDiscipline(formData: FormData) {
   const sortOrder = sortOrderRaw ? Number(sortOrderRaw) : null;
   if (!name) return;
 
-  const existing = await prisma.discipline.findFirst({
-    where: { userId: user.id, studyGuideId: guide.id, name },
-    select: { id: true },
-  });
-
-  if (existing) {
-    await prisma.discipline.update({
-      where: { id: existing.id },
-      data: {
-        sortOrder: Number.isFinite(sortOrder) ? sortOrder : null,
-        active: true,
-      },
-    });
-  } else {
-    try {
-      await prisma.discipline.create({
-        data: {
-          userId: user.id,
-          studyGuideId: guide.id,
-          name,
-          sortOrder: Number.isFinite(sortOrder) ? sortOrder : null,
-          category: null,
-        },
-      });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        const duplicated = await prisma.discipline.findFirst({
-          where: { userId: user.id, studyGuideId: guide.id, name },
-          select: { id: true },
-        });
-
-        if (duplicated) {
-          await prisma.discipline.update({
-            where: { id: duplicated.id },
-            data: {
-              sortOrder: Number.isFinite(sortOrder) ? sortOrder : null,
-              active: true,
-            },
-          });
-        }
-      } else {
-        throw error;
-      }
-    }
-  }
+  await createStudyDiscipline(user.id, guide.id, { name, sortOrder: Number.isFinite(sortOrder) ? sortOrder : null });
 
   revalidatePath("/base");
+  revalidatePath("/guias");
+  revalidatePath("/dashboard");
+  revalidatePath("/ciclo");
+  revalidatePath("/registro");
 }
 
 export async function updateDiscipline(formData: FormData) {
@@ -337,6 +295,8 @@ export async function createSubject(formData: FormData) {
   revalidatePath("/base");
   revalidatePath("/ciclo");
   revalidatePath("/registro");
+  revalidatePath("/dashboard");
+  revalidatePath("/guias");
 
   if (redirectTo) {
     redirect(redirectTo);
@@ -857,6 +817,7 @@ export async function createStudyGuideAction(formData: FormData) {
     data: { activeStudyGuideId: guide.id },
   });
 
+  revalidatePath("/", "layout");
   redirect("/guias");
 }
 
@@ -868,6 +829,7 @@ export async function selectStudyGuideAction(formData: FormData) {
   const ok = await setActiveStudyGuide(user.id, studyGuideId);
   if (!ok) return;
 
+  revalidatePath("/", "layout");
   redirect("/guias");
 }
 
@@ -987,19 +949,22 @@ export async function createGuideDisciplineAction(formData: FormData) {
 
   if (!name) return;
 
-  await prisma.discipline.create({
-    data: {
-      userId: user.id,
-      studyGuideId: guide.id,
-      name,
-      sortOrder: null,
-      category,
-      active: true,
-    },
-  });
+  await createStudyDiscipline(user.id, guide.id, { name, sortOrder: null, category });
 
   revalidatePath("/guias");
   revalidatePath("/base");
+  revalidatePath("/dashboard");
+  revalidatePath("/ciclo");
+  revalidatePath("/registro");
+}
+
+export async function buildStudyGuideCycleAction(formData: FormData) {
+  const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
+  if (formData.get("studyGuideId") !== guide.id) return;
+  await buildStudyGuideCycle(user.id, guide.id);
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
 }
 
 export async function updateGuideDisciplineAction(formData: FormData) {
@@ -1020,27 +985,19 @@ export async function updateGuideDisciplineAction(formData: FormData) {
   revalidatePath("/base");
 }
 
-export async function toggleGuideDisciplineAction(formData: FormData) {
+export async function setGuideDisciplineActiveAction(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
   const disciplineId = String(formData.get("disciplineId") ?? "");
-  if (!disciplineId) return;
-
-  const discipline = await prisma.discipline.findFirst({
-    where: { id: disciplineId, userId: user.id, studyGuideId: guide.id },
-    select: { id: true, active: true },
-  });
-  if (!discipline) return;
-
-  await prisma.discipline.update({
-    where: { id: discipline.id },
-    data: { active: !discipline.active },
-  });
+  const active = formData.get("active");
+  if (!disciplineId || (active !== "true" && active !== "false")) return;
+  await setStudyDisciplineActive(user.id, guide.id, disciplineId, active === "true");
 
   revalidatePath("/guias");
   revalidatePath("/base");
   revalidatePath("/registro");
   revalidatePath("/ciclo");
+  revalidatePath("/dashboard");
 }
 
 export async function deleteGuideDisciplineAction(formData: FormData) {

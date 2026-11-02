@@ -1,5 +1,6 @@
 import shell from "@/components/official-shell.module.css";
 import { DisciplineCatalog } from "@/components/discipline-catalog";
+import { GuideSetupNotice } from "@/components/guide-setup-notice";
 import Link from "next/link";
 import {
   createDiscipline,
@@ -97,6 +98,7 @@ export default async function BasePage({
 
   return (
     <div className={`${shell.screen} space-y-6 pb-16 lg:pb-0`}>
+      <GuideSetupNotice name={guide.name} {...guide._count} />
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="mb-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">Cadastro de matérias &amp; edital · {disciplines.length} disciplinas · {subjects.length} tópicos mapeados</p><h1 className="text-3xl font-semibold text-slate-900 dark:text-white">Disciplinas & Conteúdo Programático</h1>
@@ -202,19 +204,19 @@ export default async function BasePage({
                     <select
                       name="disciplineId"
                       required
-                      defaultValue={editingSubject?.disciplineId ?? params?.discipline ?? disciplines[0]?.id}
+                      defaultValue={editingSubject?.disciplineId ?? params?.discipline ?? disciplines.find((discipline) => discipline.active)?.id ?? disciplines[0]?.id}
                       className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                     >
                       {disciplines.map((discipline) => (
                         <option key={discipline.id} value={discipline.id}>
-                          {discipline.name}
+                          {discipline.name}{discipline.active ? "" : " (inativa)"}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
-                      Ordem
+                      Ordem (opcional)
                     </label>
                     <input
                       name="orderIndex"
@@ -239,6 +241,7 @@ export default async function BasePage({
                     />
                   </div>
                 </div>
+                <p className="text-xs text-textSecondary">A matéria já entra no ciclo ao ser cadastrada. Novos assuntos participam dos estudos dessa matéria. Preencha a ordem apenas para acrescentar ou mover uma posição do ciclo.</p>
                 <div className="grid gap-3 lg:grid-cols-[320px_1fr_auto]">
                   <div className="space-y-1">
                     <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
