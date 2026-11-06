@@ -45,7 +45,7 @@ export function getOfflineNextSuggestion(snapshot: OfflineSnapshot) {
   const entries = activeEntries(snapshot);
   const sessions = activeSessions(snapshot.sessions).filter((session) => session.scope === "CYCLE" || (!session.scope && !!session.cycleEntryId));
 
-  if (!entries.length) {
+  if (!entries.length || entries[0].programFinished) {
     return { last: null, next: null };
   }
 

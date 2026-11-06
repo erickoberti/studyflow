@@ -62,6 +62,7 @@ export async function POST(request: Request) {
   }
 
   const form = await request.formData();
+  if (await prisma.cycleProgram.count({ where: { userId: session.user.id, studyGuideId: guide.id } })) return NextResponse.json({ message: "Este guia tem 16 posições programadas. Edite a matriz do ciclo ou importe em outro guia." }, { status: 409 });
   const file = form.get("file") as File | null;
   if (!file) {
     return NextResponse.json({ message: "Arquivo ausente" }, { status: 400 });

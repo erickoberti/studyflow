@@ -21,6 +21,7 @@ function database(t: TestContext, initial: { disciplines?: Discipline[]; subject
   let locked = false;
   const scoped = <T extends { userId: string; studyGuideId: string }>(row: T, where: { userId: string; studyGuideId: string }) => row.userId === where.userId && row.studyGuideId === where.studyGuideId;
   const tx = {
+    cycleProgram: { count: async () => 0 },
     $queryRaw: async (query: { sql: string; values: string[] }) => {
       assert.match(query.sql, /FOR UPDATE/);
       locked = true;

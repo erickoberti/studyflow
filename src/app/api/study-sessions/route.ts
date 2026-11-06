@@ -196,6 +196,7 @@ export async function PUT(request: Request) {
   if (existing.scope === "CYCLE" && !cycleEntryId) return NextResponse.json({ message: "O registro do ciclo exige uma posição." }, { status: 400 });
 
   const selectedSubjectId = subjectId ?? existing.subjectId;
+  if (existing.programItemId && (selectedSubjectId !== existing.subjectId || cycleEntryId !== existing.cycleEntryId)) return NextResponse.json({ message: "O assunto e a posição originais deste estudo programado são preservados. Edite a programação na matriz." }, { status: 409 });
   if (existing.scope === "SUBJECT" && !selectedSubjectId) return NextResponse.json({ message: "O registro avulso exige um assunto válido." }, { status: 400 });
   if (selectedSubjectId && !(await prisma.subject.count({ where: { id: selectedSubjectId, userId: session.user.id, studyGuideId: guide.id } }))) {
     return NextResponse.json({ message: "Assunto não pertence ao guia ativo." }, { status: 400 });
@@ -249,6 +250,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ message: "Registro não encontrado" }, { status: 404 });
   }
 
+  if (await prisma.cycleProgramCompletion.count({ where: { sourceSessionId: existing.id } })) return NextResponse.json({ message: "Este registro comprova uma posição concluída do ciclo programado e foi preservado." }, { status: 409 });
   await prisma.$transaction(async (tx) => {
     await tx.studySession.delete({ where: { id: existing.id } });
     await recalculateSubjectProgress(tx, session.user.id, guide.id, [existing.subjectId ?? ""]);

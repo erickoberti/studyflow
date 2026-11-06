@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getActiveStudyGuideForUser } from "@/lib/study-guide";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 import { cycleService } from "@/lib/cycle-service";
+import { getCycleProgram } from "@/lib/programmed-cycle-service";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -58,7 +59,9 @@ export async function GET() {
     prisma.studyGuideCycleState.findUnique({ where: { studyGuideId: activeGuide.id }, select: { currentOrderIndex: true } }),
   ]);
   const cycleSuggestions = cycleEntries.length ? await cycleService.preview(user.id, activeGuide.id, cycleEntries.length) : [];
-  const suggestedSubjectByEntry = new Map(cycleSuggestions.map((item) => [item.entryId, item.subject.id]));
+  const program = await getCycleProgram(user.id, activeGuide.id);
+  const programItems = new Map(program?.items.filter(item => item.roundNumber === program.currentRound).map(item => [item.entryId, item]) ?? []);
+  const suggestedSubjectByEntry = new Map(cycleSuggestions.filter(item => !program || item.roundNumber === program.currentRound).map((item) => [item.entryId, item.subject.id]));
 
   return NextResponse.json({
     user: {
@@ -98,7 +101,8 @@ export async function GET() {
       id: entry.id,
       serverId: entry.id,
       guideId: entry.studyGuideId ?? activeGuide.id,
-      subjectId: suggestedSubjectByEntry.get(entry.id) ?? entry.subjectId ?? "",
+      subjectId: programItems.get(entry.id)?.subjectId ?? suggestedSubjectByEntry.get(entry.id) ?? entry.subjectId ?? "",
+      ...(program ? { programItemId: programItems.get(entry.id)?.id, programRound: program.currentRound, programTotalRounds: program.totalRounds, programCompleted: Boolean(programItems.get(entry.id)?.completion), programFinished: program.status === "COMPLETED" } : {}),
       orderIndex: entry.orderIndex,
       active: entry.active,
     })),

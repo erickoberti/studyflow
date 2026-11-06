@@ -42,8 +42,10 @@ async function executeStandaloneOperation(tx: Prisma.TransactionClient, userId: 
 async function executeOperation(userId: string, operation: z.infer<typeof operationSchema>) {
   const payload = operation.payload;
   if (operation.type === "START_SESSION") {
+    const program = payload.mode === "CYCLE" ? await prisma.cycleProgram.findFirst({ where: { userId, studyGuideId: operation.studyGuideId }, select: { id: true } }) : null;
+    if (program && typeof payload.programItemId !== "string") throw new CycleConflictError("Este estudo offline é anterior à programação. Confira seus resultados antes de atribuí-lo a uma volta.", "PROGRAM_ITEM_CHANGED");
     if (!payload.disciplineId || !payload.subjectId) throw new Error("Disciplina e assunto são obrigatórios para iniciar a sessão.");
-    const session = await cycleService.start(userId, operation.studyGuideId, { mode: payload.mode, disciplineId: payload.disciplineId, subjectId: payload.subjectId, operationId: operation.operationId, timerRunning: payload.status !== "PAUSED" });
+    const session = await cycleService.start(userId, operation.studyGuideId, { mode: payload.mode, disciplineId: payload.disciplineId, subjectId: payload.subjectId, operationId: operation.operationId, timerRunning: payload.status !== "PAUSED", expectedProgramItemId: typeof payload.programItemId === "string" ? payload.programItemId : undefined });
     return { operationId: operation.operationId, session };
   }
   if (!payload.serverSessionId || payload.serverVersion === null) throw new CycleConflictError("A sessão ainda não existe no servidor.", "SESSION_NOT_SYNCHRONIZED");

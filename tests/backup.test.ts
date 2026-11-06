@@ -18,7 +18,7 @@ test("backup cobre os modelos de dados da conta sem autenticação nem ledger", 
   assert.ok(!BACKUP_MODELS.some((name) => ["User", "PasswordResetToken", "OfflineOperation"].includes(name)));
   assert.ok(!Object.keys(backupSelect("StudyGuide")).includes("user"));
   const owned = Prisma.dmmf.datamodel.models.filter((model) => model.fields.some((field) => field.name === "userId") && !["PasswordResetToken", "OfflineOperation"].includes(model.name)).map((model) => model.name).sort();
-  assert.deepEqual([...BACKUP_MODELS].filter((name) => name !== "MockExamDisciplineResult").sort(), owned);
+  assert.deepEqual([...BACKUP_MODELS].filter((name) => !["MockExamDisciplineResult", "CycleProgramItem", "CycleProgramCompletion"].includes(name)).sort(), owned);
 });
 
 test("backup vazio versionado é válido e formatos antigos ou incompletos são recusados", () => {
@@ -46,4 +46,16 @@ test("backup recusa campos inesperados, referências quebradas e datas inválida
   const restored = validateBackup(backup, "user-1");
   assert.deepEqual(restored.activeStudyGuideId, "guide-1");
   assert.ok(restoreRows(restored.data, "StudyGuide")[0].createdAt instanceof Date);
+});
+
+test("backup anterior sem programação continua aceito sem criar sessões ou posições", () => {
+  const backup = emptyBackup();
+  delete backup.data.CycleProgram;
+  delete backup.data.CycleProgramItem;
+  delete backup.data.CycleProgramCompletion;
+  const data = validateBackup(backup, "user-1").data;
+  assert.deepEqual(data.CycleProgram, []);
+  assert.deepEqual(data.CycleProgramItem, []);
+  assert.deepEqual(data.StudySession, []);
+  assert.deepEqual(data.CycleEntry, []);
 });

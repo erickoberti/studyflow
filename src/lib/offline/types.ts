@@ -50,6 +50,11 @@ export type OfflineCycleEntry = {
   subjectId: string;
   orderIndex: number;
   active: boolean;
+  programItemId?: string;
+  programRound?: number;
+  programTotalRounds?: number;
+  programCompleted?: boolean;
+  programFinished?: boolean;
 };
 
 export type OfflineSessionSyncStatus =

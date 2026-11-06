@@ -49,6 +49,7 @@ model User {
   manualDailyGoals    ManualDailyGoal[]
   manualGoalChecks    ManualDailyGoalCheck[]
   dailyReflections    DailyReflection[]
+  cyclePrograms       CycleProgram[]
 }
 
 model StudyGuide {
@@ -78,6 +79,7 @@ model StudyGuide {
   manualDailyGoals    ManualDailyGoal[]
   manualGoalChecks    ManualDailyGoalCheck[]
   dailyReflections    DailyReflection[]
+  cycleProgram        CycleProgram?
 
   @@unique([userId, name])
   @@index([userId])
@@ -112,6 +114,7 @@ model Discipline {
   cycleEntries        CycleEntry[]
   activeStudySessions ActiveStudySession[]
   mockExamResults     MockExamDisciplineResult[]
+  programmedItems     CycleProgramItem[]
 
   @@unique([userId, studyGuideId, name])
   @@index([userId])
@@ -141,6 +144,7 @@ model Subject {
   activeStudySessions ActiveStudySession[]
   reviews             ReviewSchedule[]
   syllabusProgress    SyllabusProgress?
+  programmedItems     CycleProgramItem[]
 
   @@unique([userId, studyGuideId, disciplineId, name])
   @@index([userId])
@@ -164,6 +168,7 @@ model CycleEntry {
   discipline          Discipline?          @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
   sessions            StudySession[]
   activeStudySessions ActiveStudySession[]
+  programmedItems     CycleProgramItem[]
 
   @@unique([userId, studyGuideId, orderIndex])
   @@index([userId])
@@ -190,6 +195,10 @@ model StudySession {
   activityType        StudyActivityType   @default(QUESTIONS)
   notes                String?
   activeStudySessionId String?             @unique
+  programItemId        String?
+  subjectNameSnapshot  String?
+  disciplineNameSnapshot String?
+  tecReferenceSnapshot String?
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -198,6 +207,8 @@ model StudySession {
   subject              Subject?            @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   activeStudySession   ActiveStudySession? @relation("CompletedActiveStudySession", fields: [activeStudySessionId], references: [id], onDelete: SetNull)
   reviews              ReviewSchedule[]
+  programItem          CycleProgramItem? @relation(fields: [programItemId], references: [id], onDelete: NoAction)
+  programCompletion    CycleProgramCompletion?
 
   @@index([userId])
   @@index([studyGuideId])
@@ -279,6 +290,7 @@ model ActiveStudySession {
   cycleEntryId       String?
   disciplineId       String
   subjectId          String
+  programItemId      String?
   mode               StudySessionMode
   status             ActiveStudySessionStatus @default(ACTIVE)
   startedAt          DateTime                 @default(now())
@@ -295,9 +307,61 @@ model ActiveStudySession {
   discipline         Discipline               @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
   subject            Subject                  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   completedSession   StudySession?            @relation("CompletedActiveStudySession")
+  programItem        CycleProgramItem? @relation(fields: [programItemId], references: [id], onDelete: NoAction)
 
   @@index([userId, studyGuideId, status])
   @@index([studyGuideId])
+}
+
+// Opt-in programming. Existing positions, subjects, sessions and cursor are not rewritten.
+model CycleProgram {
+  id               String @id @default(cuid())
+  userId           String
+  studyGuideId     String @unique
+  currentRound     Int @default(1)
+  totalRounds      Int @default(4)
+  initialRound     Int
+  initialPosition  Int
+  status           String @default("ACTIVE")
+  version          Int @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyGuide       StudyGuide @relation(fields: [studyGuideId], references: [id], onDelete: Cascade)
+  items            CycleProgramItem[]
+  @@index([userId])
+}
+
+model CycleProgramItem {
+  id               String @id @default(cuid())
+  programId        String
+  entryId          String
+  roundNumber      Int
+  disciplineId     String
+  subjectId        String
+  questionGoal     Int
+  tecDiscipline    String?
+  tecTopic         String?
+  tecUrl           String?
+  tecStatus        String @default("SUGGESTED")
+  program          CycleProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  entry            CycleEntry @relation(fields: [entryId], references: [id], onDelete: NoAction)
+  discipline       Discipline @relation(fields: [disciplineId], references: [id], onDelete: NoAction)
+  subject          Subject @relation(fields: [subjectId], references: [id], onDelete: NoAction)
+  activeSessions   ActiveStudySession[]
+  sessions         StudySession[]
+  completion       CycleProgramCompletion?
+  @@unique([programId, entryId, roundNumber])
+  @@index([subjectId])
+}
+
+model CycleProgramCompletion {
+  id               String @id @default(cuid())
+  itemId           String @unique
+  sourceSessionId  String @unique
+  completedAt      DateTime @default(now())
+  item             CycleProgramItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  sourceSession    StudySession @relation(fields: [sourceSessionId], references: [id], onDelete: NoAction)
 }
 
 model OfflineOperation {

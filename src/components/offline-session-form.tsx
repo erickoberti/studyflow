@@ -55,7 +55,7 @@ export function OfflineSessionForm() {
       } else {
         const entry = suggestion; const discipline = entry?.subject.discipline; const subject = entry?.subject;
         if (!entry?.serverId || !discipline?.serverId || !subject?.serverId) throw new Error("A sugestão atual precisa estar sincronizada antes do uso offline.");
-        const started = await startOfflineActiveSession({ userId, studyGuideId, mode: "CYCLE", disciplineId: discipline.serverId, subjectId: subject.serverId, cycleEntryId: entry.serverId, disciplineName: discipline.name, subjectName: subject.name, timerRunning: false });
+        const started = await startOfflineActiveSession({ userId, studyGuideId, mode: "CYCLE", disciplineId: discipline.serverId, subjectId: subject.serverId, cycleEntryId: entry.serverId, programItemId: entry.programItemId, disciplineName: discipline.name, subjectName: subject.name, timerRunning: false });
         await queueOfflineSessionOperation({ userId, studyGuideId, type: "FINISH_SESSION", session: { ...started.session, accumulatedSeconds: minutes * 60, questions: activityType === "QUESTIONS" ? correct + wrong : 0, correct: activityType === "QUESTIONS" ? correct : 0, wrong: activityType === "QUESTIONS" ? wrong : 0, activityType, advanceCycle, difficulty, notes: notes.trim() || null, date: new Date(`${date}T12:00:00-03:00`).toISOString() } });
       }
       toast.success(mode === "CYCLE" ? advanceCycle ? "Sessão salva. O ciclo avançará após sincronizar." : "Sessão salva; você continuará no mesmo assunto." : mode === "GENERAL" ? "Revisão geral salva para sincronização." : "Estudo avulso salvo para sincronização.");

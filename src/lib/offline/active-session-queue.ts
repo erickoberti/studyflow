@@ -33,6 +33,7 @@ export type OfflineSessionPayload = {
   disciplineId: string | null;
   subjectId: string | null;
   cycleEntryId: string | null;
+  programItemId?: string | null;
   disciplineName: string;
   subjectName: string;
   startedAt: string;
@@ -281,7 +282,7 @@ export async function queueOfflineSessionOperation(input: {
 
 export async function startOfflineActiveSession(input: {
   userId: string; studyGuideId: string; mode: OfflineStudyMode; disciplineId: string; subjectId: string;
-  cycleEntryId: string | null; disciplineName: string; subjectName: string; startedAt?: string; operationId?: string; timerRunning?: boolean;
+  cycleEntryId: string | null; programItemId?: string; disciplineName: string; subjectName: string; startedAt?: string; operationId?: string; timerRunning?: boolean;
 }, storage: OfflineSessionQueueStorage = offlineSessionQueue) {
   if (!input.disciplineId || !input.subjectId) throw new Error("Disciplina e assunto são obrigatórios.");
   const operationId = input.operationId ?? uuid(); const now = input.startedAt ?? new Date().toISOString();

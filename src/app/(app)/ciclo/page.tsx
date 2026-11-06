@@ -17,6 +17,8 @@ import { prisma } from "@/lib/prisma";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 import { cycleService } from "@/lib/cycle-service";
+import { getCycleProgram } from "@/lib/programmed-cycle-service";
+import { ProgrammedCycleScreen } from "@/components/programmed-cycle-screen";
 import {
   ArrowRight,
   BookOpen,
@@ -41,6 +43,8 @@ export default async function CicloPage({
   const params = await searchParams;
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  const program = await getCycleProgram(user.id, guide.id);
+  if (program) return <ProgrammedCycleScreen program={program} userId={user.id} studyGuideId={guide.id} adjustment={params?.ajuste} />;
   const weekStart = new Date();
   weekStart.setUTCHours(0, 0, 0, 0);
   weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7));
@@ -112,6 +116,7 @@ export default async function CicloPage({
         <p className={styles.eyebrow}>Seu roteiro · volta {cycleState?.roundNumber ?? 1}</p>
         <h1>Ciclo de estudos</h1>
         <p>Seu ponto atual e toda a sequência.</p>
+        <Link href="/ciclo/configuracao" className="sf-secondary mt-3">Planejar quatro voltas · comparar antes de ativar</Link>
       </header>
       {showAdd && subjects.length > 0 ? (
         <section className="rounded-xl border border-slate-200 bg-surface p-5 dark:border-white/5 dark:bg-panelDark">

@@ -1,0 +1,30 @@
+.editor { display: grid; gap: 20px; }
+.editor header h1 { font-size: 26px; font-weight: 700; margin: 6px 0; }
+.editor header p, .notice p { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+.editor header > a { display: inline-flex; align-items: center; min-height: 44px; color: rgb(var(--primary-rgb)); font-size: 13px; }
+.notice { display: grid; gap: 10px; padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.notice h2 { font-size: 18px; font-weight: 600; }
+.notice summary { display: flex; align-items: center; cursor: pointer; font-size: 13px; color: rgb(var(--primary-rgb)); }
+.comparison { display: grid; gap: 12px; }
+.comparison > div { border-top: 1px solid var(--border); padding: 12px 0; font-size: 13px; }
+.comparison p { font-size: 12px; }
+.comparison select { width: 100%; max-width: 620px; display: block; background: var(--surface); border: 1px solid var(--border); padding: 8px; border-radius: 6px; margin-top: 6px; }
+.matrix { max-width: 100%; overflow: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.matrix table { min-width: 960px; width: 100%; text-align: left; font-size: 13px; border-collapse: collapse; table-layout: fixed; }
+.matrix caption { text-align: left; padding: 12px; color: var(--text-secondary); font-size: 12px; }
+.matrix thead { background: var(--surface-elevated); }
+.matrix th, .matrix td { border: 1px solid var(--border); padding: 12px; vertical-align: top; }
+.matrix th { font-weight: 600; }
+.matrix th:first-child { width: 180px; }
+.matrix td { min-width: 0; }
+.matrix label { display: grid; gap: 4px; margin-top: 8px; font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+.matrix input, .matrix textarea, .matrix select { background: var(--surface); color: var(--foreground); border: 1px solid var(--border); border-radius: 6px; width: 100%; padding: 8px; font-size: 13px; font-weight: 400; }
+.matrix summary { cursor: pointer; display: flex; align-items: center; font-size: 11px; color: rgb(var(--primary-rgb)); }
+.complete { display: block; font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
+.save { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.save > label { display: flex; align-items: flex-start; gap: 10px; flex-basis: 100%; font-size: 13px; }
+.save input { margin-top: 4px; }
+.windows { display: flex; flex-wrap: wrap; gap: 8px; }
+.windows button { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+.windows button[aria-pressed=true] { color: rgb(var(--primary-rgb)); background: rgb(var(--primary-rgb) / .1); }
+@media(max-width:767px) { .save > button, .save > a { width: 100%; } .notice { padding: 14px; } }

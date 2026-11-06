@@ -24,15 +24,17 @@ type Active = {
   startedAt: string;
   pausedAt: string | null;
   accumulatedSeconds: number;
-  cycle: { entryId: string; position: number; round: number } | null;
+  cycle: { entryId: string; position: number; round: number; totalRounds?: number } | null;
   discipline: { id: string; name: string; questionGoal: number };
   subject: { id: string; name: string; weight: number; averagePercentage: number; lastStudiedAt: string | null };
 };
 
 type Suggestion = {
+  programItemId?: string;
   entry: { id: string; orderIndex: number; discipline: { id: string; name: string; questionGoal: number } | null };
   subject: { id: string; name: string; weight: number } | null;
   roundNumber: number;
+  totalRounds?: number;
 } | null;
 
 type Summary = { todayMinutes: number; todayQuestions: number; dailyGoal: number; streak: number };
@@ -196,6 +198,7 @@ export function ActiveStudyPanel({
         disciplineId: suggestion.entry.discipline.id,
         subjectId: suggestion.subject.id,
         cycleEntryId: suggestion.entry.id,
+        programItemId: suggestion.programItemId,
         disciplineName: suggestion.entry.discipline.name,
         subjectName: suggestion.subject.name,
         timerRunning: body.timerRunning !== false,
@@ -307,6 +310,7 @@ export function ActiveStudyPanel({
     goal: active.discipline.questionGoal,
     position: active.cycle?.position,
     round: active.cycle?.round,
+    totalRounds: active.cycle?.totalRounds,
     weight: active.subject.weight,
     average: active.subject.averagePercentage,
     last: active.subject.lastStudiedAt,
@@ -316,6 +320,7 @@ export function ActiveStudyPanel({
     goal: suggestion.entry.discipline?.questionGoal ?? 20,
     position: suggestion.entry.orderIndex,
     round: suggestion.roundNumber,
+    totalRounds: suggestion.totalRounds,
     weight: suggestion.subject?.weight ?? 1,
     average: referencePresentation?.average ?? 0,
     last: referencePresentation?.lastStudiedAt ?? null,
@@ -343,7 +348,7 @@ export function ActiveStudyPanel({
     <div className={focusMode ? "study-panel mx-auto max-w-4xl" : "study-panel"}>
       <section aria-labelledby="study-subject" className="min-w-0">
         <div className="study-heading">
-          <div className="study-cycle-line"><span className="study-cycle-tag">Ciclo atual · volta {current.round ?? 1}</span><span>Posição #{current.position ?? "avulsa"}{referencePresentation && current.position ? ` de ${referencePresentation.positions}` : ""}</span><span className="study-discipline">{current.discipline}</span></div>
+          <div className="study-cycle-line"><span className="study-cycle-tag">Ciclo atual · volta {current.round ?? 1}{current.totalRounds ? `/${current.totalRounds}` : ""}</span><span>Posição #{current.position ?? "avulsa"}{referencePresentation && current.position ? ` de ${referencePresentation.positions}` : ""}</span><span className="study-discipline">{current.discipline}</span></div>
           <h2 id="study-subject">{referencePresentation ? current.discipline : current.subject}</h2>
           <p data-study-subtitle className="study-subtitle">{referencePresentation ? current.subject : current.discipline}</p>
           <div className="study-metadata">

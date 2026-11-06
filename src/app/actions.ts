@@ -17,6 +17,7 @@ import {
 } from "@/lib/study-guide";
 import { ensureStudyGuideSettings, upsertStudyGuideSettings } from "@/lib/study-guide-settings";
 import { buildStudyGuideCycle, createStudyDiscipline, setStudyDisciplineActive } from "@/lib/discipline-setup";
+import { getCycleProgram, setProgramPosition } from "@/lib/programmed-cycle-service";
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -88,6 +89,7 @@ export async function updateDiscipline(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
   const disciplineId = String(formData.get("disciplineId") ?? "");
+  if (await prisma.cycleProgramItem.count({ where: { disciplineId: disciplineId, program: { userId: user.id, studyGuideId: guide.id } } })) redirect("/ciclo/configuracao");
   const name = String(formData.get("name") ?? "").trim();
   const sortOrderRaw = String(formData.get("sortOrder") ?? "").trim();
   const sortOrder = sortOrderRaw ? Number(sortOrderRaw) : null;
@@ -107,6 +109,7 @@ export async function updateDiscipline(formData: FormData) {
 }
 
 async function applySubjectCycleOrder(userId: string, studyGuideId: string, subjectId: string, requestedOrder: number | null) {
+  if (requestedOrder && await prisma.cycleProgram.count({ where: { userId, studyGuideId } })) throw new Error("As 16 posições programadas são fixas. Use a matriz do ciclo.");
   if (!Number.isFinite(requestedOrder) || requestedOrder === null || requestedOrder <= 0) return;
 
   const entry = await prisma.cycleEntry.findFirst({
@@ -327,6 +330,7 @@ export async function updateSubject(formData: FormData) {
   const guide = await requireActiveStudyGuide(user.id);
   const redirectTo = String(formData.get("redirectTo") ?? "").trim();
   const subjectId = String(formData.get("subjectId") ?? "");
+  if (await prisma.cycleProgramItem.count({ where: { subjectId: subjectId, program: { userId: user.id, studyGuideId: guide.id } } })) redirect("/ciclo/configuracao");
   const disciplineId = String(formData.get("disciplineId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const weight = Number(formData.get("weight") ?? 1);
@@ -437,6 +441,7 @@ export async function deleteSubjectAction(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
   const subjectId = String(formData.get("subjectId") ?? "");
+  if (await prisma.cycleProgramItem.count({ where: { subjectId: subjectId, program: { userId: user.id, studyGuideId: guide.id } } })) redirect("/ciclo/configuracao");
   if (!subjectId) return;
 
   const subject = await prisma.subject.findFirst({
@@ -461,6 +466,7 @@ export async function deleteSubjectAction(formData: FormData) {
 export async function deleteAllSubjectsAction() {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  if (await getCycleProgram(user.id, guide.id)) redirect("/ciclo/configuracao");
 
   await prisma.$transaction(async (tx) => {
     await tx.subject.deleteMany({
@@ -478,6 +484,7 @@ export async function deleteAllSubjectsAction() {
 export async function addCycleEntry(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  if (await getCycleProgram(user.id, guide.id)) redirect("/ciclo/configuracao");
   const subjectId = String(formData.get("subjectId") ?? "");
   if (!subjectId) return;
 
@@ -510,6 +517,7 @@ export async function addCycleEntry(formData: FormData) {
 export async function duplicateCycleEntry(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  if (await getCycleProgram(user.id, guide.id)) redirect("/ciclo/configuracao");
   const entryId = String(formData.get("entryId") ?? "");
   if (!entryId) return;
 
@@ -544,6 +552,7 @@ export async function duplicateCycleEntry(formData: FormData) {
 export async function moveCycleEntry(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  if (await getCycleProgram(user.id, guide.id)) redirect("/ciclo/configuracao");
   const entryId = String(formData.get("entryId") ?? "");
   const direction = String(formData.get("direction") ?? "");
 
@@ -586,6 +595,7 @@ export async function moveCycleEntry(formData: FormData) {
 export async function toggleCycleEntry(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  if (await getCycleProgram(user.id, guide.id)) redirect("/ciclo/configuracao");
   const entryId = String(formData.get("entryId") ?? "");
 
   const entry = await prisma.cycleEntry.findFirst({ where: { id: entryId, userId: user.id, studyGuideId: guide.id } });
@@ -603,6 +613,7 @@ export async function toggleCycleEntry(formData: FormData) {
 export async function deleteCycleEntry(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  if (await getCycleProgram(user.id, guide.id)) redirect("/ciclo/configuracao");
   const entryId = String(formData.get("entryId") ?? "");
 
   const entry = await prisma.cycleEntry.findFirst({ where: { id: entryId, userId: user.id, studyGuideId: guide.id } });
@@ -645,6 +656,13 @@ export async function setCyclePosition(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
   const entryId = String(formData.get("entryId") ?? "");
+  if (await getCycleProgram(user.id, guide.id)) {
+    const result = await setProgramPosition(user.id, guide.id, entryId);
+    if (result === "session-active") redirect("/ciclo?ajuste=sessao-ativa");
+    if (result !== "ok") redirect("/ciclo?ajuste=invalido");
+    revalidatePath("/ciclo"); revalidatePath("/registro"); revalidatePath("/dashboard");
+    redirect("/ciclo");
+  }
 
   const openSession = await prisma.activeStudySession.findFirst({
     where: {
@@ -706,6 +724,7 @@ export async function setCyclePosition(formData: FormData) {
 export async function deleteAllCycleEntries() {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  if (await getCycleProgram(user.id, guide.id)) redirect("/ciclo/configuracao");
 
   const openSession = await prisma.activeStudySession.findFirst({
     where: {
@@ -971,6 +990,7 @@ export async function updateGuideDisciplineAction(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
   const disciplineId = String(formData.get("disciplineId") ?? "");
+  if (await prisma.cycleProgramItem.count({ where: { disciplineId: disciplineId, program: { userId: user.id, studyGuideId: guide.id } } })) redirect("/ciclo/configuracao");
   const name = String(formData.get("name") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim() || null;
 
@@ -1003,6 +1023,7 @@ export async function setGuideDisciplineActiveAction(formData: FormData) {
 export async function deleteGuideDisciplineAction(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  if (await getCycleProgram(user.id, guide.id)) redirect("/ciclo/configuracao");
   const disciplineId = String(formData.get("disciplineId") ?? "");
   if (!disciplineId) return;
 
@@ -1028,6 +1049,7 @@ export async function deleteGuideDisciplineAction(formData: FormData) {
 export async function deleteAllGuideDisciplinesAction() {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
+  if (await getCycleProgram(user.id, guide.id)) redirect("/ciclo/configuracao");
 
   await prisma.$transaction(async (tx) => {
     await tx.discipline.deleteMany({

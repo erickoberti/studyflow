@@ -3,11 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { advanceWeightedState, selectCurrentCycleEntry, selectWeightedSubject, type CycleEngineSubject } from "@/lib/cycle-engine";
 import { calculateElapsedSeconds } from "@/lib/study-timer";
 import { advanceSubjectWeights, lockSubjectsForProgress, recalculateSubjectProgress } from "@/lib/subject-progress";
+import { completeProgramItem, currentProgramItem, getCycleProgram, lockProgramGuide, programSuggestion } from "@/lib/programmed-cycle-service";
+import { programReviewIntervals } from "@/lib/programmed-cycle";
 
 export type CycleSessionDTO = {
   id: string; mode: "CYCLE" | "AVULSO"; status: "ACTIVE" | "PAUSED" | "FINISHING" | "FINISHED" | "CANCELLED";
   version: number; startedAt: string; accumulatedSeconds: number; pausedAt: string | null;
-  cycle: { entryId: string; position: number; round: number } | null;
+  cycle: { entryId: string; position: number; round: number; totalRounds?: number } | null;
   discipline: { id: string; name: string; questionGoal: number };
   subject: { id: string; name: string; weight: number; averagePercentage: number; lastStudiedAt: string | null };
 };
@@ -29,6 +31,12 @@ function elapsedSeconds(session: { accumulatedSeconds: number; status: ActiveStu
 
 export class CycleService {
   async getCurrent(userId: string, studyGuideId: string) {
+    const program = await getCycleProgram(userId, studyGuideId);
+    if (program) {
+      const state = await prisma.studyGuideCycleState.findUnique({ where: { studyGuideId } });
+      const item = currentProgramItem(program, state?.currentOrderIndex ?? 1);
+      return item ? programSuggestion(item, program) : null;
+    }
     const [state, entries] = await Promise.all([
       prisma.studyGuideCycleState.upsert({ where: { studyGuideId }, create: { userId, studyGuideId }, update: {} }).catch(async (error) => {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -49,6 +57,18 @@ export class CycleService {
   }
 
   async preview(userId: string, studyGuideId: string, count = 5) {
+    const program = await getCycleProgram(userId, studyGuideId);
+    if (program) {
+      if (program.status !== "ACTIVE") return [];
+      const state = await prisma.studyGuideCycleState.findUnique({ where: { studyGuideId } });
+      const current = currentProgramItem(program, state?.currentOrderIndex ?? 1);
+      if (!current) return [];
+      const remaining = program.items.filter(item => item.roundNumber === program.currentRound && (!item.completion || item.id === current.id));
+      const start = remaining.findIndex(item => item.id === current.id);
+      const ordered = [...remaining.slice(start), ...remaining.slice(0, start)];
+      const future = program.items.filter(item => item.roundNumber > program.currentRound);
+      return [...ordered, ...future].slice(0, count).map(item => ({ entryId: item.entryId, orderIndex: item.entry.orderIndex, roundNumber: item.roundNumber, discipline: { id: item.disciplineId, name: item.discipline.name, questionGoal: item.questionGoal }, subject: { id: item.subjectId, name: item.subject.name, weight: item.subject.weight } }));
+    }
     const current = await this.getCurrent(userId, studyGuideId);
     if (!current) return [];
     const rawEntries = await prisma.cycleEntry.findMany({ where: { userId, studyGuideId, active: true }, include: { discipline: true, subject: { include: { discipline: true } } }, orderBy: { orderIndex: "asc" } });
@@ -69,9 +89,9 @@ export class CycleService {
   }
 
   private async dto(client: Client, sessionId: string): Promise<CycleSessionDTO | null> {
-    const value = await client.activeStudySession.findUnique({ where: { id: sessionId }, include: { discipline: true, subject: { include: { progress: true } }, cycleEntry: true, studyGuide: { include: { cycleState: true } } } });
+    const value = await client.activeStudySession.findUnique({ where: { id: sessionId }, include: { discipline: true, subject: { include: { progress: true } }, cycleEntry: true, programItem: { include: { program: true } }, studyGuide: { include: { cycleState: true } } } });
     if (!value) return null;
-    return { id: value.id, mode: value.mode, status: value.status, version: value.version, startedAt: value.startedAt.toISOString(), accumulatedSeconds: value.accumulatedSeconds, pausedAt: value.pausedAt?.toISOString() ?? null, cycle: value.mode === StudySessionMode.CYCLE && value.cycleEntry ? { entryId: value.cycleEntry.id, position: value.cycleEntry.orderIndex, round: value.studyGuide.cycleState?.roundNumber ?? 1 } : null, discipline: { id: value.discipline.id, name: value.discipline.name, questionGoal: value.discipline.questionGoal }, subject: { id: value.subject.id, name: value.subject.name, weight: value.subject.weight, averagePercentage: value.subject.progress?.averagePercentage ?? 0, lastStudiedAt: value.subject.progress?.lastStudiedAt?.toISOString() ?? null } };
+    return { id: value.id, mode: value.mode, status: value.status, version: value.version, startedAt: value.startedAt.toISOString(), accumulatedSeconds: value.accumulatedSeconds, pausedAt: value.pausedAt?.toISOString() ?? null, cycle: value.mode === StudySessionMode.CYCLE && value.cycleEntry ? { entryId: value.cycleEntry.id, position: value.cycleEntry.orderIndex, round: value.programItem?.roundNumber ?? value.studyGuide.cycleState?.roundNumber ?? 1, ...(value.programItem ? { totalRounds: value.programItem.program.totalRounds } : {}) } : null, discipline: { id: value.discipline.id, name: value.discipline.name, questionGoal: value.programItem?.questionGoal ?? value.discipline.questionGoal }, subject: { id: value.subject.id, name: value.subject.name, weight: value.subject.weight, averagePercentage: value.subject.progress?.averagePercentage ?? 0, lastStudiedAt: value.subject.progress?.lastStudiedAt?.toISOString() ?? null } };
   }
 
   async getActive(userId: string, studyGuideId: string) {
@@ -79,34 +99,48 @@ export class CycleService {
     return active ? this.dto(prisma, active.id) : null;
   }
 
-  async start(userId: string, studyGuideId: string, input: { mode: "CYCLE" | "AVULSO"; disciplineId?: string; subjectId?: string; operationId?: string; timerRunning?: boolean }) {
+  async start(userId: string, studyGuideId: string, input: { mode: "CYCLE" | "AVULSO"; disciplineId?: string; subjectId?: string; operationId?: string; timerRunning?: boolean; expectedProgramItemId?: string }) {
     return prisma.$transaction(async (tx) => {
+      await lockProgramGuide(tx, userId, studyGuideId);
       if (input.operationId) {
         const processed = await tx.activeStudySession.findFirst({ where: { id: input.operationId, userId, studyGuideId }, select: { id: true } });
         if (processed) return this.dto(tx, processed.id);
       }
-      const existing = await tx.activeStudySession.findFirst({ where: { userId, studyGuideId, status: { in: openStates } }, select: { id: true } });
-      if (existing) return this.dto(tx, existing.id);
-      let cycleEntryId: string | undefined; let disciplineId = input.disciplineId; let subjectId = input.subjectId;
-      if (input.mode === "CYCLE") { const current = await this.currentInTransaction(tx, userId, studyGuideId); if (!current?.subject || !current.entry.discipline) throw new Error("Não há item elegível no ciclo."); cycleEntryId = current.entry.id; disciplineId = current.entry.discipline.id; subjectId = current.subject.id; }
+      const existing = await tx.activeStudySession.findFirst({ where: { userId, studyGuideId, status: { in: openStates } }, select: { id: true, programItemId: true } });
+      if (existing) {
+        if (input.expectedProgramItemId && input.expectedProgramItemId !== existing.programItemId) throw new CycleConflictError("Já existe uma sessão de outra posição ou volta. Seu estudo offline foi preservado para conferência.", "PROGRAM_ITEM_CHANGED");
+        return this.dto(tx, existing.id);
+      }
+      let cycleEntryId: string | undefined; let programItemId: string | undefined; let disciplineId = input.disciplineId; let subjectId = input.subjectId;
+      if (input.mode === "CYCLE") { const current = await this.currentInTransaction(tx, userId, studyGuideId); if (!current?.subject || !current.entry.discipline) throw new Error("Não há item elegível no ciclo. Confira se a programação foi concluída."); cycleEntryId = current.entry.id; disciplineId = current.entry.discipline.id; subjectId = current.subject.id; programItemId = current.programItemId;
+        if (programItemId && (input.expectedProgramItemId && input.expectedProgramItemId !== programItemId || input.subjectId && input.subjectId !== subjectId || input.disciplineId && input.disciplineId !== disciplineId)) throw new CycleConflictError("A programação mudou desde o início offline. O estudo foi preservado para conferência.", "PROGRAM_ITEM_CHANGED");
+      }
       if (!disciplineId || !subjectId) throw new Error("Disciplina e assunto são obrigatórios no estudo avulso.");
       const subject = await tx.subject.findFirst({ where: { id: subjectId, userId, studyGuideId, disciplineId, active: true } });
       if (!subject) throw new Error("O assunto não pertence à disciplina ou está inativo.");
       if (input.mode === "CYCLE" && !cycleEntryId) throw new Error("Crie ao menos uma posição de ciclo antes de registrar estudo.");
       const timerRunning = input.timerRunning ?? true;
-      const active = await tx.activeStudySession.create({ data: { ...(input.operationId ? { id: input.operationId } : {}), userId, studyGuideId, cycleEntryId, disciplineId, subjectId, mode: input.mode === "CYCLE" ? StudySessionMode.CYCLE : StudySessionMode.AVULSO, status: timerRunning ? ActiveStudySessionStatus.ACTIVE : ActiveStudySessionStatus.PAUSED, pausedAt: timerRunning ? new Date() : null } });
+      const active = await tx.activeStudySession.create({ data: { ...(input.operationId ? { id: input.operationId } : {}), userId, studyGuideId, cycleEntryId, programItemId, disciplineId, subjectId, mode: input.mode === "CYCLE" ? StudySessionMode.CYCLE : StudySessionMode.AVULSO, status: timerRunning ? ActiveStudySessionStatus.ACTIVE : ActiveStudySessionStatus.PAUSED, pausedAt: timerRunning ? new Date() : null } });
       return this.dto(tx, active.id);
     });
   }
 
   private async currentInTransaction(tx: Prisma.TransactionClient, userId: string, studyGuideId: string) {
+    const program = await getCycleProgram(userId, studyGuideId, tx);
+    if (program) {
+      const state = await tx.studyGuideCycleState.findUnique({ where: { studyGuideId } });
+      const item = currentProgramItem(program, state?.currentOrderIndex ?? 1);
+      if (!item) return null;
+      if (!item.entry.active || !item.discipline.active || !item.subject.active) throw new Error("Esta posição programada está pausada. Reative-a antes de continuar; ela não será pulada automaticamente.");
+      return { entry: { ...item.entry, disciplineId: item.disciplineId, discipline: item.discipline }, subject: item.subject, programItemId: item.id };
+    }
     const state = await tx.studyGuideCycleState.upsert({ where: { studyGuideId }, create: { userId, studyGuideId }, update: {} });
     const entries = await tx.cycleEntry.findMany({ where: { userId, studyGuideId, active: true }, include: { discipline: true, subject: { include: { discipline: true } } }, orderBy: { orderIndex: "asc" } });
     const eligibleEntries = entries.filter((value) => (value.discipline ?? value.subject?.discipline)?.active);
     const entry = selectCurrentCycleEntry(eligibleEntries, state.currentOrderIndex); const discipline = entry?.discipline ?? entry?.subject?.discipline; if (!entry || !discipline) return null;
     const subjects = await tx.subject.findMany({ where: { userId, studyGuideId, disciplineId: discipline.id, active: true }, include: { progress: true }, orderBy: { sortOrder: "asc" } });
     const selected = selectWeightedSubject(subjects.map(toEngine));
-    return selected ? { entry: { ...entry, disciplineId: discipline.id, discipline }, subject: selected } : null;
+    return selected ? { entry: { ...entry, disciplineId: discipline.id, discipline }, subject: selected, programItemId: undefined } : null;
   }
 
   async pause(userId: string, studyGuideId: string, id: string, version: number) { return this.transition(userId, studyGuideId, id, version, ActiveStudySessionStatus.ACTIVE, ActiveStudySessionStatus.PAUSED); }
@@ -132,7 +166,11 @@ export class CycleService {
     // Remote database round trips can exceed Prisma's default five seconds.
     // Keep history, weights, reviews and cursor atomic, with a bounded budget.
     return prisma.$transaction(async (tx) => {
-      const active = await tx.activeStudySession.findFirst({ where: { id, userId, studyGuideId } , include: { completedSession: true } });
+      let active = await tx.activeStudySession.findFirst({ where: { id, userId, studyGuideId } , include: { completedSession: true } });
+      if (active?.programItemId) {
+        await lockProgramGuide(tx, userId, studyGuideId);
+        active = await tx.activeStudySession.findFirst({ where: { id, userId, studyGuideId }, include: { completedSession: true } });
+      }
       if (!active) throw new Error("Sessão não encontrada.");
       if (active.completedSession) {
         const sameResult = active.completedSession.questions === input.questions && active.completedSession.correct === input.correct && (input.minutes === undefined || active.completedSession.estimatedMinutes === input.minutes) && (input.notes === undefined || active.completedSession.notes === input.notes) && (input.activityType === undefined || active.completedSession.activityType === input.activityType);
@@ -145,12 +183,13 @@ export class CycleService {
       const shouldAdvance = active.mode === StudySessionMode.CYCLE && input.advanceCycle !== false;
       const cyclePosition = shouldAdvance && active.cycleEntryId ? (await tx.cycleEntry.findUnique({ where: { id: active.cycleEntryId }, select: { orderIndex: true } }))?.orderIndex : null;
       if (active.mode === StudySessionMode.CYCLE && !active.cycleEntryId) throw new Error("Sessão do ciclo sem posição válida.");
-      const created = await tx.studySession.create({ data: { userId, studyGuideId, cycleEntryId: active.mode === StudySessionMode.CYCLE ? active.cycleEntryId : null, subjectId: active.subjectId, scope: active.mode === StudySessionMode.CYCLE ? "CYCLE" : "SUBJECT", cyclePosition, date: input.date ?? new Date(), questions: input.questions, correct: input.correct, wrong, percentage: input.questions ? (input.correct / input.questions) * 100 : 0, estimatedMinutes: minutes, activityType: input.activityType ?? StudyActivityType.QUESTIONS, notes: input.notes, activeStudySessionId: active.id } });
-      const progressSubjectIds = shouldAdvance
+      const programmed = active.programItemId ? await tx.cycleProgramItem.findFirstOrThrow({ where: { id: active.programItemId, program: { userId, studyGuideId } }, include: { subject: true, discipline: true } }) : null;
+      const created = await tx.studySession.create({ data: { userId, studyGuideId, cycleEntryId: active.mode === StudySessionMode.CYCLE ? active.cycleEntryId : null, subjectId: active.subjectId, scope: active.mode === StudySessionMode.CYCLE ? "CYCLE" : "SUBJECT", cyclePosition, ...(programmed ? { programItemId: programmed.id, cycleRound: programmed.roundNumber, subjectNameSnapshot: programmed.subject.name, disciplineNameSnapshot: programmed.discipline.name, tecReferenceSnapshot: JSON.stringify({ discipline: programmed.tecDiscipline, topic: programmed.tecTopic, url: programmed.tecUrl, status: programmed.tecStatus }) } : {}), date: input.date ?? new Date(), questions: input.questions, correct: input.correct, wrong, percentage: input.questions ? (input.correct / input.questions) * 100 : 0, estimatedMinutes: minutes, activityType: input.activityType ?? StudyActivityType.QUESTIONS, notes: input.notes, activeStudySessionId: active.id } });
+      const progressSubjectIds = shouldAdvance && !programmed
         ? (await tx.subject.findMany({ where: { userId, studyGuideId, disciplineId: active.disciplineId, active: true }, select: { id: true } })).map((subject) => subject.id)
         : [active.subjectId];
       await lockSubjectsForProgress(tx, userId, studyGuideId, [...progressSubjectIds, active.subjectId]);
-      if (shouldAdvance) {
+      if (shouldAdvance && !programmed) {
         const subjects = await tx.subject.findMany({
           where: { userId, studyGuideId, disciplineId: active.disciplineId, active: true },
           select: { id: true, weight: true },
@@ -165,10 +204,14 @@ export class CycleService {
         data: { status: "COMPLETED", completedAt: reviewedAt },
       });
       const pendingReviews = await tx.reviewSchedule.count({ where: { userId, studyGuideId, subjectId: active.subjectId, status: "PENDING" } });
-      if (pendingReviews === 0) {
-        await tx.reviewSchedule.createMany({ data: [1, 7, 30].map((intervalDays) => ({ userId, studyGuideId, subjectId: active.subjectId, sourceSessionId: created.id, intervalDays, dueAt: new Date(reviewedAt.getTime() + intervalDays * 86_400_000) })) });
+      if (programmed || pendingReviews === 0) {
+        const intervals = programmed ? programReviewIntervals(input.questions, input.correct) : [1, 7, 30];
+        if (intervals.length) await tx.reviewSchedule.createMany({ data: intervals.map((intervalDays) => ({ userId, studyGuideId, subjectId: active.subjectId, sourceSessionId: created.id, intervalDays, dueAt: new Date(reviewedAt.getTime() + intervalDays * 86_400_000) })) });
       }
-      if (shouldAdvance) await this.advanceCursor(tx, userId, studyGuideId, active.cycleEntryId!);
+      if (shouldAdvance) {
+        if (programmed) await completeProgramItem(tx, userId, studyGuideId, programmed.id, created.id);
+        else await this.advanceCursor(tx, userId, studyGuideId, active.cycleEntryId!);
+      }
       await tx.activeStudySession.update({ where: { id }, data: { status: ActiveStudySessionStatus.FINISHED, completedAt: new Date(), accumulatedSeconds: Math.max(active.accumulatedSeconds, minutes * 60), pausedAt: null, version: { increment: 1 } } });
       return { sessionId: created.id, idempotent: false };
     }, { timeout: 20_000 });

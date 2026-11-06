@@ -1,4 +1,6 @@
 import styles from "./study-screen.module.css";
+import Link from "next/link";
+import { getCycleProgram } from "@/lib/programmed-cycle-service";
 
 import { StudySessionForm } from "@/components/forms/study-session-form";
 import { ActiveStudyPanel } from "@/components/study/active-study-panel";
@@ -28,14 +30,16 @@ export default async function RegistroPage({ searchParams }: { searchParams?: Pr
       where: { userId: user.id }, orderBy: { name: "asc" }, select: { id: true, name: true, disciplines: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, name: true, subjects: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, name: true, weight: true } } } } },
     }),
   ]);
-  const sessions = recentSessions.map((session) => ({ ...session, subjectName: session.scope === "GENERAL" ? "Revisão geral" : session.subject?.name ?? "Assunto legado indisponível", disciplineName: session.scope === "GENERAL" ? "Todas as matérias" : session.subject?.discipline.name ?? session.cycleEntry?.discipline?.name ?? "Disciplina" }));
+  const sessions = recentSessions.map((session) => ({ ...session, subjectName: session.scope === "GENERAL" ? "Revisão geral" : session.subjectNameSnapshot ?? session.subject?.name ?? "Assunto legado indisponível", disciplineName: session.scope === "GENERAL" ? "Todas as matérias" : session.disciplineNameSnapshot ?? session.subject?.discipline.name ?? session.cycleEntry?.discipline?.name ?? "Disciplina" }));
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const todayData = dashboard.byDay.find((item) => item.date === today); const next = focusPreview[1];
   const subjectId=active?.subject.id??current?.subject.id;
   const [subject,positions]=await Promise.all([subjectId?prisma.subject.findFirst({where:{id:subjectId,userId:user.id,studyGuideId:guide.id},include:{progress:true}}):null,prisma.cycleEntry.count({where:{userId:user.id,studyGuideId:guide.id,active:true}})]);
+  const finishedProgram = !current && !active ? await getCycleProgram(user.id, guide.id) : null;
+  if (finishedProgram?.status === "COMPLETED" && params?.novo !== "1") return <div className={styles.screen}><h1 className="text-2xl font-semibold">Voltas concluídas</h1><p className="mt-3 text-sm text-textSecondary">As {finishedProgram.totalRounds} voltas estão concluídas. Seu histórico está preservado.</p><div className="mt-5 flex flex-wrap gap-3"><Link href="/registro?novo=1" className="sf-primary">Registrar revisão mista</Link><Link href="/ciclo/configuracao" className="sf-secondary">Programar novas voltas</Link></div></div>;
   return <div className={styles.screen}>
     <h1 className="sr-only">Estudar</h1>
-    <ActiveStudyPanel userId={user.id} studyGuideId={guide.id} initialActive={active as never} suggestion={current as never} nextSuggestion={next ? { discipline: next.discipline.name, subject: next.subject.name, position: next.orderIndex } : null} referencePresentation={{positions,average:subject?.progress?.averagePercentage??0,lastStudiedAt:subject?.progress?.lastStudiedAt?.toISOString()??null}} initialVisualMode={params?.modo==="timer"?"TIMER":undefined} defaultMinutes={settings.sessionMinutes} preferredActivity={preferredActivity(params?.tipo)} showStandaloneLink={params?.novo !== "1"} summary={{ todayMinutes: todayData?.estimatedMinutes ?? 0, todayQuestions: todayData?.questions ?? 0, dailyGoal: dashboard.totals.dailyQuestionsGoal, streak: dashboard.totals.streakDays }} />
+    {finishedProgram?.status !== "COMPLETED" ? <ActiveStudyPanel userId={user.id} studyGuideId={guide.id} initialActive={active as never} suggestion={current as never} nextSuggestion={next ? { discipline: next.discipline.name, subject: next.subject.name, position: next.orderIndex } : null} referencePresentation={{positions,average:subject?.progress?.averagePercentage??0,lastStudiedAt:subject?.progress?.lastStudiedAt?.toISOString()??null}} initialVisualMode={params?.modo==="timer"?"TIMER":undefined} defaultMinutes={settings.sessionMinutes} preferredActivity={preferredActivity(params?.tipo)} showStandaloneLink={params?.novo !== "1"} summary={{ todayMinutes: todayData?.estimatedMinutes ?? 0, todayQuestions: todayData?.questions ?? 0, dailyGoal: dashboard.totals.dailyQuestionsGoal, streak: dashboard.totals.streakDays }} /> : <p className="text-sm text-textSecondary">Revisão mista: escolha “Revisão geral” no formulário. Ela não reabre as voltas concluídas.</p>}
     {params?.novo === "1" ? <StudySessionForm guides={guides} initialGuideId={guide.id} recentSessions={sessions} dailyQuestionsGoal={settings.questionsPerSession} toggleHref="/registro" /> : null}
   </div>;
 }

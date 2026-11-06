@@ -6,7 +6,7 @@ export const BACKUP_VERSION = 1;
 // Parent records precede their children. Authentication and sync-ledger records are excluded.
 export const BACKUP_MODELS = [
   "StudyGuide", "Discipline", "Subject", "CycleEntry", "UserSettings",
-  "StudyGuideSettings", "StudyGuideCycleState", "ActiveStudySession", "StudySession",
+  "StudyGuideSettings", "StudyGuideCycleState", "CycleProgram", "CycleProgramItem", "ActiveStudySession", "StudySession", "CycleProgramCompletion",
   "ReviewSchedule", "SubjectProgress", "MockExam", "MockExamDisciplineResult",
   "SyllabusProgress", "DailyGoalSettings", "ManualDailyGoal", "ManualDailyGoalCheck",
   "DailyReflection",
@@ -27,8 +27,11 @@ const references: Partial<Record<BackupModel, Record<string, BackupModel>>> = {
   CycleEntry: { studyGuideId: "StudyGuide", subjectId: "Subject", disciplineId: "Discipline" },
   StudyGuideSettings: { studyGuideId: "StudyGuide" },
   StudyGuideCycleState: { studyGuideId: "StudyGuide" },
-  ActiveStudySession: { studyGuideId: "StudyGuide", cycleEntryId: "CycleEntry", disciplineId: "Discipline", subjectId: "Subject" },
-  StudySession: { studyGuideId: "StudyGuide", cycleEntryId: "CycleEntry", subjectId: "Subject", activeStudySessionId: "ActiveStudySession" },
+  CycleProgram: { studyGuideId: "StudyGuide" },
+  CycleProgramItem: { programId: "CycleProgram", entryId: "CycleEntry", disciplineId: "Discipline", subjectId: "Subject" },
+  CycleProgramCompletion: { itemId: "CycleProgramItem", sourceSessionId: "StudySession" },
+  ActiveStudySession: { studyGuideId: "StudyGuide", cycleEntryId: "CycleEntry", disciplineId: "Discipline", subjectId: "Subject", programItemId: "CycleProgramItem" },
+  StudySession: { studyGuideId: "StudyGuide", cycleEntryId: "CycleEntry", subjectId: "Subject", activeStudySessionId: "ActiveStudySession", programItemId: "CycleProgramItem" },
   ReviewSchedule: { studyGuideId: "StudyGuide", subjectId: "Subject", sourceSessionId: "StudySession" },
   SubjectProgress: { studyGuideId: "StudyGuide", subjectId: "Subject" },
   MockExam: { studyGuideId: "StudyGuide" },
@@ -70,18 +73,26 @@ export function validateBackup(raw: unknown, userId: string): { data: BackupData
   }
   if (raw.accountId !== userId) throw new InvalidBackupError("O backup pertence a outra conta.");
   if (typeof raw.exportedAt !== "string" || Number.isNaN(Date.parse(raw.exportedAt))) throw new InvalidBackupError("Data de exportação inválida.");
-  if (!isObject(raw.data) || Object.keys(raw.data).length !== BACKUP_MODELS.length) throw new InvalidBackupError("Backup incompleto.");
+  if (!isObject(raw.data)) throw new InvalidBackupError("Backup incompleto.");
+  const sourceData = { ...raw.data };
+  for (const name of ["CycleProgram", "CycleProgramItem", "CycleProgramCompletion"]) sourceData[name] ??= [];
+  if (Object.keys(sourceData).length !== BACKUP_MODELS.length) throw new InvalidBackupError("Backup incompleto.");
   if (raw.activeStudyGuideId !== null && typeof raw.activeStudyGuideId !== "string") throw new InvalidBackupError("Guia ativo inválido.");
 
   const data = {} as BackupData;
   const ids = new Map<BackupModel, Set<string>>();
   for (const name of BACKUP_MODELS) {
-    const rows = raw.data[name];
+    const rows = sourceData[name];
     if (!Array.isArray(rows)) throw new InvalidBackupError(`Dados ausentes: ${name}.`);
     const fields = models.get(name)!.fields.filter((field) => field.kind !== "object");
     const allowed = new Set(fields.map((field) => field.name));
     const seen = new Set<string>();
     data[name] = rows.map((value) => {
+      if (isObject(value) && (name === "StudySession" || name === "ActiveStudySession")) {
+        const additions = name === "StudySession" ? ["programItemId", "subjectNameSnapshot", "disciplineNameSnapshot", "tecReferenceSnapshot"] : ["programItemId"];
+        value = { ...value };
+        for (const field of additions) if (!(field in value)) value[field] = null;
+      }
       if (!isObject(value) || Object.keys(value).length !== fields.length || Object.keys(value).some((key) => !allowed.has(key))) {
         throw new InvalidBackupError(`Registro inválido em ${name}.`);
       }
@@ -111,6 +122,30 @@ export function validateBackup(raw: unknown, userId: string): { data: BackupData
       const guideId = row.studyGuideId;
       if (typeof guideId === "string" && !ids.get("StudyGuide")!.has(guideId)) throw new InvalidBackupError(`Guia ausente em ${name}.`);
     }
+  }
+  const programs = new Map(data.CycleProgram.map(row => [row.id, row]));
+  const items = new Map(data.CycleProgramItem.map(row => [row.id, row]));
+  const subjectById = new Map(data.Subject.map(row => [row.id, row]));
+  const matterById = new Map(data.Discipline.map(row => [row.id, row]));
+  const entryById = new Map(data.CycleEntry.map(row => [row.id, row]));
+  const sessionById = new Map(data.StudySession.map(row => [row.id, row]));
+  for (const item of data.CycleProgramItem) {
+    const guideId = programs.get(item.programId)?.studyGuideId;
+    if (!guideId || subjectById.get(item.subjectId)?.studyGuideId !== guideId || matterById.get(item.disciplineId)?.studyGuideId !== guideId || entryById.get(item.entryId)?.studyGuideId !== guideId || subjectById.get(item.subjectId)?.disciplineId !== item.disciplineId) throw new InvalidBackupError("Programação vinculada a outro guia ou matéria.");
+  }
+  for (const program of data.CycleProgram) {
+    if (!Number.isInteger(program.totalRounds) || Number(program.totalRounds) < 4 || Number(program.totalRounds) > 40 || Number(program.totalRounds) % 4 !== 0 || Number(program.currentRound) < 1 || Number(program.currentRound) > Number(program.totalRounds)) throw new InvalidBackupError("Quantidade de voltas inválida.");
+    if (data.CycleProgramItem.filter(item => item.programId === program.id).length !== Number(program.totalRounds) * 16) throw new InvalidBackupError("Programação incompleta.");
+    for (let round = 1; round <= Number(program.totalRounds); round++) {
+      const roundItems = data.CycleProgramItem.filter(item => item.programId === program.id && item.roundNumber === round);
+      const positions = roundItems.map(item => entryById.get(item.entryId)?.orderIndex).sort((a, b) => Number(a) - Number(b));
+      if (positions.length !== 16 || positions.some((position, index) => position !== index + 1)) throw new InvalidBackupError("A programação precisa das 16 posições em cada volta.");
+    }
+  }
+  for (const completion of data.CycleProgramCompletion) {
+    const item = items.get(completion.itemId);
+    const source = sessionById.get(completion.sourceSessionId);
+    if (!item || !source || source.scope !== "CYCLE" || source.cycleEntryId !== item.entryId || source.studyGuideId !== programs.get(item.programId)?.studyGuideId || source.programItemId && source.programItemId !== item.id) throw new InvalidBackupError("Conclusão incompatível com a sessão original.");
   }
   return { data, activeStudyGuideId: raw.activeStudyGuideId as string | null };
 }

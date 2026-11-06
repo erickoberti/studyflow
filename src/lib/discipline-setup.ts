@@ -28,6 +28,7 @@ async function ensureDisciplineStudy(tx: Prisma.TransactionClient, userId: strin
   }
   // An existing subject or cycle paused by the user stays paused.
   if (!subject.active) return { subjects: createdSubjects, entries: 0 };
+  if (await tx.cycleProgram.count({ where: { userId, studyGuideId } })) return { subjects: createdSubjects, entries: 0 };
   const existing = await tx.cycleEntry.findFirst({ where: {
     userId, studyGuideId,
     OR: [{ disciplineId }, { disciplineId: null, subject: { disciplineId } }],

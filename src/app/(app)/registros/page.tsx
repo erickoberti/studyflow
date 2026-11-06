@@ -21,8 +21,8 @@ export default async function RegistrosPage() {
   const safeSessions = sessions.map((item) => ({
     id: item.id, cycleEntryId: item.cycleEntryId, subjectId: item.subjectId, scope: item.scope, date: item.date.toISOString(), questions: item.questions, correct: item.correct, wrong: item.wrong,
     percentage: item.percentage, estimatedMinutes: item.estimatedMinutes, activityType: item.activityType, notes: item.notes ?? "",
-    subjectName: item.scope === "GENERAL" ? "Revisão geral" : item.subject?.name ?? item.cycleEntry?.subject?.name ?? "Assunto legado indisponível",
-    disciplineName: item.scope === "GENERAL" ? "Todas as matérias" : item.subject?.discipline.name ?? item.cycleEntry?.discipline?.name ?? item.cycleEntry?.subject?.discipline.name ?? "Disciplina",
+    subjectName: item.scope === "GENERAL" ? "Revisão geral" : item.subjectNameSnapshot ?? item.subject?.name ?? item.cycleEntry?.subject?.name ?? "Assunto legado indisponível",
+    disciplineName: item.scope === "GENERAL" ? "Todas as matérias" : item.disciplineNameSnapshot ?? item.subject?.discipline.name ?? item.cycleEntry?.discipline?.name ?? item.cycleEntry?.subject?.discipline.name ?? "Disciplina",
   }));
   const cycleEntries = suggestions.map((item) => ({ id: item.entryId, subjectId: item.subject?.id ?? null, orderIndex: item.orderIndex, subjectName: item.subject?.name ?? "Assunto sugerido indisponível", disciplineName: item.discipline }));
   const totalQuestions=sessions.reduce((n,s)=>n+s.questions,0); const totalCorrect=sessions.reduce((n,s)=>n+s.correct,0); const minutes=sessions.reduce((n,s)=>n+s.estimatedMinutes,0);

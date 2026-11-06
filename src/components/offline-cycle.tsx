@@ -45,7 +45,7 @@ export function OfflineCycle() {
                 <li key={entry.id} className="grid grid-cols-[32px_minmax(0,1fr)] items-start gap-3 p-4 text-sm">
                   <span className="grid h-8 w-8 place-items-center rounded-control bg-elevated text-xs font-semibold">{entry.orderIndex}</span>
                   <div><p><strong>{entry.subject.discipline.name}</strong> → {entry.subject.name}</p>
-                    <p className="mt-1 text-xs text-textSecondary">{entry.active ? "Ativo" : "Pausado"} · {aggregate.questions} questões · {aggregate.questions ? `${percentage.toFixed(1)}% de acertos` : "sem questões registradas"}</p>
+                    <p className="mt-1 text-xs text-textSecondary">{entry.programRound ? `Volta ${entry.programRound}/${entry.programTotalRounds} · ${entry.programCompleted ? "Concluída" : "Pendente"}` : entry.active ? "Ativo" : "Pausado"} · {aggregate.questions} questões · {aggregate.questions ? `${percentage.toFixed(1)}% de acertos` : "sem questões registradas"}</p>
                   </div>
                 </li>
               );

@@ -112,6 +112,12 @@ async function executeStructuralOperation(userId: string, operation: PendingOper
     where: { id: disciplineId, userId, studyGuideId: guideId },
   });
   const input = operation.payload;
+  if (operation.entity === "subject" || operation.entity === "discipline") {
+    const recordId = resolveId(input.id ?? input.clientId);
+    const record = operation.entity === "subject" ? await prisma.subject.findFirst({ where: { id: recordId, userId }, select: { studyGuideId: true } }) : await prisma.discipline.findFirst({ where: { id: recordId, userId }, select: { studyGuideId: true } });
+    const guideId = record?.studyGuideId ?? resolveId(input.guideId);
+    if (guideId && await prisma.cycleProgram.count({ where: { userId, studyGuideId: guideId } })) throw new RejectedOperationError("Este guia tem programação fixa. Preserve esta alteração local e confira a matriz online antes de aplicá-la.");
+  }
 
   if (operation.entity === "guide" && operation.action === "create") {
     const clientId = asString(input.clientId);

@@ -18,6 +18,8 @@ function delegate(db: Prisma.TransactionClient, name: BackupModel): BackupDelega
 }
 
 function ownerFilter(name: BackupModel, userId: string) {
+  if (name === "CycleProgramItem") return { program: { userId } };
+  if (name === "CycleProgramCompletion") return { item: { program: { userId } } };
   return name === "MockExamDisciplineResult" ? { mockExam: { userId } } : { userId };
 }
 
