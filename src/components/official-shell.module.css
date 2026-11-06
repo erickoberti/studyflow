@@ -1,9 +1,9 @@
 .screen { font-family: var(--font-inter), sans-serif; color: var(--foreground); }
 :global(body):has(.screen) { font-family: var(--font-inter), sans-serif; }
-:global(body):has(.screen) :global(#main-content) { max-width: none; padding: 32px; }
+:global(body):has(.screen) :global(#main-content) { width: 100%; max-width: 1600px; margin-inline: auto; padding: 28px 32px; }
 :global(body):has(.screen) :global(aside.hidden.border-r) { position: sticky; top: 0; height: 100dvh; border: 0; box-shadow: 1px 0 8px #00000003; }
-:global(body):has(.screen) :global(aside.hidden.border-r > div:first-child) { padding: 20px 32px; }
-:global(body):has(.screen) :global(aside.hidden.border-r > div:last-child) { border: 0; padding: 32px; }
+:global(body):has(.screen) :global(aside.hidden.border-r > div:first-child) { padding: 24px 20px; }
+:global(body):has(.screen) :global(aside.hidden.border-r > div:last-child) { border: 0; padding: 20px; }
 :global(body):has(.screen) :global(aside nav a) { font-size: 14px; min-height: 44px; }
 :global(body):has(.screen) :global(header.sticky) { padding: 0 32px; border: 0; box-shadow: 0 2px 8px #00000002; }
 :global(body):has(.screen) :global(header.sticky > div) { height: 64px; }
@@ -19,5 +19,5 @@
 }
 
 :global(body):has(.screen) :global(aside.hidden.border-r > div:last-child > div) { padding:8px; gap:8px; }
-:global(body):has(.screen) :global(aside.hidden.border-r > div:last-child button) { width:24px; }
+:global(body):has(.screen) :global(aside.hidden.border-r > div:last-child button) { width:44px; }
 

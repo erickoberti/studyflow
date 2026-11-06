@@ -101,12 +101,13 @@ export default async function BasePage({
       <GuideSetupNotice name={guide.name} {...guide._count} />
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="mb-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">Cadastro de matérias &amp; edital · {disciplines.length} disciplinas · {subjects.length} tópicos mapeados</p><h1 className="text-3xl font-semibold text-slate-900 dark:text-white">Disciplinas & Conteúdo Programático</h1>
+          <p className="mb-2 text-xs font-medium text-primary">Seu conteúdo · {disciplines.length} matérias · {subjects.length} assuntos</p><h1 className="text-3xl font-semibold text-slate-900 dark:text-white">Matérias e assuntos</h1>
           <p className="mt-1 text-sm text-textSecondary dark:text-textSecondary">
-            Estruture seu edital com pesos, referências de questões e anotações estratégicas para guiar cada sessão de foco.
+            Cada assunto junto da sua matéria, com pesos, referências e anotações à vista.
           </p>
         </div>
-        <div className="flex shrink-0 gap-3"><Link href="/base?import=1" className="inline-flex max-w-48 items-center rounded-xl bg-surface px-5 py-3 text-center text-sm">Importar edital verticalizado</Link><Link href="/base?tab=disciplinas&novo=1" className="inline-flex max-w-40 items-center rounded-xl bg-primary px-5 py-3 text-center text-sm font-semibold text-white">＋ Adicionar disciplina</Link></div>      </header>
+        <div className="flex flex-wrap gap-2"><Link href="/base?import=1" className="sf-secondary">Importar</Link><Link href="/base?tab=assuntos&novo=1" className="sf-secondary">Novo assunto</Link><Link href="/base?tab=disciplinas&novo=1" className="sf-primary">＋ Nova matéria</Link></div>
+      </header>
 
       {showImport ? (
         <section className="space-y-4">
@@ -128,13 +129,14 @@ export default async function BasePage({
             <div className="max-w-md">
               <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-primary/20 dark:bg-elevated">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  {editingDiscipline ? "Editar disciplina" : "Nova disciplina"}
+                  {editingDiscipline ? "Editar matéria" : "Nova matéria"}
                 </h3>
                 <form action={editingDiscipline ? updateDiscipline : createDiscipline} className="mt-4 space-y-3">
                   {editingDiscipline ? <input type="hidden" name="disciplineId" value={editingDiscipline.id} /> : null}
                   <input
                     name="name"
-                    placeholder="Nome da disciplina"
+                    placeholder="Nome da matéria"
+                    aria-label="Nome da matéria"
                     required
                     defaultValue={editingDiscipline?.name ?? ""}
                     className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
@@ -143,13 +145,14 @@ export default async function BasePage({
                     name="sortOrder"
                     type="number"
                     min={1}
-                    placeholder="Ordem da disciplina"
+                    placeholder="Ordem da matéria"
+                    aria-label="Ordem da matéria"
                     defaultValue={editingDiscipline?.sortOrder ?? ""}
                     className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                   />
                   <div className="flex gap-2">
                     <button className="flex-1 rounded-lg bg-primary py-2.5 text-sm font-bold text-white">
-                      {editingDiscipline ? "Salvar disciplina" : "Criar disciplina"}
+                      {editingDiscipline ? "Salvar matéria" : "Criar matéria"}
                     </button>
                     <Link
                       href="/base?tab=disciplinas"
@@ -171,7 +174,7 @@ export default async function BasePage({
                     {editingSubject ? "Editar assunto" : "Novo assunto"}
                   </h3>
                   <p className="mt-1 text-xs text-textSecondary dark:text-textSecondary">
-                    Ajuste disciplina, ordem, peso e referencias sem abrir um painel lateral separado.
+                    Escolha a matéria e informe o assunto, seu peso e as referências.
                   </p>
                 </div>
                 <Link
@@ -199,7 +202,7 @@ export default async function BasePage({
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
-                      Disciplina
+                      Matéria
                     </label>
                     <select
                       name="disciplineId"
@@ -282,7 +285,7 @@ export default async function BasePage({
             </section>
           ) : null}
 
-          <DisciplineCatalog groups={sortedDisciplines.map(discipline => ({id:discipline.id,name:discipline.name,topics:subjects.filter(s=>s.disciplineId===discipline.id).map(s=>({id:s.id,name:s.name,weight:s.weight,notes:s.notes,tecReference:s.tecReference,active:s.active,questions:s.progress?.totalQuestions??0,percentage:s.progress?.averagePercentage??0,studied:Boolean(s.progress?.lastStudiedAt)}))}))} />
+          <DisciplineCatalog groups={sortedDisciplines.map(discipline => ({id:discipline.id,name:discipline.name,active:discipline.active,topics:subjects.filter(s=>s.disciplineId===discipline.id).map(s=>({id:s.id,name:s.name,weight:s.weight,notes:s.notes,tecReference:s.tecReference,active:s.active,questions:s.progress?.totalQuestions??0,percentage:s.progress?.averagePercentage??0,studied:Boolean(s.progress?.lastStudiedAt)}))}))} />
           <details className="mt-6 rounded-xl border p-4"><summary className="cursor-pointer text-sm">Gerenciar cadastro e exportação</summary><div className="flex flex-wrap gap-4 pt-4"><Link href="/api/export/csv" className="sf-secondary">Exportar</Link><Link href="/base?tab=assuntos&novo=1" className="sf-secondary">Novo assunto</Link><form action={deleteAllGuideDisciplinesAction}><button className="text-sm text-danger">Excluir todas disciplinas</button></form><form action={deleteAllSubjectsAction}><button className="text-sm text-danger">Excluir todos assuntos</button></form></div></details>        </div>
       </section>
     </div>

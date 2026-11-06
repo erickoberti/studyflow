@@ -26,7 +26,7 @@ const links = [
   { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { href: "/registro", label: "Estudar", icon: BookOpenCheck },
   { href: "/ciclo", label: "Ciclo", icon: RefreshCcw },
-  { href: "/base", label: "Disciplinas", icon: BookOpen },
+  { href: "/base", label: "Matérias", icon: BookOpen },
   { href: "/registros", label: "Histórico", icon: ListChecks },
   { href: "/revisao", label: "Revisões", icon: RefreshCcw },
   { href: "/mais", label: "Mais recursos", icon: Menu },
@@ -73,7 +73,7 @@ export function AppShell({
       <div className="grid min-h-screen lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="hidden border-r bg-surface lg:flex lg:flex-col">
           <div className="px-6 py-7">
-            <div className="mb-8 flex items-center gap-3"><BrandLogo className="h-9 w-9 rounded-control object-cover" /><div><p className="text-lg font-bold tracking-tight">StudyFlow</p><p className="text-[9px] font-semibold uppercase tracking-wider text-textSecondary">{["/base", "/registros", "/revisao", "/ciclo", "/dashboard", "/registro"].includes(pathname) ? "Focus OS" : "Plataforma de estudos"}</p></div></div>
+            <div className="mb-8 flex items-center gap-3"><BrandLogo className="h-9 w-9 rounded-control object-cover" /><div><p className="font-[family-name:var(--font-jakarta)] text-lg font-bold tracking-tight">StudyFlow</p><p className="text-[11px] text-textSecondary">Um estudo de cada vez.</p></div></div>
             <p className="mb-3 text-[10px] font-medium uppercase tracking-widest text-textSecondary">Plataforma</p>
             <nav className="space-y-1" aria-label="Navegação principal">
               {links.map((item) => { const Icon = item.icon; const active = isActivePath(pathname, item.href) || (item.href === "/mais" && !links.slice(0, 6).some((link) => isActivePath(pathname, link.href))); return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("flex min-h-11 items-center gap-3 rounded-control px-3 text-sm transition-colors", active ? "bg-navigation font-semibold text-white" : "text-textSecondary hover:bg-elevated hover:text-textPrimary")}><Icon size={17} />{item.label}</Link>; })}
@@ -82,7 +82,7 @@ export function AppShell({
           <div className="mt-auto border-t p-5"><div className="flex items-center gap-3 rounded-control bg-elevated p-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-control bg-primary text-white"><UserCircle2 size={18} /></span><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{userName}</p><p className="truncate text-[10px] text-textSecondary">{userEmail}</p></div><button type="button" onClick={handleSignOut} aria-label="Sair" title="Sair" className="grid w-11 shrink-0 place-items-center rounded-control text-textSecondary hover:text-primary"><LogOut size={16} /></button></div></div>
         </aside>
         <div className="flex min-w-0 flex-col">
-          <header className="sticky top-0 z-40 border-b bg-backgroundLight/95 px-4 backdrop-blur-md dark:bg-backgroundDark/95 md:px-8">
+          <header className="sticky top-0 z-40 border-b bg-surface/95 px-4 backdrop-blur-md dark:bg-backgroundDark/95 md:px-8">
             <div className="flex h-16 min-w-0 items-center gap-2 sm:gap-3">
               <BrandLogo className="h-8 w-8 shrink-0 rounded-control object-cover lg:hidden" />
               {currentGuide ? <details className="relative min-w-0 flex-1 sm:flex-none">

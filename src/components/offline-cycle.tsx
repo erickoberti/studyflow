@@ -35,40 +35,23 @@ export function OfflineCycle() {
         <p className="mt-1 text-sm text-textSecondary">Consulta offline do ciclo atual. Alterações estruturais continuam online.</p>
       </header>
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-surface shadow-sm dark:border-white/5 dark:bg-slate-950/70">
-        <table className="w-full min-w-[860px] text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-textSecondary dark:bg-elevated">
-            <tr>
-              <th className="px-4 py-3">Ordem</th>
-              <th className="px-4 py-3">Disciplina</th>
-              <th className="px-4 py-3">Assunto</th>
-              <th className="px-4 py-3 text-right">Questões</th>
-              <th className="px-4 py-3 text-right">Acerto</th>
-              <th className="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+      <section aria-label="Sequência salva offline" className="rounded-card border bg-surface">
+        <ol className="divide-y">
             {cycleEntries.map((entry) => {
               const aggregate = sessionsByEntry.get(entry.id) ?? { questions: 0, correct: 0 };
               const percentage = aggregate.questions > 0 ? (aggregate.correct / aggregate.questions) * 100 : 0;
 
               return (
-                <tr key={entry.id}>
-                  <td className="px-4 py-3 font-semibold">#{entry.orderIndex}</td>
-                  <td className="px-4 py-3">{entry.subject.discipline.name}</td>
-                  <td className="px-4 py-3">{entry.subject.name}</td>
-                  <td className="px-4 py-3 text-right">{aggregate.questions}</td>
-                  <td className="px-4 py-3 text-right">{percentage.toFixed(1)}%</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase ${entry.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-textSecondary dark:bg-elevated dark:text-textSecondary"}`}>
-                      {entry.active ? "ativo" : "inativo"}
-                    </span>
-                  </td>
-                </tr>
+                <li key={entry.id} className="grid grid-cols-[32px_minmax(0,1fr)] items-start gap-3 p-4 text-sm">
+                  <span className="grid h-8 w-8 place-items-center rounded-control bg-elevated text-xs font-semibold">{entry.orderIndex}</span>
+                  <div><p><strong>{entry.subject.discipline.name}</strong> → {entry.subject.name}</p>
+                    <p className="mt-1 text-xs text-textSecondary">{entry.active ? "Ativo" : "Pausado"} · {aggregate.questions} questões · {aggregate.questions ? `${percentage.toFixed(1)}% de acertos` : "sem questões registradas"}</p>
+                  </div>
+                </li>
               );
             })}
-          </tbody>
-        </table>
+        </ol>
+        {!cycleEntries.length ? <p className="p-5 text-sm text-textSecondary">Nenhuma posição disponível neste guia local.</p> : null}
       </section>
     </div>
   );

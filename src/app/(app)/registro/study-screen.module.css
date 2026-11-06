@@ -1,14 +1,4 @@
-/* Reference layout, scoped to the dashboard and its surrounding shell. */
-:global(body):has(.screen) {
-  --background: #fafbfd; --foreground: #0f172a; --foreground-rgb: 15 23 42;
-  --surface: #fff; --surface-rgb: 255 255 255; --surface-elevated: #f1f5f9; --elevated-rgb: 241 245 249;
-  --primary-rgb: 124 58 237; --text-secondary: #64748b; --secondary-rgb: 100 116 139; --border: #e2e8f0;
-}
-:global(html.dark body):has(.screen) {
-  --background: #0c0e15; --foreground: #f1f5f9; --foreground-rgb: 241 245 249;
-  --surface: #151927; --surface-rgb: 21 25 39; --surface-elevated: #1d2436; --elevated-rgb: 29 36 54;
-  --primary-rgb: 167 139 250; --text-secondary: #94a3b8; --secondary-rgb: 148 163 184; --border: #293247;
-}
+/* Study controls use the shared StudyFlow palette. */
 .screen { position: relative; }
 .screen :global(.study-cycle-line) { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 10px; }
 .screen :global(.study-cycle-tag) { display: inline-flex; align-items: center; gap: 7px; padding: 7px 8px; border: 1px solid rgb(var(--primary-rgb)/.1); border-radius: 6px; background: rgb(var(--primary-rgb)/.05); color: rgb(var(--primary-rgb)); text-transform: uppercase; font-size: 10px; font-weight: 600; letter-spacing: .04em; }
@@ -84,12 +74,12 @@
 
 :global(body):has(.screen) > :global(div.min-h-screen) { background: var(--background); }
 :global(body):has(.screen) :global(header.sticky) { background: var(--surface); }
-:global(body):has(.screen){font-family:var(--font-jakarta),sans-serif}
+:global(body):has(.screen){font-family:var(--font-inter),sans-serif}
 @media(min-width:1024px){:global(body):has(.screen)>:global(div)>:global(div.grid){grid-template-columns:20% minmax(0,1fr)}:global(body):has(.screen) :global(#main-content){max-width:none;padding:40px}.screen :global(.study-workspace){margin-top:72px;padding:40px 32px;min-height:488px}.screen :global(#study-subject){font-size:48px;font-weight:800;line-height:1.15}.screen :global(.study-subtitle){font-size:18px}.screen :global(.study-metadata){font-size:11px;margin-top:27px}.screen :global(.study-cycle-line){font-size:11px}.screen :global(.study-cycle-tag){font-size:10px}.screen :global([role=tablist]){max-width:496px}.screen :global([role=tab]){font-size:11px}.screen :global([role=tabpanel]){margin-top:40px}.screen :global(.study-target>p){font-size:72px}.screen :global(.study-target>span){font-size:22px}.screen :global(.study-description){max-width:432px;font-size:14px}.screen :global(.study-question-actions){margin-top:32px}.screen :global(.study-question-actions button){font-size:13px;padding:13px 21px}.screen :global(.study-workspace-note){font-size:11px;max-width:576px;margin-top:38px;padding-top:24px}.screen :global(.study-footer){margin-top:72px;font-size:10px}.screen :global(.study-standalone a){font-size:10px}.screen :global(.study-next div>span){max-width:124px}:global(body):has(.screen) :global(header.sticky > div){height:70px}}
 @media(min-width:1024px){:global(body):has(.screen) :global(aside.hidden.border-r > div:first-child){padding:32px 30px}:global(body):has(.screen) :global(aside nav a){font-size:18px;min-height:50px;margin-bottom:5px}:global(body):has(.screen) :global(aside nav svg){width:20px;height:20px}:global(body):has(.screen) :global(aside.hidden.border-r p.text-lg){font-size:20px}}
 @media(min-width:1024px){:global(body):has(.screen)>:global(div)>:global(div.grid){grid-template-columns:256px minmax(0,1fr)}:global(body):has(.screen) :global(#main-content){padding:32px}:global(body):has(.screen) :global(header.sticky > div){height:56px}:global(body):has(.screen) :global(aside nav a){font-size:14px;min-height:44px}:global(body):has(.screen) :global(aside.hidden.border-r > div:first-child){padding:24px}:global(body):has(.screen) :global(aside.hidden.border-r p.text-lg){font-size:18px}}
 /* Estudar reference 7: centered 64rem workspace, with independent mobile sizing. */
-.screen{font-family:var(--font-jakarta),sans-serif}
+.screen{font-family:var(--font-inter),sans-serif}
 .screen :global(.study-cycle-line){font-size:12px}
 .screen :global(.study-cycle-tag){font-size:11px;padding:4px 10px;font-weight:700}
 .screen :global(.study-discipline)::before{content:'·';margin-right:10px;color:#cbd5e1}

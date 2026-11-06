@@ -10,7 +10,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        backgroundLight: "#fcf8ff",
+        backgroundLight: "var(--background)",
         backgroundDark: "#0c0e15",
         panelDark: "rgb(var(--surface-rgb) / <alpha-value>)",
         surface: "rgb(var(--surface-rgb) / <alpha-value>)",
@@ -31,7 +31,7 @@ const config: Config = {
         feature: "0.875rem",
       },
       fontFamily: {
-        sans: ["var(--font-lexend)", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
       },
       boxShadow: {
         soft: "0 2px 5px rgb(15 23 42 / 0.06)",

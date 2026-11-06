@@ -169,6 +169,8 @@ test("sincronização iniciada em A não limpa pendências de B após troca de c
   const previousWindow = globalThis.window;
   const previousFetch = globalThis.fetch;
   const previousCustomEvent = globalThis.CustomEvent;
+  const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true } });
   globalThis.window = {
     localStorage: {
       getItem: (key: string) => values.get(key) ?? null,
@@ -212,5 +214,7 @@ test("sincronização iniciada em A não limpa pendências de B após troca de c
     globalThis.window = previousWindow;
     globalThis.fetch = previousFetch;
     globalThis.CustomEvent = previousCustomEvent;
+    if (previousNavigator) Object.defineProperty(globalThis, "navigator", previousNavigator);
+    else Reflect.deleteProperty(globalThis, "navigator");
   }
 });

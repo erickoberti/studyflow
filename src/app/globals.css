@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --background: #fcf8ff; --foreground: #1b1b23;
-  --surface: #ffffff; --surface-elevated: #f5f2fe;
-  --surface-rgb: 255 255 255; --elevated-rgb: 245 242 254;
+  --background: #f7f7f2; --foreground: #1b1b23;
+  --surface: #ffffff; --surface-elevated: #f0f0f6;
+  --surface-rgb: 255 255 255; --elevated-rgb: 240 240 246;
   --foreground-rgb: 27 27 35; --primary-rgb: 70 72 212;
-  --navigation-rgb: 96 99 238;
+  --navigation-rgb: 70 72 212;
   --secondary-rgb: 89 88 101; --success-rgb: 16 185 129;
   --warning-rgb: 245 158 11; --critical-rgb: 239 68 68;
-  --text-secondary: #595865; --border: #eeecf4;
+  --text-secondary: #595865; --border: #dedfe5;
 }
 .dark {
   color-scheme: dark;
@@ -48,7 +48,7 @@ main :where(h1, h2, h3, p) {
 
 body {
   font-size: 15px;
-  line-height: 1.4;
+  line-height: 1.5;
   background: var(--background);
   color: var(--foreground);
   padding-left: env(safe-area-inset-left);
@@ -56,6 +56,7 @@ body {
 }
 
 :where(*) { border-color: var(--border); }
+main :where(h1, h2, h3) { font-family: var(--font-jakarta), sans-serif; }
 .sf-content h1 { font-size: 1.5rem; line-height: 1.25; }
 .sf-content h1[class~="text-lg"] { font-size: 1.125rem; }
 .sf-content h2[class~="text-2xl"]:not(#study-subject) { font-size: 1.25rem; }

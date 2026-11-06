@@ -175,8 +175,8 @@ export function OfflineBaseManager() {
                 return (
                   <div key={subject.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3">
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold">{subject.name}</p>
-                      <p className="text-xs text-textSecondary">{discipline?.name ?? "-"} | peso {subject.weight} | ordem {subject.orderIndex ?? "-"}</p>
+                      <p><strong>{discipline?.name ?? "Matéria indisponível"}</strong> → {subject.name}</p>
+                      <p className="text-xs text-textSecondary">Peso {subject.weight} · ordem {subject.orderIndex ?? "-"}</p>
                     </div>
                     <button
                       type="button"

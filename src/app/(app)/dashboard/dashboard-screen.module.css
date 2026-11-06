@@ -2,7 +2,6 @@
 @media(max-width:1200px){.heroMetrics{grid-template-columns:repeat(2,1fr)}.daily{flex-wrap:wrap;gap:19px}.dailyProgress{flex-basis:100%}.columns{grid-template-columns:1fr}.heroTop{flex-wrap:wrap}.context>a{display:none}}
 @media(max-width:767px){.screen{margin-top:0}.context{margin-bottom:20px}.context>span{flex-wrap:wrap;font-size:10px}.header h1{font-size:28px}.header>p{font-size:14px}.hero{padding:24px 18px}.heroTop{margin-bottom:22px;gap:12px}.heroTop span,.heroTop>a{font-size:12px}.hero h2{font-size:27px}.hero>p{font-size:14px;min-height:0}.heroMetrics{gap:10px;margin-top:22px}.heroMetrics>div{padding:12px;gap:8px;flex-wrap:wrap}.heroMetrics small{font-size:9px}.heroMetrics b{font-size:14px}.actions{flex-wrap:wrap;margin-top:24px}.actions>a{width:100%;font-size:14px;padding:12px}.actions>a.cycleAction{width:auto;margin:0}.daily{padding:18px;gap:18px}.dailyProgress>div{align-items:flex-start;flex-direction:column;gap:6px}.daily small{font-size:10px}.daily>div>b{font-size:20px}.columns>section{padding:20px;min-height:0}.columns header{flex-wrap:wrap;gap:12px}.columns h2{font-size:20px}.recentList article{padding:12px;gap:10px;flex-wrap:wrap}.recentList h3{font-size:14px}.recentList small{flex-wrap:wrap;font-size:10px}.score b{font-size:22px}.next{flex-wrap:wrap;padding:20px;font-size:13px}.next>div{flex-basis:80%}.heroMetrics>div>span{width:32px;height:32px}.performance article>div{font-size:15px}}
 .header{margin-bottom:18px}.heroMetrics{margin-top:26px}.daily{padding-top:18px;padding-bottom:18px}
-:global(html:not(.dark) body):has(.screen){--background:#fcf8ff;--foreground:#1b1b23;--foreground-rgb:27 27 35;--surface:#fff;--surface-rgb:255 255 255;--surface-elevated:#f5f2fe;--elevated-rgb:245 242 254;--primary-rgb:70 72 212;--navigation-rgb:96 99 238;--text-secondary:#464554;--secondary-rgb:70 69 84}
 /* Prototype semantic accents: priority, activity categories and progress. */
 .heroMetrics>div:nth-child(3)>span,.heroMetrics>div:nth-child(3) b{color:#904900}
 .heroTop b,.icon{background:#e1e0ff}
@@ -22,6 +21,7 @@
 @media(min-width:768px){.screen{margin-top:-24px}.header h1{font-size:32px}.hero h2{font-size:28px}.hero{padding:32px;border-left-width:6px}.header>p,.hero>p,.heroMetrics b,.actions>a{font-size:14px}.heroTop span,.heroTop>a,.columns header a,.recentList p,.performance article>p{font-size:12px}.columns h2{font-size:18px}.heroMetrics small,.columns small,.daily small{font-size:10px}.heroMetrics>div>span{width:32px;height:32px}.actions>a{min-height:44px}.heroMetrics svg{width:18px;height:18px}.columns>section{min-height:408px}}
 /* Dashboard reference 6: measurements are CSS pixels, independent of export scale. */
 .screen{font-size:14px}
+.screen { margin-top: 0; }
 .header h1,.hero h2,.columns h2{font-weight:700}
 .context>span{background:color-mix(in srgb,var(--surface-elevated) 55%,var(--border))}
 .hero{box-shadow:0 1px 2px #0000000d;background:radial-gradient(ellipse at top right,rgb(var(--primary-rgb)/.035),transparent 65%),var(--surface)}
@@ -46,3 +46,18 @@
  .actions{margin-top:40px}.actions>a{padding:12px 24px}.daily{padding:20px;gap:32px}
  .columns>section{padding:24px;min-height:412px}.columns h2{line-height:28px;margin-top:2px}.columns header{margin-bottom:24px}.recentList article{min-height:88px}.recentList p{margin:2px 0 6px}.performance article{margin-bottom:24px}.performance article>div{margin-bottom:8px}.next{padding:16px}
 }
+
+/* Keep the study action prominent without reserving empty card height. */
+.screen { margin-top: 0; }
+.context { margin-bottom: 16px; }
+.context > span { font-size: 12px; text-transform: none; letter-spacing: 0; background: transparent; padding: 0; }
+.hero { padding: 24px; border-left-width: 4px; background: var(--surface); }
+.heroTop { margin-bottom: 16px; }
+.hero > p { min-height: 0; }
+.heroMetrics { margin-top: 20px; }
+.heroMetrics small { font-size: 11px; text-transform: none; letter-spacing: 0; line-height: 1.5; }
+.actions { margin-top: 24px; }
+.columns > section { min-height: 0; }
+.recentList h3, .recentList p { white-space: normal; overflow: visible; text-overflow: clip; }
+.actions > a.cycleAction { font-size: 13px; color: rgb(var(--primary-rgb)); }
+@media(max-width: 767px) { .hero { padding: 20px 18px; } .heroMetrics > div { align-items: flex-start; } }

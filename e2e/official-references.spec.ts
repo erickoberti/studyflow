@@ -39,22 +39,12 @@ for(const [route,width,height] of screens) test(`${route}: referência e mobile`
     for(const name of ['Cronômetro','Conteúdo','Questões']) {await page.getByRole('tab',{name,exact:true}).click(); await expect(page.getByRole('tabpanel',{name,exact:true})).toBeVisible();}
   }
   if(route==='base') {
-    const cards=page.locator('article[data-tone]');
-    expect(await cards.count()).toBeLessThanOrEqual(3);
-    const next=page.getByRole('button',{name:'Próxima página de disciplinas'});
-    if(await next.isEnabled()) {
-      const first=await cards.first().locator('h2').innerText();
-      await next.click();
-      await expect(cards.first().locator('h2')).not.toHaveText(first);
-      await expect(page.getByRole('button',{name:'Página 2 de disciplinas'})).toHaveAttribute('aria-current','page');
-    }
-    await page.getByPlaceholder('Filtrar tópicos ou termos...').fill('zzzznenhum');
-    await expect(page.getByText('Nenhuma disciplina encontrada.')).toBeVisible();
-    await page.getByPlaceholder('Filtrar tópicos ou termos...').fill('');
-    await expect(page.getByRole('button',{name:'Página 1 de disciplinas'})).toHaveAttribute('aria-current','page');
-    await page.getByLabel('Disciplinas por página',{exact:true}).selectOption('6');
-    expect(await cards.count()).toBeLessThanOrEqual(6);
-    await page.getByLabel('Disciplinas por página',{exact:true}).selectOption('3');
+    const rows=page.locator('main article[aria-label]');
+    const total=await rows.count();
+    await page.getByRole('textbox',{name:'Buscar matéria ou assunto'}).fill('zzzznenhum');
+    await expect(page.getByRole('heading',{name:'Nenhum resultado'})).toBeVisible();
+    await page.getByRole('button',{name:'Limpar filtros'}).click();
+    await expect(rows).toHaveCount(total);
   }
   if(route==='registros') {
     const search=page.getByPlaceholder('Filtrar por disciplina/assunto/data');
@@ -89,11 +79,11 @@ for(const [route,width,height] of screens) test(`${route}: referência e mobile`
 
 test('formulários e navegação preservados sem gravar dados',async({page})=>{
  test.skip(Boolean(process.env.VISUAL_SCREEN));
- await page.goto('/base?tab=disciplinas&novo=1'); await expect(page.getByRole('button',{name:'Criar disciplina',exact:true})).toBeVisible();
+ await page.goto('/base?tab=disciplinas&novo=1'); await expect(page.getByRole('button',{name:'Criar matéria',exact:true})).toBeVisible();
  await page.goto('/base?tab=assuntos&novo=1'); await expect(page.getByRole('button',{name:'Criar assunto',exact:true})).toBeVisible();
  await page.goto('/base?import=1'); await expect(page.getByRole('heading',{name:'Importar cadastro-base'})).toBeVisible();
  await page.goto('/registros'); const detail=page.locator('.history-details').first(); await detail.locator('summary').click(); await detail.getByRole('button',{name:'Editar',exact:true}).click(); await expect(page.getByText('Editando registro', {exact:true})).toBeVisible(); await page.getByRole('button',{name:'Cancelar',exact:true}).click();
- await page.goto('/ciclo'); await page.getByRole('link',{name:/Ver todas as posições/}).click(); await expect(page.getByRole('link',{name:/Mostrar trecho atual/})).toBeVisible(); const menu=page.locator('details').filter({has:page.locator('summary',{hasText:'Gerenciar posição #1'})}).first(); await menu.locator('summary').click(); await menu.getByRole('button',{name:'Excluir',exact:true}).click(); await expect(page.getByRole('alertdialog')).toBeVisible(); await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+ await page.goto('/ciclo'); await expect(page.locator('#sequencia ol > li').first()).toBeVisible(); const menu=page.locator('details').filter({has:page.locator('summary',{hasText:'Gerenciar posição #1'})}).first(); await menu.locator('summary').click(); await menu.getByRole('button',{name:'Excluir',exact:true}).click(); await expect(page.getByRole('alertdialog')).toBeVisible(); await page.getByRole('button',{name:'Cancelar',exact:true}).click();
  await page.goto('/revisao'); await page.getByRole('link',{name:/Concluídas recentemente/}).click(); await expect(page.getByRole('heading',{name:'Concluídas recentemente'})).toBeVisible(); await page.getByRole('link',{name:/Calendário/}).click(); await expect(page.getByRole('heading',{name:'Calendário de revisões'})).toBeVisible();
  await page.goto('/dashboard'); await page.getByRole('link',{name:'Iniciar agora',exact:true}).click(); await expect(page.getByRole('tabpanel',{name:'Cronômetro',exact:true})).toBeVisible();
  await page.goto('/registro?novo=1'); await expect(page.locator('main form').first()).toBeVisible();

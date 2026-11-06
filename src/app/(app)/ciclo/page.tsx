@@ -16,40 +16,21 @@ import { GuideSetupNotice } from "@/components/guide-setup-notice";
 import { prisma } from "@/lib/prisma";
 import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
-import { getCyclePositionSuggestions } from "@/lib/cycle-strategy";
 import { cycleService } from "@/lib/cycle-service";
 import {
   ArrowRight,
   BookOpen,
   CircleCheckBig,
-  Clock3,
-  RefreshCcw,
   Route,
-  Hourglass,
   Download,
   GripVertical,
   Play,
   Plus,
-  Target,
   Trash2,
 } from "lucide-react";
 
 function minutesForWeight(weight: number) {
   return Math.max(30, Number(weight) * 30);
-}
-
-function statusForEntry(entry: { active: boolean; orderIndex: number }, currentOrder: number | null) {
-  if (!entry.active) return "AGUARDANDO";
-  if (currentOrder !== null && entry.orderIndex < currentOrder) return "CONCLUIDO";
-  if (currentOrder !== null && entry.orderIndex === currentOrder) return "EM ANDAMENTO";
-  return "PENDENTE";
-}
-
-function statusChip(status: string) {
-  if (status === "CONCLUIDO") return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300";
-  if (status === "EM ANDAMENTO") return "bg-primary/15 text-primary";
-  if (status === "PENDENTE") return "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300";
-  return "bg-slate-200 text-textSecondary dark:bg-slate-700 dark:text-textSecondary";
 }
 
 export default async function CicloPage({
@@ -64,7 +45,7 @@ export default async function CicloPage({
   weekStart.setUTCHours(0, 0, 0, 0);
   weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7));
 
-  const [entries, subjects, aggregates, settings, cycleSuggestions, cycleState, weeklyAggregate, currentCycle] = await Promise.all([
+  const [entries, subjects, aggregates, settings, cycleState, weeklyAggregate, currentCycle] = await Promise.all([
     prisma.cycleEntry.findMany({
       where: { userId: user.id, studyGuideId: guide.id },
       include: { subject: { include: { discipline: true } }, discipline: true },
@@ -82,11 +63,11 @@ export default async function CicloPage({
       _max: { date: true },
     }),
     getStudyGuideSettings(user.id, guide.id),
-    getCyclePositionSuggestions(user.id, guide.id),
     prisma.studyGuideCycleState.findUnique({ where: { studyGuideId: guide.id }, select: { currentOrderIndex: true, roundNumber: true } }),
     prisma.studySession.aggregate({ where: { userId: user.id, studyGuideId: guide.id, date: { gte: weekStart } }, _sum: { questions: true } }),
     cycleService.getCurrent(user.id, guide.id),
   ]);
+  const cycleSuggestions = await cycleService.preview(user.id, guide.id, entries.length);
 
   const showAdd = params?.novo === "1";
   const suggestionByEntry = new Map(cycleSuggestions.map((item) => [item.entryId, item]));
@@ -94,26 +75,19 @@ export default async function CicloPage({
     const suggestion = suggestionByEntry.get(entry.id);
     return {
       ...entry,
-      subject: entry.subject ?? {
-        name: suggestion?.subject?.name ?? "Sem assunto ativo",
-        weight: suggestion?.subject?.weight ?? 1,
-        discipline: { name: suggestion?.discipline ?? entry.discipline?.name ?? "Disciplina" },
+      subject: {
+        name: suggestion?.subject.name ?? (!entry.active ? entry.subject?.name : null) ?? "Sem assunto ativo",
+        weight: suggestion?.subject.weight ?? entry.subject?.weight ?? 1,
+        discipline: { name: suggestion?.discipline.name ?? entry.discipline?.name ?? entry.subject?.discipline.name ?? "Matéria" },
       },
     };
   });
-  const aggMap = new Map(
-    aggregates.map((aggregate) => [
-      aggregate.cycleEntryId,
-      {
-        questions: aggregate._sum.questions ?? 0,
-        correct: aggregate._sum.correct ?? 0,
-      },
-    ]),
-  );
-
-  const currentOrder = currentCycle?.entry.orderIndex ?? cycleState?.currentOrderIndex ?? entries.find((entry) => entry.active)?.orderIndex ?? null;
-  const activeEntries = displayEntries.filter((entry) => entry.active);
-  const nextEntry = activeEntries.find((entry) => entry.orderIndex > (currentOrder ?? 0));
+  const currentOrder = currentCycle?.entry.orderIndex ?? null;
+  const activeEntries = displayEntries.filter((entry) => entry.active && suggestionByEntry.has(entry.id));
+  const currentIndex = activeEntries.findIndex((entry) => entry.orderIndex === currentOrder);
+  const nextSuggestion = cycleSuggestions[1];
+  const nextEntry = nextSuggestion ? displayEntries.find((entry) => entry.id === nextSuggestion.entryId) : null;
+  const positionProgress = currentIndex < 0 ? 0 : currentIndex / activeEntries.length * 100;
   const lastStudiedAt = aggregates.find((item) => item.cycleEntryId === currentCycle?.entry.id)?._max.date;
   const adjustmentMessage =
     params?.ajuste === "ok"
@@ -131,12 +105,15 @@ export default async function CicloPage({
   const weeklyProgress = Math.min(100, (weeklyQuestions / weeklyGoal) * 100);
   const accuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
 
-  const nearbyStart = Math.max(0, Math.min(displayEntries.findIndex(e=>e.orderIndex===currentOrder)-1,displayEntries.length-5));
-  const visibleEntries=params?.todas==="1"?displayEntries:displayEntries.slice(nearbyStart,nearbyStart+5);
   return (
     <div className={`${shell.screen} ${styles.screen}`}>
       <GuideSetupNotice name={guide.name} {...guide._count} />
-      <header className={styles.header}><div className={styles.context}><span>● Meu ciclo de estudos · volta {cycleState?.roundNumber??1} · Posição {currentOrder??'—'} de {activeEntries.length}</span><small>Planejamento ativo: <b>{guide.name}</b></small></div><div className={styles.heading}><div><h1>Sequência &amp; Ritmo do Ciclo</h1><p>Continue pela ordem do seu ciclo, com os pesos e as metas definidos para cada matéria.</p></div><section aria-label="Métricas do ciclo" className={styles.metrics}><article><Clock3 size={20}/><div><small>Tempo total</small><b>{(totalMinutes/60).toFixed(1)}h totais</b></div></article><article><Target size={20}/><div><small>Meta semanal</small><b>{weeklyProgress.toFixed(0)}%</b><span>({weeklyQuestions}/{weeklyGoal} q.)</span></div></article><article><RefreshCcw size={20}/><div><small>Status</small><b>{currentCycle ? `Volta ${cycleState?.roundNumber ?? 1} em curso` : "Aguardando configuração"}</b></div></article></section></div></header>      {showAdd && subjects.length > 0 ? (
+      <header className={styles.header}>
+        <p className={styles.eyebrow}>Seu roteiro · volta {cycleState?.roundNumber ?? 1}</p>
+        <h1>Ciclo de estudos</h1>
+        <p>Seu ponto atual e toda a sequência.</p>
+      </header>
+      {showAdd && subjects.length > 0 ? (
         <section className="rounded-xl border border-slate-200 bg-surface p-5 dark:border-white/5 dark:bg-panelDark">
           <form action={addCycleEntry} className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="flex-1 text-sm font-semibold text-slate-700 dark:text-textSecondary">
@@ -148,7 +125,7 @@ export default async function CicloPage({
               >
                 {subjects.map((subject) => (
                   <option key={subject.id} value={subject.id}>
-                    {subject.discipline.name} - {subject.name}
+                  {subject.discipline.name} → {subject.name}
                   </option>
                 ))}
               </select>
@@ -175,20 +152,14 @@ export default async function CicloPage({
 
       {currentCycle ? (
         <section className={styles.hero}>
-          <RefreshCcw className={styles.heroWatermark} aria-hidden />
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <div className={styles.heroLabels}><p className={styles.heroTag}>Ponto atual · bloco #{currentCycle.entry.orderIndex}</p><span>{currentCycle.entry.discipline.name}</span></div><p className={styles.weight}>● Peso {currentCycle.subject.weight.toFixed(1)}{currentCycle.subject.weight >= 2 ? " (Alto impacto)" : ""}</p>
-              <h2 className="mt-2 text-xl font-semibold text-slate-950 dark:text-white">
-                {currentCycle.entry.discipline.name} <span>→ {currentCycle.subject.name}</span>
-              </h2>
-              <p className="mt-2 text-sm text-textSecondary dark:text-textSecondary">
-                A meta é atingir {currentCycle.entry.discipline.questionGoal} questões resolvidas nesta sessão. O StudyFlow continuará deste ponto.
-              </p>
+          <div className={styles.currentStudy}>
+            <div>
+              <p className={styles.eyebrow}>Agora · posição #{currentCycle.entry.orderIndex}</p>
+              <h2>{currentCycle.entry.discipline.name} <span>→ {currentCycle.subject.name}</span></h2>
               <div className={styles.heroFacts}>
-                <span><Hourglass size={17}/> Duração estimada: <b>{minutesForWeight(currentCycle.subject.weight)} min</b></span>
-                <span><BookOpen size={17}/> Exercícios planejados: <b>{currentCycle.entry.discipline.questionGoal} itens</b></span>
-                <span><Clock3 size={17}/> Último estudo: <b>{lastStudiedAt ? lastStudiedAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "Ainda não registrado"}</b></span>
+                <span>{currentCycle.entry.discipline.questionGoal} questões</span>
+                <span>~{minutesForWeight(currentCycle.subject.weight)} min · peso {currentCycle.subject.weight.toFixed(1)}</span>
+                <span>Último estudo nesta posição: {lastStudiedAt ? lastStudiedAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "sem registro"}</span>
               </div>
             </div>
             <div className={styles.heroActions}>
@@ -196,13 +167,15 @@ export default async function CicloPage({
               href="/registro"
               className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-soft"
             >
-              <Play size={17} fill="currentColor" /> Continuar este bloco
+              <Play size={17} fill="currentColor" /> Continuar estudo
             </Link>
-            {nextEntry ? <form action={setCyclePosition}><input type="hidden" name="entryId" value={nextEntry.id}/><button className={styles.skip}>Pular p/ próxima <ArrowRight size={15}/></button></form> : null}
+            {nextEntry ? <form action={setCyclePosition}><input type="hidden" name="entryId" value={nextEntry.id}/><button className={styles.skip} aria-label="Pular para a próxima posição"><span className={styles.skipLabel}>Pular para a próxima</span><span className={styles.skipShort}>Pular</span><ArrowRight size={15}/></button></form> : null}
             </div>
           </div>
-
-
+          <div className={styles.nextStudy}>
+            <span>A seguir{nextSuggestion && nextSuggestion.orderIndex <= currentCycle.entry.orderIndex ? " · próxima volta" : ""}</span>
+            <p>{nextEntry ? <>{nextEntry.subject.discipline.name} <span>→</span> {nextEntry.subject.name}</> : "Ao concluir, este roteiro recomeça com uma nova seleção de assunto."}</p>
+          </div>
         </section>
       ) : entries.length > 0 ? (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-500/30 dark:bg-amber-500/10">
@@ -216,9 +189,14 @@ export default async function CicloPage({
         </section>
       ) : null}
 
-      <section className={styles.trail}>
+      {activeEntries.length > 0 ? <section className={styles.progress} aria-label="Percurso da volta">
+        <div><strong>Posição {currentIndex + 1} de {activeEntries.length}</strong><span>{currentIndex} anteriores · {activeEntries.length - currentIndex - 1} a seguir</span></div>
+        <div role="progressbar" aria-label="Percurso da volta" aria-valuemin={0} aria-valuemax={activeEntries.length} aria-valuenow={currentIndex} aria-valuetext={`${currentIndex} posições antes da atual; posição ${currentIndex + 1} de ${activeEntries.length}`}><i style={{width: `${positionProgress}%`}} /></div>
+        <p>Percurso por posição; ao final, uma nova volta começa.</p>
+      </section> : null}
+      <section className={styles.trail} id="sequencia" aria-labelledby="cycle-sequence-title">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white"><Route size={20}/> Trilha sequencial do ciclo</h2>
+          <div><h2 id="cycle-sequence-title"><Route size={20}/> Sequência completa <span>({displayEntries.length})</span></h2><p className={styles.trailHint}>Assuntos previstos pela ordem e pelos pesos. A seleção se atualiza após cada estudo.</p></div>
           <details className="relative"><summary className="cursor-pointer text-xs text-textSecondary">Ações da trilha</summary><div className="absolute right-0 z-10 w-48 rounded-lg border bg-surface p-3">
             {entries.length > 0 ? (
               <form action={deleteAllCycleEntries}>
@@ -234,23 +212,25 @@ export default async function CicloPage({
           </div></details>
         </div>
         {displayEntries.length > 0 ? (
-          <div className="space-y-1.5">
-            {visibleEntries.map((entry) => {
+          <ol className={styles.sequence}>
+            {displayEntries.map((entry) => {
+              const aggregate = aggregates.find(item => item.cycleEntryId === entry.id);
+              const questions = aggregate?._sum.questions ?? 0;
+              const correct = aggregate?._sum.correct ?? 0;
               const isCurrent = entry.active && entry.orderIndex === currentOrder;
-              const aggregate = aggMap.get(entry.id) ?? { questions: 0, correct: 0 };
-              const pct = aggregate.questions > 0 ? aggregate.correct / aggregate.questions * 100 : 0;
-              const status = statusForEntry(entry, currentOrder);
+              const isNext = entry.id === nextEntry?.id;
+              const available = entry.active && suggestionByEntry.has(entry.id);
+              const status = !entry.active ? "Pausada" : !available ? "Indisponível" : isCurrent ? "Agora" : isNext ? "A seguir" : currentOrder !== null && entry.orderIndex < currentOrder ? "Anterior" : "Na sequência";
               return (
-                <article key={entry.id} data-current={isCurrent} data-done={status === "CONCLUIDO"} className={`cycle-row relative grid grid-cols-[32px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-control border border-slate-200 bg-surface px-3 py-2 dark:border-white/5 lg:grid-cols-[32px_minmax(0,1fr)_auto] ${isCurrent ? "border-l-4 border-l-primary" : ""}`}>
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-control text-sm font-semibold ${isCurrent ? "bg-primary text-white" : "bg-slate-100 text-textSecondary dark:bg-elevated"}`}>
-                      {status === "CONCLUIDO" ? <CircleCheckBig size={19} aria-label={`Posição ${entry.orderIndex} concluída`} /> : entry.orderIndex}
-                    </span>
-                    <div className="cycle-row-text min-w-0 flex-1">
-                      <div className="cycle-row-labels"><p>{isCurrent ? "Agora · " : status === "CONCLUIDO" ? `#${entry.orderIndex} · ` : ""}{entry.subject.discipline.name}</p><span>Peso {entry.subject.weight.toFixed(1)}</span></div>
-                      <p className="mt-0.5 text-sm font-semibold text-textPrimary">{entry.subject.name}</p>
-                  </div><div className="cycle-row-metrics">{status === "CONCLUIDO" ? <><b>{pct.toFixed(0)}% acertos ({aggregate.correct}/{aggregate.questions})</b><small>Questões registradas</small></> : <><b>Estimado: {minutesForWeight(entry.subject.weight)} min</b><small>{entry.discipline?.questionGoal ?? settings.questionsPerSession} questões</small></>}</div><span className={"cycle-status " + statusChip(status)}>{status}</span>
-                  <div className="cycle-row-actions col-span-2 flex items-center justify-end gap-2 lg:col-span-1">
-                  {isCurrent ? <Link href="/registro" className="cycle-start">Iniciar <Play size={13}/></Link> : null}
+                <li key={entry.id} data-current={isCurrent} data-next={isNext} aria-current={isCurrent ? "step" : undefined} className={styles.row}>
+                  <span className={styles.position}>{entry.orderIndex}</span>
+                  <div className={styles.rowText}>
+                    <p><strong>{entry.subject.discipline.name}</strong> <span aria-hidden>→</span> {entry.subject.name}</p>
+                    <small>{available ? `Peso ${entry.subject.weight.toFixed(1)} · ~${minutesForWeight(entry.subject.weight)} min · ${entry.discipline?.questionGoal ?? settings.questionsPerSession} questões` : !entry.active ? "Fora da sequência ativa" : "Ative a matéria e cadastre um assunto para estudar"}</small>
+                    {questions > 0 ? <small>Histórico: {questions} questões · {correct} acertos ({(correct / questions * 100).toFixed(0)}%)</small> : null}
+                  </div>
+                  <span className={styles.status}>{status}</span>
+                  <div className={styles.rowActions}>
 
                   <details className="relative min-w-0 rounded-control bg-elevated">
                     <summary className="grid min-h-11 w-11 cursor-pointer list-none place-items-center text-textSecondary"><span className="sr-only">Gerenciar posição #{entry.orderIndex}</span><GripVertical size={16} aria-hidden /></summary>
@@ -258,7 +238,7 @@ export default async function CicloPage({
                   <form className="cycle-continue" action={setCyclePosition}>
                     <input type="hidden" name="entryId" value={entry.id} />
                     <button
-                      disabled={!entry.active || isCurrent}
+                      disabled={!available || isCurrent}
                       className="min-h-11 w-full rounded-control bg-elevated px-3 text-[11px] font-semibold text-primary disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:border-slate-700 dark:disabled:bg-slate-800"
                     >
                       {isCurrent ? "Você continua daqui" : entry.active ? "Continuar daqui" : "Posição pausada"}
@@ -271,10 +251,10 @@ export default async function CicloPage({
                     </div>
                   </details>
                   </div>
-                </article>
+                </li>
               );
             })}
-          </div>
+          </ol>
         ) : (
           <div className="p-8 text-center">
             <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary"><BookOpen size={21} /></span>
@@ -290,7 +270,12 @@ export default async function CicloPage({
 
       </section>
 
-      <div className={styles.more}><Link href={`/ciclo?todas=${params?.todas==='1'?'0':'1'}`}>{params?.todas==='1'?'Mostrar trecho atual':'Ver todas as posições'} ({displayEntries.length})</Link><span>{totalQuestions} questões · {accuracy.toFixed(1)}% acertos</span><Link href="/estatisticas">Ver relatório completo →</Link></div>      <details className="rounded-control border border-slate-200 bg-surface px-4 py-2 dark:border-white/5 dark:bg-panelDark">
+      <section className={styles.summary} aria-label="Histórico e meta semanal">
+        <p><strong>{(totalMinutes / 60).toFixed(1)}h</strong> de estudo · <strong>{totalQuestions}</strong> questões · {accuracy.toFixed(1)}% de acertos</p>
+        <p>Meta semanal: <strong>{weeklyQuestions}/{weeklyGoal}</strong> questões ({weeklyProgress.toFixed(0)}%)</p>
+        <Link href="/estatisticas">Ver estatísticas <ArrowRight size={15}/></Link>
+      </section>
+      <details className="rounded-control border border-slate-200 bg-surface px-4 py-2 dark:border-white/5 dark:bg-panelDark">
         <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Gerenciar ordem e pesos do ciclo</summary>
           <details className="mt-3 rounded-control bg-elevated px-3">
             <summary className="cursor-pointer list-none text-sm font-semibold text-primary">
