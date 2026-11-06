@@ -19,13 +19,13 @@ import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 import { cycleService } from "@/lib/cycle-service";
 import { getCycleProgram } from "@/lib/programmed-cycle-service";
 import { ProgrammedCycleScreen } from "@/components/programmed-cycle-screen";
+import { CycleOverview, CycleSequenceItem } from "@/components/cycle-sequence";
 import {
   ArrowRight,
   BookOpen,
   CircleCheckBig,
   Route,
   Download,
-  GripVertical,
   Play,
   Plus,
   Trash2,
@@ -108,6 +108,16 @@ export default async function CicloPage({
   const weeklyQuestions = weeklyAggregate._sum.questions ?? 0;
   const weeklyProgress = Math.min(100, (weeklyQuestions / weeklyGoal) * 100);
   const accuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
+  const positions = displayEntries.map(entry => {
+    const isCurrent = entry.active && entry.orderIndex === currentOrder;
+    const isNext = entry.id === nextEntry?.id;
+    const available = entry.active && suggestionByEntry.has(entry.id);
+    return {
+      position: entry.orderIndex, matter: entry.subject.discipline.name, subject: entry.subject.name,
+      current: isCurrent, next: isNext,
+      status: !entry.active ? "Pausada" : !available ? "Indisponível" : isCurrent ? "Agora" : isNext ? "A seguir" : currentOrder !== null && entry.orderIndex < currentOrder ? "Anterior" : "Na sequência",
+    };
+  });
 
   return (
     <div className={`${shell.screen} ${styles.screen}`}>
@@ -199,6 +209,7 @@ export default async function CicloPage({
         <div role="progressbar" aria-label="Percurso da volta" aria-valuemin={0} aria-valuemax={activeEntries.length} aria-valuenow={currentIndex} aria-valuetext={`${currentIndex} posições antes da atual; posição ${currentIndex + 1} de ${activeEntries.length}`}><i style={{width: `${positionProgress}%`}} /></div>
         <p>Percurso por posição; ao final, uma nova volta começa.</p>
       </section> : null}
+      {positions.length > 0 ? <CycleOverview positions={positions} /> : null}
       <section className={styles.trail} id="sequencia" aria-labelledby="cycle-sequence-title">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h2 id="cycle-sequence-title"><Route size={20}/> Sequência completa <span>({displayEntries.length})</span></h2><p className={styles.trailHint}>Assuntos previstos pela ordem e pelos pesos. A seleção se atualiza após cada estudo.</p></div>
@@ -218,33 +229,22 @@ export default async function CicloPage({
         </div>
         {displayEntries.length > 0 ? (
           <ol className={styles.sequence}>
-            {displayEntries.map((entry) => {
+            {displayEntries.map((entry, index) => {
               const aggregate = aggregates.find(item => item.cycleEntryId === entry.id);
               const questions = aggregate?._sum.questions ?? 0;
               const correct = aggregate?._sum.correct ?? 0;
               const isCurrent = entry.active && entry.orderIndex === currentOrder;
-              const isNext = entry.id === nextEntry?.id;
               const available = entry.active && suggestionByEntry.has(entry.id);
-              const status = !entry.active ? "Pausada" : !available ? "Indisponível" : isCurrent ? "Agora" : isNext ? "A seguir" : currentOrder !== null && entry.orderIndex < currentOrder ? "Anterior" : "Na sequência";
               return (
-                <li key={entry.id} data-current={isCurrent} data-next={isNext} aria-current={isCurrent ? "step" : undefined} className={styles.row}>
-                  <span className={styles.position}>{entry.orderIndex}</span>
-                  <div className={styles.rowText}>
-                    <p><strong>{entry.subject.discipline.name}</strong> <span aria-hidden>→</span> {entry.subject.name}</p>
-                    <small>{available ? `Peso ${entry.subject.weight.toFixed(1)} · ~${minutesForWeight(entry.subject.weight)} min · ${entry.discipline?.questionGoal ?? settings.questionsPerSession} questões` : !entry.active ? "Fora da sequência ativa" : "Ative a matéria e cadastre um assunto para estudar"}</small>
-                    {questions > 0 ? <small>Histórico: {questions} questões · {correct} acertos ({(correct / questions * 100).toFixed(0)}%)</small> : null}
-                  </div>
-                  <span className={styles.status}>{status}</span>
-                  <div className={styles.rowActions}>
-
-                  <details className="relative min-w-0 rounded-control bg-elevated">
-                    <summary className="grid min-h-11 w-11 cursor-pointer list-none place-items-center text-textSecondary"><span className="sr-only">Gerenciar posição #{entry.orderIndex}</span><GripVertical size={16} aria-hidden /></summary>
-                    <div className="absolute right-0 top-full z-20 mt-1 flex w-64 flex-wrap gap-2 rounded-control border bg-surface p-3 shadow-soft">
+                <CycleSequenceItem key={entry.id} {...positions[index]}>
+                  <p>{available ? `Peso ${entry.subject.weight.toFixed(1)} · ~${minutesForWeight(entry.subject.weight)} min · ${entry.discipline?.questionGoal ?? settings.questionsPerSession} questões` : !entry.active ? "Fora da sequência ativa" : "Ative a matéria e cadastre um assunto para estudar"}</p>
+                  {questions > 0 ? <p>Histórico: {questions} questões · {correct} acertos ({(correct / questions * 100).toFixed(0)}%)</p> : null}
+                  <div className={styles.positionActions} role="group" aria-label={`Gerenciar posição ${entry.orderIndex}`}>
                   <form className="cycle-continue" action={setCyclePosition}>
                     <input type="hidden" name="entryId" value={entry.id} />
                     <button
                       disabled={!available || isCurrent}
-                      className="min-h-11 w-full rounded-control bg-elevated px-3 text-[11px] font-semibold text-primary disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:border-slate-700 dark:disabled:bg-slate-800"
+                      className="min-h-11 w-full rounded-control bg-elevated px-3 text-sm font-semibold text-primary disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:border-slate-700 dark:disabled:bg-slate-800"
                     >
                       {isCurrent ? "Você continua daqui" : entry.active ? "Continuar daqui" : "Posição pausada"}
                     </button>
@@ -253,10 +253,8 @@ export default async function CicloPage({
                       <form action={toggleCycleEntry}><input type="hidden" name="entryId" value={entry.id} /><button className="min-h-11 rounded-control border px-3 text-sm">{entry.active ? "Pausar" : "Ativar"}</button></form>
                       <form action={duplicateCycleEntry}><input type="hidden" name="entryId" value={entry.id} /><button className="min-h-11 rounded-control border px-3 text-sm">Duplicar</button></form>
                       <form action={deleteCycleEntry}><input type="hidden" name="entryId" value={entry.id} /><ConfirmSubmitButton message="Excluir esta posição do ciclo? O histórico de estudos será preservado." className="min-h-11 rounded-control border border-rose-200 px-3 text-sm text-rose-700 dark:text-rose-300">Excluir</ConfirmSubmitButton></form>
-                    </div>
-                  </details>
                   </div>
-                </li>
+                </CycleSequenceItem>
               );
             })}
           </ol>

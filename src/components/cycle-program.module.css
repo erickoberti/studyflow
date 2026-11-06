@@ -27,4 +27,33 @@
 .windows { display: flex; flex-wrap: wrap; gap: 8px; }
 .windows button { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
 .windows button[aria-pressed=true] { color: rgb(var(--primary-rgb)); background: rgb(var(--primary-rgb) / .1); }
-@media(max-width:767px) { .save > button, .save > a { width: 100%; } .notice { padding: 14px; } }
+.mobileRounds, .mobileCaption { display: none; }
+@media(max-width:767px) {
+  .save > button, .save > a { width: 100%; }
+  .notice { padding: 14px; }
+  .windows, .desktopCaption { display: none; }
+  .mobileRounds { display: grid; gap: 6px; }
+  .mobileRounds label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+  .mobileRounds select { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; background: var(--surface); color: var(--foreground); font-size: 16px; }
+  .mobileRounds p { color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+  .mobileCaption { display: block; }
+  .matrix { overflow: visible; border: 0; border-radius: 0; background: transparent; }
+  .matrix table { display: block; min-width: 0; width: 100%; }
+  .matrix caption { display: block; padding: 0 0 10px; font-size: 13px; }
+  .matrix thead { display: none; }
+  .matrix tbody { display: grid; gap: 12px; }
+  .matrix tbody tr { display: block; min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+  .matrix th, .matrix td { display: block; border: 0; padding: 14px; }
+  .matrix th:first-child { width: auto; }
+  .matrix tbody th { display: grid; grid-template-columns: minmax(0,1fr) 96px; gap: 8px; padding-bottom: 0; }
+  .matrix tbody th > span { grid-column: 1 / -1; font-size: 14px; }
+  .matrix label { margin-top: 0; font-size: 12px; }
+  .matrix input, .matrix textarea, .matrix select { font-size: 16px; }
+  .matrix summary { font-size: 13px; line-height: 1.5; }
+  .matrix details label { margin-top: 10px; }
+  .matrix td[data-mobile-active=false] { display: none; }
+  .matrix tfoot { display: block; margin-top: 12px; border-top: 1px solid var(--border); }
+  .matrix tfoot tr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+  .matrix tfoot th, .matrix tfoot td { padding: 10px 0; font-size: 13px; }
+  .complete { font-size: 12px; }
+}
