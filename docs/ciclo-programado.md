@@ -2,7 +2,7 @@
 
 ## Compatibilidade e ativação
 
-A auditoria foi somente de leitura. O modelo anterior já tem posições estáveis (`CycleEntry`), cursor e volta (`StudyGuideCycleState`), sessões (`StudySession`), progresso por assunto (`SubjectProgress`) e revisões (`ReviewSchedule`). A seleção anterior é por pesos; passar da última posição não comprova a conclusão de todas as posições. Há histórico legado com `cycleRound` nulo, portanto esse campo não pode ser inferido a partir do cursor.
+A auditoria inicial foi somente de leitura. O modelo anterior já tem posições estáveis (`CycleEntry`), cursor e volta (`StudyGuideCycleState`), sessões (`StudySession`), progresso por assunto (`SubjectProgress`) e revisões (`ReviewSchedule`). A seleção anterior é por pesos; passar da última posição não comprova a conclusão de todas as posições. Há histórico legado com `cycleRound` nulo, portanto esse campo não pode ser inferido a partir do cursor.
 
 A migration `20261106120000_programmed_cycle` é aditiva e transacional. Cria `CycleProgram`, `CycleProgramItem` e `CycleProgramCompletion`, além de campos opcionais nas sessões. Não atualiza sessões existentes, não substitui posições e não ativa nenhum programa. As restrições e o trigger impedem acrescentar, remover, pausar ou reordenar as 16 posições de um guia programado.
 
@@ -40,4 +40,8 @@ Resultado final: 133 testes unitários aprovados; teste integrado PostgreSQL apr
 
 Antes de atualizar um banco existente, siga `docs/migrations.md`: backup PostgreSQL completo e restauração verificada, auditoria do schema e do ledger. A instalação existente pode ter diferenças no ledger; não execute todas as migrations pendentes nem registre baselines por suposição. A conversão de cada guia é uma ação separada da instalação do schema e continua exigindo a confirmação da matriz.
 
-Nesta implementação, a exportação do backup completo do banco configurado foi bloqueada pela revisão automática por falta de autorização específica para copiar dados de todas as contas para um arquivo local. Não foi contornado esse bloqueio. A migration foi executada somente em bancos locais vazios, e a publicação com o novo schema fica pendente da autorização e da verificação de restauração.
+Em 06/11/2026, após autorização explícita para incluir todas as contas, foi gerado um dump PostgreSQL completo com snapshot consistente e checksum SHA-256. A restauração em um banco local isolado reproduziu as 23 tabelas, com contagens e hashes de conteúdo idênticos. Os arquivos privados de backup e as evidências permanecem fora do Git, nos diretórios ignorados `backups/` e `artifacts/`.
+
+A comparação do schema restaurado com o modelo anterior confirmou os efeitos da baseline e das oito migrations já registradas. A única diferença era a chave estrangeira de histórico ainda com exclusão em cascata. Não havia sessões elegíveis para o backfill da migration de preservação. Na cópia restaurada, foi registrada somente a baseline já existente e foram aplicadas as três migrations pendentes, na ordem: preservação de histórico, sessão avulsa sem ciclo e ciclo programado. O schema final ficou sem diferenças, as 22 tabelas de dados legados permaneceram idênticas e as três tabelas novas ficaram vazias.
+
+A mesma sequência foi aplicada ao banco de produção somente depois de repetir a conferência do schema, ledger e ausência de backfill. A comparação antes e depois confirmou os mesmos dados nas 22 tabelas legadas, 12 migrations aplicadas e nenhum programa, item ou conclusão programada criado. Esta publicação disponibiliza a configuração; a ativação continua sendo uma ação explícita do usuário na matriz.
