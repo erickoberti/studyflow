@@ -39,6 +39,7 @@ export type OfflineSubject = {
   weight: number;
   notes: string | null;
   tecReference: string | null;
+  groupName?: string | null;
   active: boolean;
   orderIndex: number | null;
 };

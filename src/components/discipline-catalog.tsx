@@ -6,8 +6,10 @@ import { MoreVertical, Pencil, Plus, Search } from "lucide-react";
 import { deleteGuideDisciplineAction, deleteSubjectAction } from "@/app/actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import styles from "./discipline-catalog.module.css";
+import { TecReference, type TecStudyReference } from "./study-ui";
+import { normalizeStudySearch } from "@/lib/study-insights";
 
-type Topic = { id: string; name: string; weight: number; notes: string | null; tecReference: string | null; active: boolean; questions: number; percentage: number; studied: boolean };
+type Topic = { id: string; name: string; groupName?: string | null; weight: number; notes: string | null; tecReference: string | null; programReferences?: (TecStudyReference & { round: number; position: number })[]; active: boolean; questions: number; percentage: number; studied: boolean };
 type Group = { id: string; name: string; active: boolean; topics: Topic[] };
 
 export function DisciplineCatalog({ groups }: { groups: Group[] }) {
@@ -18,13 +20,13 @@ export function DisciplineCatalog({ groups }: { groups: Group[] }) {
   const studied = selectedMatter?.topics.filter(topic => topic.studied).length ?? 0;
   const questions = selectedMatter?.topics.reduce((sum, topic) => sum + topic.questions, 0) ?? 0;
   const accuracy = questions ? selectedMatter!.topics.reduce((sum, topic) => sum + topic.percentage * topic.questions, 0) / questions : 0;
-  const search = query.trim().toLocaleLowerCase("pt-BR");
+  const search = normalizeStudySearch(query);
   const visible = groups.filter(group => !discipline || group.id === discipline).map(group => ({
     ...group,
     topics: group.topics.filter(topic =>
-      `${group.name} ${topic.name} ${topic.notes ?? ""} ${topic.tecReference ?? ""}`.toLocaleLowerCase("pt-BR").includes(search) &&
+      normalizeStudySearch(`${group.name} ${topic.groupName ?? ""} ${topic.name} ${topic.notes ?? ""} ${topic.tecReference ?? ""} ${topic.programReferences?.map(reference => `${reference.topic ?? ""} ${reference.discipline ?? ""}`).join(" ") ?? ""}`).includes(search) &&
       (filter === "all" || filter === "weight" && topic.weight >= 2 || filter === "low" && topic.questions > 0 && topic.percentage < 70)),
-  })).filter(group => group.topics.length || (filter === "all" && !groups.find(item => item.id === group.id)?.topics.length && group.name.toLocaleLowerCase("pt-BR").includes(search)));
+  })).filter(group => group.topics.length || (filter === "all" && !groups.find(item => item.id === group.id)?.topics.length && normalizeStudySearch(group.name).includes(search)));
   const count = visible.reduce((sum, group) => sum + group.topics.length, 0);
 
   function matterActions(group: Group) {
@@ -40,7 +42,7 @@ export function DisciplineCatalog({ groups }: { groups: Group[] }) {
 
   return <div className={styles.catalog}>
     <div className={styles.filters}>
-      <label className={styles.search}><Search size={17} aria-hidden /><input aria-label="Buscar matéria ou assunto" placeholder="Buscar matéria ou assunto…" value={query} onChange={event => setQuery(event.target.value)} /></label>
+      <label className={styles.search}><Search size={17} aria-hidden /><input aria-label="Buscar matéria ou assunto" placeholder="Buscar matéria, assunto ou tópico Tec…" value={query} onChange={event => setQuery(event.target.value)} /></label>
       <select aria-label="Filtrar por matéria" value={discipline} onChange={event => setDiscipline(event.target.value)}>
         <option value="">Todas as matérias</option>
         {groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}
@@ -49,24 +51,25 @@ export function DisciplineCatalog({ groups }: { groups: Group[] }) {
         {[["all", "Todos"], ["weight", "Peso 2+"], ["low", "Acertos <70%"]].map(([id, label]) => <button type="button" key={id} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}
       </div>
     </div>
-    <p className={styles.result} role="status">{count} {count === 1 ? "assunto" : "assuntos"} em {visible.length} {visible.length === 1 ? "matéria" : "matérias"} · Matéria → Assunto</p>
+    <p className={styles.result} role="status">{count} {count === 1 ? "assunto" : "assuntos"} em {visible.length} {visible.length === 1 ? "matéria" : "matérias"} · Matéria → Assunto → Subassunto</p>
     {selectedMatter ? <section className={styles.matterSummary} aria-label={`Progresso de ${selectedMatter.name}`}>
       <p><strong>{selectedMatter.name}</strong> · {studied}/{selectedMatter.topics.length} assuntos estudados · {questions ? `${questions} questões · ${accuracy.toFixed(0)}% de acertos` : "sem questões registradas"}</p>
       <div role="progressbar" aria-label="Assuntos estudados na matéria" aria-valuemin={0} aria-valuemax={100} aria-valuenow={selectedMatter.topics.length ? Math.round(studied / selectedMatter.topics.length * 100) : 0}><i style={{ width: `${selectedMatter.topics.length ? studied / selectedMatter.topics.length * 100 : 0}%` }} /></div>
     </section> : null}
     <div className={styles.list}>
-      {visible.map(group => group.topics.length ? group.topics.map(topic => <article key={topic.id} className={styles.topic} aria-label={`${group.name} → ${topic.name}`}>
+      {visible.map(group => group.topics.length ? group.topics.map(topic => <article key={topic.id} className={styles.topic} aria-label={`${group.name} → ${topic.groupName ? `${topic.groupName} → ` : ""}${topic.name}`}>
         <div className={styles.topicText}>
-          <h2><strong>{group.name}</strong> <span aria-hidden>→</span> {topic.name}</h2>
+          <h2><strong>{group.name}</strong> <span aria-hidden>→</span> {topic.groupName ? <>{topic.groupName} <span aria-hidden>→</span> </> : null}{topic.name}</h2>
           <p className={styles.meta}><span>Peso {topic.weight.toFixed(1)}</span><span>{topic.questions > 0 ? `${topic.questions} questões · ${topic.percentage.toFixed(0)}% de acertos` : topic.studied ? "Estudo registrado · sem questões" : "Sem estudos registrados"}</span></p>
           {topic.notes ? <p className={styles.note}>{topic.notes}</p> : null}
-          {topic.tecReference ? <p className={styles.note}>TEC: {topic.tecReference}</p> : null}
+          {topic.tecReference && !topic.programReferences?.length ? <TecReference reference={{ legacy: topic.tecReference }} /> : null}
+          {topic.programReferences?.length ? <details className={styles.references}><summary>Referências e voltas programadas ({topic.programReferences.length})</summary>{topic.programReferences.map(reference => <div key={`${reference.position}:${reference.round}`}><p className={styles.note}>Posição {reference.position} · volta {reference.round}</p><TecReference reference={{ ...reference, legacy: topic.tecReference }} /></div>)}<Link href="/ciclo/configuracao">Editar referências na matriz das voltas →</Link></details> : null}
         </div>
         <span className={styles.badge} data-state={!group.active || !topic.active ? "paused" : topic.questions > 0 && topic.percentage < 70 ? "low" : "normal"}>{!group.active || !topic.active ? "Pausado" : topic.questions > 0 && topic.percentage < 70 ? "Reforçar" : topic.studied ? "Estudado" : "A estudar"}</span>
         <div className={styles.actions}>
           <Link href={`/base?tab=assuntos&editSubject=${topic.id}`} aria-label={`Editar ${group.name} → ${topic.name}`}><Pencil size={16} aria-hidden /></Link>
           <details><summary aria-label={`Ações de ${group.name} → ${topic.name}`}><MoreVertical size={17} aria-hidden /></summary><div className={styles.menu}>
-            <form action={deleteSubjectAction}><input type="hidden" name="subjectId" value={topic.id} /><ConfirmSubmitButton message={`Excluir o assunto ${topic.name}?`} className={styles.danger}>Excluir assunto</ConfirmSubmitButton></form>
+            <Link href={`/registros?assunto=${topic.id}`}>Ver histórico deste assunto</Link><form action={deleteSubjectAction}><input type="hidden" name="subjectId" value={topic.id} /><ConfirmSubmitButton message={`Excluir o assunto ${topic.name}?`} className={styles.danger}>Excluir assunto</ConfirmSubmitButton></form>
             {matterActions(group)}
           </div></details>
         </div>

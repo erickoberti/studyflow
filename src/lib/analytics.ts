@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 import { getCycleSuggestion } from "@/lib/cycle-strategy";
+import { currentStudyStreak } from "@/lib/study-insights";
 
 export type PriorityLevel = "urgente" | "atencao" | "bom" | "forte";
 export type MetaSignal = "verde" | "amarelo" | "vermelho";
@@ -182,18 +183,7 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
   const overallSignal = metaSignal(overallPercentage, targetPercentage);
   const byDayList = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
 
-  let streakDays = 0;
-  if (byDayList.length > 0) {
-    streakDays = 1;
-    for (let idx = byDayList.length - 1; idx > 0; idx -= 1) {
-      const diff = diffCalendarDaysUTC(byDayList[idx].date, byDayList[idx - 1].date);
-      if (diff === 1) {
-        streakDays += 1;
-      } else {
-        break;
-      }
-    }
-  }
+  const streakDays = currentStudyStreak(byDayList.map(day => day.date));
 
   const activeDays = byDayList.length;
   const avgQuestionsPerDay = activeDays > 0 ? totalQuestions / activeDays : 0;
@@ -263,7 +253,7 @@ export async function getReviewSuggestions(userId: string, studyGuideId: string)
       .filter((item) => item.noRecentStudy)
       .sort((a, b) => (a.lastStudy?.getTime() ?? 0) - (b.lastStudy?.getTime() ?? 0))
       .slice(0, 8),
-    weak: result.sort((a, b) => a.percentage - b.percentage).slice(0, 8),
+    weak: result.filter(item => item.questions > 0 && item.errors > 0).sort((a, b) => a.percentage - b.percentage).slice(0, 8),
     recent: result
       .filter((item) => item.lastStudy)
       .sort((a, b) => (b.lastStudy?.getTime() ?? 0) - (a.lastStudy?.getTime() ?? 0))

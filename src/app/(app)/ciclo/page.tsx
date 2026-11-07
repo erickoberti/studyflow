@@ -1,6 +1,7 @@
 import shell from "@/components/official-shell.module.css";
 import styles from "./cycle-screen.module.css";
 import Link from "next/link";
+import { TecReference } from "@/components/study-ui";
 import {
   addCycleEntry,
   deleteAllCycleEntries,
@@ -30,10 +31,6 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-
-function minutesForWeight(weight: number) {
-  return Math.max(30, Number(weight) * 30);
-}
 
 export default async function CicloPage({
   searchParams,
@@ -173,13 +170,13 @@ export default async function CicloPage({
               <h2>{currentCycle.entry.discipline.name} <span>→ {currentCycle.subject.name}</span></h2>
               <div className={styles.heroFacts}>
                 <span>{currentCycle.entry.discipline.questionGoal} questões</span>
-                <span>~{minutesForWeight(currentCycle.subject.weight)} min · peso {currentCycle.subject.weight.toFixed(1)}</span>
+                <span>~{settings.sessionMinutes} min · peso {currentCycle.subject.weight.toFixed(1)}</span>
                 <span>Último estudo nesta posição: {lastStudiedAt ? lastStudiedAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "sem registro"}</span>
               </div>
             </div>
             <div className={styles.heroActions}>
             <Link
-              href="/registro"
+              href="/registro?modo=timer"
               className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-soft"
             >
               <Play size={17} fill="currentColor" /> Continuar estudo
@@ -187,6 +184,7 @@ export default async function CicloPage({
             {nextEntry ? <form action={setCyclePosition}><input type="hidden" name="entryId" value={nextEntry.id}/><button className={styles.skip} aria-label="Pular para a próxima posição"><span className={styles.skipLabel}>Pular para a próxima</span><span className={styles.skipShort}>Pular</span><ArrowRight size={15}/></button></form> : null}
             </div>
           </div>
+          <div className="px-5 pb-5"><TecReference reference={{ legacy: currentCycle.subject.tecReference }} /></div>
           <div className={styles.nextStudy}>
             <span>A seguir{nextSuggestion && nextSuggestion.orderIndex <= currentCycle.entry.orderIndex ? " · próxima volta" : ""}</span>
             <p>{nextEntry ? <>{nextEntry.subject.discipline.name} <span>→</span> {nextEntry.subject.name}</> : "Ao concluir, este roteiro recomeça com uma nova seleção de assunto."}</p>
@@ -237,8 +235,9 @@ export default async function CicloPage({
               const available = entry.active && suggestionByEntry.has(entry.id);
               return (
                 <CycleSequenceItem key={entry.id} {...positions[index]}>
-                  <p>{available ? `Peso ${entry.subject.weight.toFixed(1)} · ~${minutesForWeight(entry.subject.weight)} min · ${entry.discipline?.questionGoal ?? settings.questionsPerSession} questões` : !entry.active ? "Fora da sequência ativa" : "Ative a matéria e cadastre um assunto para estudar"}</p>
+                  <p>{available ? `Peso ${entry.subject.weight.toFixed(1)} · ~${settings.sessionMinutes} min · ${entry.discipline?.questionGoal ?? settings.questionsPerSession} questões` : !entry.active ? "Fora da sequência ativa" : "Ative a matéria e cadastre um assunto para estudar"}</p>
                   {questions > 0 ? <p>Histórico: {questions} questões · {correct} acertos ({(correct / questions * 100).toFixed(0)}%)</p> : null}
+                  <Link href={`/registros?posicao=${entry.id}`} className="sf-secondary">Ver histórico da posição</Link>
                   <div className={styles.positionActions} role="group" aria-label={`Gerenciar posição ${entry.orderIndex}`}>
                   <form className="cycle-continue" action={setCyclePosition}>
                     <input type="hidden" name="entryId" value={entry.id} />

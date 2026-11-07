@@ -53,7 +53,7 @@ export class CycleService {
     const subjects = await prisma.subject.findMany({ where: { userId, studyGuideId, disciplineId: discipline.id, active: true }, include: { progress: true }, orderBy: { sortOrder: "asc" } });
     const selected = selectWeightedSubject(subjects.map(toEngine));
     if (!selected) return null;
-    return { entry: { id: entry.id, orderIndex: entry.orderIndex, discipline: { id: discipline.id, name: discipline.name, questionGoal: discipline.questionGoal } }, subject: { id: selected.id, name: selected.name, weight: selected.weight, sortOrder: selected.sortOrder, tecReference: null }, roundNumber: state.roundNumber };
+    return { entry: { id: entry.id, orderIndex: entry.orderIndex, discipline: { id: discipline.id, name: discipline.name, questionGoal: discipline.questionGoal } }, subject: { id: selected.id, name: selected.name, weight: selected.weight, sortOrder: selected.sortOrder, tecReference: subjects.find(subject => subject.id === selected.id)?.tecReference ?? null }, roundNumber: state.roundNumber };
   }
 
   async preview(userId: string, studyGuideId: string, count = 5) {

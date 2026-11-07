@@ -18,6 +18,7 @@ import {
 import { ensureStudyGuideSettings, upsertStudyGuideSettings } from "@/lib/study-guide-settings";
 import { buildStudyGuideCycle, createStudyDiscipline, setStudyDisciplineActive } from "@/lib/discipline-setup";
 import { getCycleProgram, setProgramPosition } from "@/lib/programmed-cycle-service";
+import { formatTecReference } from "@/lib/tec-reference";
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -223,7 +224,10 @@ export async function createSubject(formData: FormData) {
   const orderIndexRaw = String(formData.get("orderIndex") ?? "").trim();
   const orderIndex = orderIndexRaw ? Number(orderIndexRaw) : null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
-  const tecReference = String(formData.get("tecReference") ?? "").trim() || null;
+  const groupName = formData.has("groupName") ? String(formData.get("groupName") ?? "").trim().slice(0, 300) || null : undefined;
+  const tecReference = formData.has("tecStatus")
+    ? formatTecReference(String(formData.get("tecReference") ?? ""), String(formData.get("tecUrl") ?? ""), String(formData.get("tecStatus") ?? "SUGGESTED"))
+    : String(formData.get("tecReference") ?? "").trim() || null;
   if (!name || !disciplineId) return;
 
   const discipline = await prisma.discipline.findFirst({
@@ -246,6 +250,7 @@ export async function createSubject(formData: FormData) {
         weight: Number.isFinite(weight) ? weight : 1,
         notes,
         tecReference,
+        groupName,
         active: true,
       },
     });
@@ -260,7 +265,8 @@ export async function createSubject(formData: FormData) {
           weight,
           notes,
           tecReference,
-          groupName: null,
+          groupName,
+
           active: true,
         },
       });
@@ -284,6 +290,7 @@ export async function createSubject(formData: FormData) {
             weight: Number.isFinite(weight) ? weight : 1,
             notes,
             tecReference,
+            groupName,
             active: true,
           },
         });
@@ -325,6 +332,17 @@ async function normalizeCycleEntryOrder(tx: Prisma.TransactionClient, userId: st
   );
 }
 
+export async function updateSubjectOrganization(formData: FormData) {
+  const user = await requireUser();
+  const guide = await requireActiveStudyGuide(user.id);
+  const parsed = z.object({ subjectId: z.string().min(1), groupName: z.string().trim().max(300), notes: z.string().trim().max(10000) }).safeParse({ subjectId: formData.get("subjectId"), groupName: formData.get("groupName") ?? "", notes: formData.get("notes") ?? "" });
+  if (!parsed.success) return;
+  await prisma.subject.updateMany({ where: { id: parsed.data.subjectId, userId: user.id, studyGuideId: guide.id }, data: { groupName: parsed.data.groupName || null, notes: parsed.data.notes || null } });
+  revalidatePath("/base");
+  revalidatePath("/registro");
+  redirect("/base?tab=assuntos&saved=subject-updated");
+}
+
 export async function updateSubject(formData: FormData) {
   const user = await requireUser();
   const guide = await requireActiveStudyGuide(user.id);
@@ -337,7 +355,10 @@ export async function updateSubject(formData: FormData) {
   const orderIndexRaw = String(formData.get("orderIndex") ?? "").trim();
   const orderIndex = orderIndexRaw ? Number(orderIndexRaw) : null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
-  const tecReference = String(formData.get("tecReference") ?? "").trim() || null;
+  const groupName = formData.has("groupName") ? String(formData.get("groupName") ?? "").trim().slice(0, 300) || null : undefined;
+  const tecReference = formData.has("tecStatus")
+    ? formatTecReference(String(formData.get("tecReference") ?? ""), String(formData.get("tecUrl") ?? ""), String(formData.get("tecStatus") ?? "SUGGESTED"))
+    : String(formData.get("tecReference") ?? "").trim() || null;
 
   if (!subjectId || !disciplineId || !name) return;
 
@@ -374,6 +395,7 @@ export async function updateSubject(formData: FormData) {
         weight: Number.isFinite(weight) ? weight : 1,
         notes,
         tecReference,
+        groupName,
         active: true,
       },
     });
@@ -387,6 +409,7 @@ export async function updateSubject(formData: FormData) {
           weight: Number.isFinite(weight) ? weight : 1,
           notes,
           tecReference,
+          groupName,
         },
       });
     } catch (error) {
@@ -417,6 +440,7 @@ export async function updateSubject(formData: FormData) {
             weight: Number.isFinite(weight) ? weight : 1,
             notes,
             tecReference,
+            groupName,
             active: true,
           },
         });

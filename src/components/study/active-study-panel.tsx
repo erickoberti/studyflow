@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookOpenCheck, Check, Clock3, FileText, Focus, ListChecks, Pause, Play, RotateCcw, Scale, Square, Video, X } from "lucide-react";
@@ -15,6 +15,8 @@ import {
 } from "@/lib/offline/active-session-queue";
 import { calculateElapsedSeconds } from "@/lib/study-timer";
 import { STUDY_ACTIVITY_LABELS, type StudyActivity } from "@/lib/study-activity";
+import { TecReference, type TecStudyReference } from "@/components/study-ui";
+import { useDialogFocus } from "@/components/use-dialog-focus";
 
 type Active = {
   id: string;
@@ -117,13 +119,14 @@ export function ActiveStudyPanel({
   preferredActivity?: StudyActivity;
   showStandaloneLink?: boolean;
   summary: Summary;
-  referencePresentation?: { positions: number; average: number; lastStudiedAt: string | null };
+  referencePresentation?: { positions: number; average: number; questions?: number; lastStudiedAt: string | null; tec?: TecStudyReference };
   initialVisualMode?: "TIMER" | "QUESTIONS";
 }) {
   const router = useRouter();
   const [active, setActive] = useState(initialActive);
   const [seconds, setSeconds] = useState(initialActive?.accumulatedSeconds ?? 0);
   const [busy, setBusy] = useState(false);
+  const actionInFlight = useRef(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [visualMode, setVisualMode] = useState<"QUESTIONS" | "CONTENT" | "TIMER">(initialActive ? "TIMER" : initialVisualMode ?? (preferredActivity === "QUESTIONS" ? "QUESTIONS" : "CONTENT"));
@@ -135,6 +138,8 @@ export function ActiveStudyPanel({
   const [difficulty, setDifficulty] = useState("Média");
   const [notes, setNotes] = useState("");
   const [completion, setCompletion] = useState<{ percentage: number; advanced: boolean; activityType: StudyActivity } | null>(null);
+  const finishDialogRef = useDialogFocus(finishOpen, () => setFinishOpen(false));
+  const completionRef = useDialogFocus(Boolean(completion), () => setCompletion(null));
 
   const clearFinishForm = useCallback(() => {
     setStudyActivity(preferredActivity);
@@ -263,6 +268,8 @@ export function ActiveStudyPanel({
   }
 
   async function act(body: Record<string, unknown>, options?: { openFinish?: boolean; activity?: StudyActivity }) {
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
     const operationBody = { ...body, operationId: crypto.randomUUID() };
     try {
       setBusy(true);
@@ -300,6 +307,7 @@ export function ActiveStudyPanel({
         toast.error(error instanceof Error ? error.message : "Erro na sessão.");
       }
     } finally {
+      actionInFlight.current = false;
       setBusy(false);
     }
   }
@@ -349,15 +357,16 @@ export function ActiveStudyPanel({
       <section aria-labelledby="study-subject" className="min-w-0">
         <div className="study-heading">
           <div className="study-cycle-line"><span className="study-cycle-tag">Ciclo atual · volta {current.round ?? 1}{current.totalRounds ? `/${current.totalRounds}` : ""}</span><span>Posição #{current.position ?? "avulsa"}{referencePresentation && current.position ? ` de ${referencePresentation.positions}` : ""}</span><span className="study-discipline">{current.discipline}</span></div>
-          <h2 id="study-subject">{referencePresentation ? current.discipline : current.subject}</h2>
-          <p data-study-subtitle className="study-subtitle">{referencePresentation ? current.subject : current.discipline}</p>
+          <h2 id="study-subject">{current.subject}</h2>
+          <p data-study-subtitle className="study-subtitle">{current.discipline}</p>
           <div className="study-metadata">
             <span><Clock3 size={12} aria-hidden /> Meta: <b>{current.goal} questões</b></span>
             <span>Peso: <b>{current.weight.toFixed(1)}</b></span>
-            <span><i aria-hidden /> Prioridade: <b>{current.average < 70 ? "Alta" : "Normal"}</b></span>
-            <details><summary>Desempenho prévio: <b>{current.average.toFixed(0)}%</b></summary><div>Último estudo: {relativeDate(current.last)}</div></details>
+            <span>Prioridade: <b>{!referencePresentation?.questions ? "Em avaliação" : current.average < 70 ? "Reforçar" : "Manter"}</b></span>
+            <details><summary>Desempenho prévio: <b>{referencePresentation?.questions ? `${current.average.toFixed(0)}%` : "Sem questões"}</b></summary><div>Último estudo: {relativeDate(current.last)}</div></details>
             {active?.status === "ACTIVE" && !focusMode ? <button onClick={() => setFocusMode(true)} className="study-focus-link"><Focus size={14} /> Modo foco</button> : null}
           </div>
+          {referencePresentation?.tec ? <TecReference reference={referencePresentation.tec} /> : null}
         </div>
         <div data-study-workspace className="sf-surface study-workspace">
         <div role="tablist" aria-label="Modos de estudo" className="mx-auto mt-4 grid max-w-md grid-cols-3 rounded-control bg-elevated p-1">
@@ -407,7 +416,7 @@ export function ActiveStudyPanel({
   return <>
     {focusMode ? <div className="fixed inset-0 z-[100] overflow-y-auto bg-backgroundLight p-4 dark:bg-backgroundDark sm:p-8"><div className="mb-6 flex justify-end"><button onClick={() => setFocusMode(false)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 bg-surface px-4 text-sm font-semibold dark:border-white/10 dark:bg-elevated"><RotateCcw size={16} /> Sair do foco</button></div>{panel}</div> : panel}
 
-    {finishOpen && active ? <div role="dialog" aria-modal="true" aria-labelledby="finish-title" className="fixed inset-0 z-[110] flex items-end bg-slate-950/50 p-0 sm:items-center sm:justify-center sm:p-6"><section className="flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-t-card bg-surface shadow-xl dark:bg-panelDark sm:max-h-[calc(100dvh-3rem)] sm:max-w-xl sm:rounded-card"><div className="shrink-0 border-b px-5 py-3"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Finalizar sessão</p><h3 id="finish-title" className="mt-1 text-lg font-semibold sm:text-xl">Registre o que foi estudado</h3></div><button aria-label="Fechar" onClick={() => setFinishOpen(false)} className="grid min-h-11 min-w-11 place-items-center rounded-control border"><X size={18} /></button></div><p className="mt-2 text-sm text-textSecondary">{current.discipline} · {current.subject}</p></div>
+    {finishOpen && active ? <div role="dialog" aria-modal="true" aria-labelledby="finish-title" className="fixed inset-0 z-[110] flex items-end bg-slate-950/50 p-0 sm:items-center sm:justify-center sm:p-6"><section ref={finishDialogRef} className="flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-t-card bg-surface shadow-xl dark:bg-panelDark sm:max-h-[calc(100dvh-3rem)] sm:max-w-xl sm:rounded-card"><div className="shrink-0 border-b px-5 py-3"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Finalizar sessão</p><h3 id="finish-title" className="mt-1 text-lg font-semibold sm:text-xl">Registre o que foi estudado</h3></div><button aria-label="Fechar" onClick={() => setFinishOpen(false)} className="grid min-h-11 min-w-11 place-items-center rounded-control border"><X size={18} /></button></div><p className="mt-2 text-sm text-textSecondary">{current.discipline} · {current.subject}</p></div>
       <div data-testid="finish-content" className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-4">
       <div className="mt-4"><p className="text-sm font-bold">O que você estudou?</p><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <button type="button" aria-pressed={studyActivity === "QUESTIONS"} onClick={() => setStudyActivity("QUESTIONS")} className={`inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border px-2 text-sm font-bold ${studyActivity === "QUESTIONS" ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-white/10"}`}><ListChecks size={20} /> Questões</button>
@@ -432,7 +441,7 @@ export function ActiveStudyPanel({
       <button disabled={busy || !validMinutes || !validResults} onClick={() => act({ command: "finish", id: active.id, version: active.version, questions: isQuestions ? questions : 0, correct: isQuestions ? correct : 0, minutes: studyMinutes, activityType: studyActivity, advanceCycle, notes: `[${difficulty}] ${notes.trim()}`.trim() })} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-semibold text-white disabled:opacity-50"><Square size={17} /> {advanceCycle ? isQuestions ? "Salvar e concluir" : `Salvar ${activityLabel.toLocaleLowerCase("pt-BR")} e avançar` : "Salvar e continuar no assunto"}</button></footer>
     </section></div> : null}
 
-    {completion ? <div role="status" className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-5"><section className="w-full max-w-sm rounded-3xl bg-surface p-7 text-center shadow-2xl dark:bg-panelDark"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary"><Check size={28} /></span><h3 className="mt-4 text-2xl font-semibold">Registro concluído</h3><p className="mt-1 text-sm font-bold text-primary">{STUDY_ACTIVITY_LABELS[completion.activityType]}</p><p className="mt-2 text-sm text-textSecondary">{completion.percentage < 0 ? completion.advanced ? "O tempo informado foi somado e o ciclo avançou para a próxima posição." : "O tempo informado foi somado e este assunto continuará como a próxima atividade." : `Aproveitamento de ${completion.percentage.toFixed(0)}%. ${completion.advanced ? "O ciclo avançou." : "Você continuará neste assunto."}`}</p><button onClick={() => setCompletion(null)} className="mt-6 min-h-11 w-full rounded-xl bg-primary px-5 font-semibold text-white">Continuar</button></section></div> : null}
+    {completion ? <div role="presentation" className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-5"><section ref={completionRef} role="dialog" aria-modal="true" aria-labelledby="completion-title" className="w-full max-w-sm rounded-3xl bg-surface p-7 text-center shadow-2xl dark:bg-panelDark"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary"><Check size={28} /></span><h3 id="completion-title" className="mt-4 text-2xl font-semibold">Registro concluído</h3><p className="mt-1 text-sm font-bold text-primary">{STUDY_ACTIVITY_LABELS[completion.activityType]}</p><p className="mt-2 text-sm text-textSecondary">{completion.percentage < 0 ? completion.advanced ? "O tempo informado foi somado e o ciclo avançou para a próxima posição." : "O tempo informado foi somado e este assunto continuará como a próxima atividade." : `Aproveitamento de ${completion.percentage.toFixed(0)}%. ${completion.advanced ? "O ciclo avançou." : "Você continuará neste assunto."}`}</p><button onClick={() => setCompletion(null)} className="mt-6 min-h-11 w-full rounded-xl bg-primary px-5 font-semibold text-white">Continuar</button></section></div> : null}
   </>;
 }
 

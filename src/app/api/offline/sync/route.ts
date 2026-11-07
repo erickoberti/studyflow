@@ -225,7 +225,7 @@ async function executeStructuralOperation(userId: string, operation: PendingOper
       if (!(await ownsDiscipline(disciplineId, guideId))) throw new RejectedOperationError("Disciplina não pertence ao guia do assunto.");
       try {
         subject = await prisma.subject.create({
-          data: { id: clientId, userId, studyGuideId: guideId, disciplineId, name: asString(input.name), weight: asNumber(input.weight, 1), notes: asNullableString(input.notes), tecReference: asNullableString(input.tecReference), active: true },
+          data: { id: clientId, userId, studyGuideId: guideId, disciplineId, name: asString(input.name), weight: asNumber(input.weight, 1), notes: asNullableString(input.notes), tecReference: asNullableString(input.tecReference), ...(Object.prototype.hasOwnProperty.call(input, "groupName") ? { groupName: asNullableString(input.groupName) } : {}), active: true },
         });
       } catch (error) {
         if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
@@ -253,7 +253,7 @@ async function executeStructuralOperation(userId: string, operation: PendingOper
     if (!(await ownsDiscipline(disciplineId, subject.studyGuideId))) throw new RejectedOperationError("Disciplina não pertence ao guia do assunto.");
     await prisma.subject.updateMany({
       where: { id: subjectId, userId },
-      data: { disciplineId, name: asString(input.name), weight: asNumber(input.weight, 1), notes: asNullableString(input.notes), tecReference: asNullableString(input.tecReference), active: Boolean(input.active) },
+      data: { disciplineId, name: asString(input.name), weight: asNumber(input.weight, 1), notes: asNullableString(input.notes), tecReference: asNullableString(input.tecReference), ...(Object.prototype.hasOwnProperty.call(input, "groupName") ? { groupName: asNullableString(input.groupName) } : {}), active: Boolean(input.active) },
     });
     await upsertPrimaryCycleEntry(userId, subject.studyGuideId ?? "", subjectId, input.orderIndex == null ? null : asNumber(input.orderIndex));
     return { status: "completed" };

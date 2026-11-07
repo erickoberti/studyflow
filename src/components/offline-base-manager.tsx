@@ -26,6 +26,7 @@ export function OfflineBaseManager() {
     disciplineId: "",
     weight: "1",
     orderIndex: "",
+    groupName: "",
     tecReference: "",
     notes: "",
   });
@@ -72,6 +73,7 @@ export function OfflineBaseManager() {
       weight: Number(subjectForm.weight) || 1,
       notes: subjectForm.notes.trim() || null,
       tecReference: subjectForm.tecReference.trim() || null,
+      groupName: subjectForm.groupName.trim() || null,
       active: true,
       orderIndex: subjectForm.orderIndex ? Number(subjectForm.orderIndex) : null,
     };
@@ -93,6 +95,7 @@ export function OfflineBaseManager() {
       disciplineId: disciplines[0]?.id ?? "",
       weight: "1",
       orderIndex: "",
+      groupName: "",
       tecReference: "",
       notes: "",
     });
@@ -159,6 +162,7 @@ export function OfflineBaseManager() {
                 <input value={subjectForm.weight} onChange={(event) => setSubjectForm((current) => ({ ...current, weight: event.target.value }))} placeholder="Peso" type="number" className="h-11 w-full rounded-2xl border border-slate-300 px-3" />
                 <input value={subjectForm.orderIndex} onChange={(event) => setSubjectForm((current) => ({ ...current, orderIndex: event.target.value }))} placeholder="Ordem no ciclo" type="number" className="h-11 w-full rounded-2xl border border-slate-300 px-3" />
               </div>
+              <label className="block text-sm">Assunto principal (opcional)<input value={subjectForm.groupName} onChange={event => setSubjectForm(current => ({ ...current, groupName: event.target.value }))} placeholder="Agrupar subassuntos" className="mt-1 h-11 w-full rounded-control border bg-surface px-3" /></label>
               <input value={subjectForm.tecReference} onChange={(event) => setSubjectForm((current) => ({ ...current, tecReference: event.target.value }))} placeholder="Referencia TEC" className="h-11 w-full rounded-2xl border border-slate-300 px-3" />
               <textarea value={subjectForm.notes} onChange={(event) => setSubjectForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notas" rows={4} className="w-full rounded-2xl border border-slate-300 p-3" />
               <button type="button" onClick={saveSubject} className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white">
@@ -175,7 +179,7 @@ export function OfflineBaseManager() {
                 return (
                   <div key={subject.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3">
                     <div className="min-w-0 flex-1">
-                      <p><strong>{discipline?.name ?? "Matéria indisponível"}</strong> → {subject.name}</p>
+                      <p><strong>{discipline?.name ?? "Matéria indisponível"}</strong> → {subject.groupName ? `${subject.groupName} → ` : ""}{subject.name}</p>
                       <p className="text-xs text-textSecondary">Peso {subject.weight} · ordem {subject.orderIndex ?? "-"}</p>
                     </div>
                     <button
@@ -188,6 +192,7 @@ export function OfflineBaseManager() {
                           weight: String(subject.weight),
                           orderIndex: subject.orderIndex?.toString() ?? "",
                           tecReference: subject.tecReference ?? "",
+                          groupName: subject.groupName ?? "",
                           notes: subject.notes ?? "",
                         })
                       }

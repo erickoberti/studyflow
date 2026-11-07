@@ -1,3 +1,4 @@
+import { currentStudyStreak } from "@/lib/study-insights";
 import type { OfflineSettings, OfflineSnapshot, OfflineStudySession } from "@/lib/offline/types";
 import { expandOfflineEntry, getDisciplineMap, getOfflineCycleEntries, getSubjectMap } from "@/lib/offline/selectors";
 import { selectCurrentCycleEntry } from "@/lib/cycle-engine";
@@ -132,18 +133,7 @@ export function getOfflineDashboard(snapshot: OfflineSnapshot) {
   }
 
   const byDayList = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
-  let streakDays = 0;
-  if (byDayList.length > 0) {
-    streakDays = 1;
-    for (let idx = byDayList.length - 1; idx > 0; idx -= 1) {
-      const diff = diffCalendarDaysUTC(byDayList[idx].date, byDayList[idx - 1].date);
-      if (diff === 1) {
-        streakDays += 1;
-      } else {
-        break;
-      }
-    }
-  }
+  const streakDays = currentStudyStreak(byDayList.map(day => day.date));
 
   return {
     totals: {

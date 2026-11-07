@@ -485,8 +485,6 @@ export function GuideManager({
                   <button
                     type="submit"
                     formAction={resetStudyGuideAction}
-                    name="studyGuideId"
-                    value={activeGuide.id}
                     onClick={(event) => {
                       if (
                         !window.confirm(
@@ -507,8 +505,6 @@ export function GuideManager({
                     <button
                       type="submit"
                       formAction={deleteStudyGuideAction}
-                      name="studyGuideId"
-                      value={activeGuide.id}
                       onClick={(event) => {
                         if (!window.confirm(`Excluir o guia "${activeGuide.name}"? Essa ação remove os dados vinculados a ele.`)) {
                           event.preventDefault();
@@ -607,8 +603,6 @@ export function GuideManager({
                         <button
                           type="submit"
                           formAction={deleteGuideDisciplineAction}
-                          name="disciplineId"
-                          value={discipline.id}
                           disabled={discipline.subjectCount > 0}
                           onClick={(event) => {
                             if (discipline.subjectCount > 0) {

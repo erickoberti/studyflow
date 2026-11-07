@@ -65,10 +65,12 @@ function sessionIcon(name: string) {
   return <ListChecks size={22} />;
 }
 
-export function SessionManager({ sessions, cycleEntries, subjects }: { sessions: SessionItem[]; cycleEntries: EntryItem[]; subjects: SubjectItem[] }) {
+export function SessionManager({ sessions, cycleEntries, subjects, initialSubjectId = "", initialEntryId = "" }: { sessions: SessionItem[]; cycleEntries: EntryItem[]; subjects: SubjectItem[]; initialSubjectId?: string; initialEntryId?: string }) {
   const router = useRouter();
   const [localSessions, setLocalSessions] = useState(sessions);
   const [query, setQuery] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState(initialSubjectId);
+  const [entryFilter, setEntryFilter] = useState(initialEntryId);
   const [activityFilter, setActivityFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -98,7 +100,7 @@ export function SessionManager({ sessions, cycleEntries, subjects }: { sessions:
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const activitySessions = localSessions.filter(s => activityFilter === "all" || (activityFilter === "questions" ? s.activityType === "QUESTIONS" || s.activityType === "REVIEW" : s.activityType !== "QUESTIONS" && s.activityType !== "REVIEW"));
+    const activitySessions = localSessions.filter(s => (!subjectFilter || s.subjectId === subjectFilter) && (!entryFilter || s.cycleEntryId === entryFilter) && (activityFilter === "all" || (activityFilter === "questions" ? s.activityType === "QUESTIONS" || s.activityType === "REVIEW" : s.activityType !== "QUESTIONS" && s.activityType !== "REVIEW")));
     if (!q) return activitySessions;
     return activitySessions.filter((session) =>
       [session.disciplineName, session.subjectName, formatPtBr(session.date), String(session.questions)]
@@ -106,7 +108,7 @@ export function SessionManager({ sessions, cycleEntries, subjects }: { sessions:
         .toLowerCase()
         .includes(q),
     );
-  }, [localSessions, query, activityFilter]);
+  }, [localSessions, query, activityFilter, subjectFilter, entryFilter]);
 
   const pageSize = 5;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -246,6 +248,7 @@ export function SessionManager({ sessions, cycleEntries, subjects }: { sessions:
 
   return (
     <div className="space-y-5">
+      {subjectFilter || entryFilter ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border bg-surface px-4 py-2" role="status"><p className="text-sm">{subjectFilter ? `Assunto: ${subjects.find(subject => subject.id === subjectFilter)?.name ?? "selecionado"}` : `Posição: ${cycleEntries.find(entry => entry.id === entryFilter)?.orderIndex ?? "selecionada"}`} · {filtered.length} sessões</p><button className="sf-secondary" onClick={() => { setSubjectFilter(""); setEntryFilter(""); setPage(1); router.replace("/registros"); }}>Ver todo o histórico</button></div> : null}
       {editingId ? (
         <div className="space-y-6">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">

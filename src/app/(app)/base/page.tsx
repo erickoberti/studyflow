@@ -1,5 +1,7 @@
 import shell from "@/components/official-shell.module.css";
 import { DisciplineCatalog } from "@/components/discipline-catalog";
+import { SubjectReferenceFields } from "@/components/subject-reference-fields";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { GuideSetupNotice } from "@/components/guide-setup-notice";
 import Link from "next/link";
 import {
@@ -9,6 +11,7 @@ import {
   deleteAllSubjectsAction,
   updateDiscipline,
   updateSubject,
+  updateSubjectOrganization,
 } from "@/app/actions";
 import { ImportBaseForm } from "@/components/forms/import-base-form";
 import { requireUser } from "@/lib/auth";
@@ -48,6 +51,7 @@ export default async function BasePage({
       where: { userId: user.id, studyGuideId: guide.id },
       include: {
         discipline: true, progress: true,
+        programmedItems: { where: { program: { userId: user.id, studyGuideId: guide.id } }, select: { tecTopic: true, tecDiscipline: true, tecUrl: true, tecStatus: true, roundNumber: true, entry: { select: { orderIndex: true } } }, orderBy: { roundNumber: "asc" } },
         cycleEntries: {
           where: { userId: user.id, studyGuideId: guide.id },
           orderBy: { orderIndex: "asc" },
@@ -85,6 +89,7 @@ export default async function BasePage({
     ? sortedDisciplines.find((discipline) => discipline.id === editDisciplineId) ?? null
     : null;
   const editingSubject = editSubjectId ? subjects.find((subject) => subject.id === editSubjectId) ?? null : null;
+  const isProgrammed = Boolean(editingSubject?.programmedItems.length);
 
   const showDisciplineEditor = tab === "disciplinas" && (showForm || Boolean(editingDiscipline));
   const showSubjectEditor = tab === "assuntos" && (showForm || Boolean(editingSubject));
@@ -184,16 +189,16 @@ export default async function BasePage({
                   Fechar
                 </Link>
               </div>
-              <form action={editingSubject ? updateSubject : createSubject} className="mt-4 space-y-4">
+              <form action={editingSubject ? isProgrammed ? updateSubjectOrganization : updateSubject : createSubject} className="mt-4 space-y-4">
                 {editingSubject ? <input type="hidden" name="subjectId" value={editingSubject.id} /> : null}
                 <input type="hidden" name="redirectTo" value={subjectRedirectTo} />
                 <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr_120px_120px]">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary" htmlFor="subject-name">
                       Assunto
                     </label>
                     <input
-                      name="name"
+                      id="subject-name" disabled={isProgrammed} name="name"
                       placeholder="Título do assunto"
                       required
                       defaultValue={editingSubject?.name ?? ""}
@@ -201,11 +206,11 @@ export default async function BasePage({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary" htmlFor="subject-disciplineId">
                       Matéria
                     </label>
                     <select
-                      name="disciplineId"
+                      id="subject-disciplineId" disabled={isProgrammed} name="disciplineId"
                       required
                       defaultValue={editingSubject?.disciplineId ?? params?.discipline ?? disciplines.find((discipline) => discipline.active)?.id ?? disciplines[0]?.id}
                       className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
@@ -218,11 +223,11 @@ export default async function BasePage({
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary" htmlFor="subject-orderIndex">
                       Ordem (opcional)
                     </label>
                     <input
-                      name="orderIndex"
+                      id="subject-orderIndex" disabled={isProgrammed} name="orderIndex"
                       type="number"
                       min={1}
                       placeholder="Ordem"
@@ -231,11 +236,11 @@ export default async function BasePage({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary" htmlFor="subject-weight">
                       Peso
                     </label>
                     <input
-                      name="weight"
+                      id="subject-weight" disabled={isProgrammed} name="weight"
                       type="number"
                       min={1}
                       max={5}
@@ -244,27 +249,17 @@ export default async function BasePage({
                     />
                   </div>
                 </div>
-                <p className="text-xs text-textSecondary">A matéria já entra no ciclo ao ser cadastrada. Novos assuntos participam dos estudos dessa matéria. Preencha a ordem apenas para acrescentar ou mover uma posição do ciclo.</p>
-                <div className="grid gap-3 lg:grid-cols-[320px_1fr_auto]">
+                <p className="text-xs text-textSecondary">{isProgrammed ? "O conteúdo e a ordem deste assunto são definidos na matriz das voltas." : "Novos assuntos participam dos estudos da matéria. Preencha a ordem apenas para acrescentar ou mover uma posição do ciclo."}</p>
+                <SubjectReferenceFields key={editingSubject?.id ?? "new"} initialReference={editingSubject?.tecReference} groupName={editingSubject?.groupName} programmed={isProgrammed} />
+                <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
-                      Referencia TEC
-                    </label>
-                    <input
-                      name="tecReference"
-                      placeholder="Onde marcar no TEC"
-                      defaultValue={editingSubject?.tecReference ?? ""}
-                      className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary">
-                      Observacoes
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-textSecondary dark:text-textSecondary" htmlFor="subject-notes">
+                      Observações
                     </label>
                     <textarea
-                      name="notes"
+                      id="subject-notes" name="notes"
                       rows={2}
-                      placeholder="Observacoes do assunto"
+                      placeholder="Observações do assunto"
                       defaultValue={editingSubject?.notes ?? ""}
                       className="min-h-[68px] w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm text-slate-900 dark:border-primary/30 dark:bg-backgroundDark dark:text-white"
                     />
@@ -285,8 +280,8 @@ export default async function BasePage({
             </section>
           ) : null}
 
-          <DisciplineCatalog groups={sortedDisciplines.map(discipline => ({id:discipline.id,name:discipline.name,active:discipline.active,topics:subjects.filter(s=>s.disciplineId===discipline.id).map(s=>({id:s.id,name:s.name,weight:s.weight,notes:s.notes,tecReference:s.tecReference,active:s.active,questions:s.progress?.totalQuestions??0,percentage:s.progress?.averagePercentage??0,studied:Boolean(s.progress?.lastStudiedAt)}))}))} />
-          <details className="mt-6 rounded-xl border p-4"><summary className="cursor-pointer text-sm">Gerenciar cadastro e exportação</summary><div className="flex flex-wrap gap-4 pt-4"><Link href="/api/export/csv" className="sf-secondary">Exportar</Link><Link href="/base?tab=assuntos&novo=1" className="sf-secondary">Novo assunto</Link><form action={deleteAllGuideDisciplinesAction}><button className="text-sm text-danger">Excluir todas disciplinas</button></form><form action={deleteAllSubjectsAction}><button className="text-sm text-danger">Excluir todos assuntos</button></form></div></details>        </div>
+          <DisciplineCatalog groups={sortedDisciplines.map(discipline => ({id:discipline.id,name:discipline.name,active:discipline.active,topics:subjects.filter(s=>s.disciplineId===discipline.id).map(s=>({id:s.id,name:s.name,weight:s.weight,notes:s.notes,groupName:s.groupName,tecReference:s.tecReference,programReferences:s.programmedItems.map(item=>({round:item.roundNumber,position:item.entry.orderIndex,topic:item.tecTopic,discipline:item.tecDiscipline,url:item.tecUrl,status:item.tecStatus})),active:s.active,questions:s.progress?.totalQuestions??0,percentage:s.progress?.averagePercentage??0,studied:Boolean(s.progress?.lastStudiedAt)}))}))} />
+          <details className="mt-6 rounded-xl border p-4"><summary className="cursor-pointer text-sm">Gerenciar cadastro e exportação</summary><div className="flex flex-wrap gap-4 pt-4"><Link href="/api/export/csv" className="sf-secondary">Exportar</Link><Link href="/base?tab=assuntos&novo=1" className="sf-secondary">Novo assunto</Link><form action={deleteAllGuideDisciplinesAction}><ConfirmSubmitButton message="Excluir todas as matérias e seus assuntos deste guia? Exporte um backup nas configurações antes de continuar." className="text-sm text-danger">Excluir todas disciplinas</ConfirmSubmitButton></form><form action={deleteAllSubjectsAction}><ConfirmSubmitButton message="Excluir todos os assuntos deste guia? Exporte um backup nas configurações antes de continuar." className="text-sm text-danger">Excluir todos assuntos</ConfirmSubmitButton></form></div></details>        </div>
       </section>
     </div>
   );

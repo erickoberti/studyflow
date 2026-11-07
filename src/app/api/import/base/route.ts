@@ -143,7 +143,6 @@ export async function POST(request: Request) {
         active: true,
         weight: item.peso,
         tecReference: item.tec || null,
-        groupName: null,
         sortOrder: subjectSortOrder,
       },
       create: {

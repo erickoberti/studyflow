@@ -8,25 +8,28 @@
   --surface-rgb: 255 255 255; --elevated-rgb: 240 240 246;
   --foreground-rgb: 27 27 35; --primary-rgb: 70 72 212;
   --navigation-rgb: 70 72 212;
-  --secondary-rgb: 89 88 101; --success-rgb: 16 185 129;
-  --warning-rgb: 245 158 11; --critical-rgb: 239 68 68;
+  --accent: #4648d4;
+  --secondary-rgb: 89 88 101; --success-rgb: 6 117 84;
+  --warning-rgb: 146 84 14; --critical-rgb: 180 35 50;
   --text-secondary: #595865; --border: #dedfe5;
+  --radius-card: 12px; --radius-feature: 16px;
 }
 .dark {
   color-scheme: dark;
   --background: #0c0e15; --foreground: #f1f5f9;
   --surface: #151927; --surface-elevated: #1d2436;
   --surface-rgb: 21 25 39; --elevated-rgb: 29 36 54;
-  --foreground-rgb: 241 245 249; --primary-rgb: 99 102 241;
-  --navigation-rgb: 99 102 241;
+  --foreground-rgb: 241 245 249; --primary-rgb: 98 100 230;
+  --navigation-rgb: 98 100 230;
+  --accent: #b3b6ff;
   --secondary-rgb: 148 163 184; --success-rgb: 52 211 153;
   --warning-rgb: 251 191 36; --critical-rgb: 248 113 113;
-  --text-secondary: #94a3b8; --border: rgb(255 255 255 / 0.07);
+  --text-secondary: #a8b4c7; --border: rgb(255 255 255 / 0.13);
 }
 @layer components {
   .sf-surface { @apply rounded-card bg-surface; }
   .sf-chip { @apply inline-flex items-center gap-1.5 rounded-control bg-elevated px-2.5 py-1 text-xs font-medium; }
-  .sf-eyebrow { @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-textSecondary; }
+  .sf-eyebrow { @apply text-xs font-medium tracking-wide text-textSecondary; }
   .sf-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-control bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:min-h-11; }
   .sf-secondary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-control bg-elevated px-4 text-sm font-medium text-textPrimary transition-colors hover:bg-primary/10 sm:min-h-11; }
 }
@@ -95,6 +98,18 @@ input:disabled,
 select:disabled {
   cursor: not-allowed;
 }
+
+.sf-progress { height: 7px; border-radius: 99px; background: var(--surface-elevated); overflow: hidden; }
+.sf-progress > span { display: block; height: 100%; border-radius: inherit; background: rgb(var(--primary-rgb)); transition: width .2s ease; }
+.sf-tec-reference { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); font-size: 13px; }
+.sf-tec-reference > svg { flex-shrink: 0; color: var(--accent); }
+.sf-tec-reference > div { flex: 1; min-width: 160px; }
+.sf-tec-reference p { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.sf-tec-reference p + p { margin-top: 4px; color: var(--text-secondary); }
+.sf-tec-reference strong { font-weight: 650; }
+.sf-tec-reference .sf-chip { font-size: 11px; padding: 2px 8px; }
+.sf-tec-reference > a { font-size: 13px; }
+.dark :is(.text-primary, .text-primarySoft, .dark\:text-primary, .dark\:text-primarySoft) { color: var(--accent); }
 
 main a[class*="rounded"][class*="px-"]:not([class*="flex"]):not([class*="grid"]) {
   display: inline-flex;

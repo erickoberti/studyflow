@@ -44,7 +44,7 @@ export async function GET() {
     prisma.subject.findMany({
       where: { userId: user.id, studyGuideId: activeGuide.id },
       orderBy: [{ name: "asc" }],
-      select: { id: true, studyGuideId: true, disciplineId: true, name: true, weight: true, notes: true, tecReference: true, active: true },
+      select: { id: true, studyGuideId: true, disciplineId: true, name: true, weight: true, notes: true, tecReference: true, groupName: true, active: true },
     }),
     prisma.cycleEntry.findMany({
       where: { userId: user.id, studyGuideId: activeGuide.id },
@@ -94,6 +94,7 @@ export async function GET() {
       weight: subject.weight,
       notes: subject.notes,
       tecReference: subject.tecReference,
+      groupName: subject.groupName,
       active: subject.active,
       orderIndex: cycleEntries.find((entry) => entry.subjectId === subject.id)?.orderIndex ?? null,
     })),

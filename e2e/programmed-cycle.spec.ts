@@ -74,7 +74,7 @@ test("matriz requer confirmação, mantém histórico e deixa apenas 16 posiçõ
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Ativar programação revisada" }).click();
   await expect(page).toHaveURL(/\/ciclo$/);
-  await expect(page.getByText("Ciclo programado · volta 1/4")).toBeVisible();
+  await expect(page.getByText("Seu roteiro · volta 1/4", { exact: true })).toBeVisible();
   await expect(page.getByText("Agora · posição 5/16 · volta 1/4")).toBeVisible();
   expect(await db.cycleEntry.findMany({ where: { userId }, orderBy: { orderIndex: "asc" } })).toEqual(originalPositions);
   expect(await db.studySession.count({ where: { userId } })).toBe(1);
@@ -106,8 +106,8 @@ test("matriz requer confirmação, mantém histórico e deixa apenas 16 posiçõ
   expect((await post("/api/active-study-session", finish)).status()).toBe(200);
   expect((await (await post("/api/active-study-session", finish)).json()).idempotent).toBe(true);
   await page.reload();
-  await expect(page.getByText("Ciclo programado · volta 1/4")).toBeVisible();
-  await expect(page.getByText("1/16 posições concluídas")).toBeVisible();
+  await expect(page.getByText("Seu roteiro · volta 1/4", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Progresso da volta", exact: true }).getByText("1/16 posições concluídas", { exact: true })).toBeVisible();
   expect(await db.studySession.count({ where: { userId } })).toBe(2);
   const backup = await (await context.request.get("/api/backup", { headers: { Cookie: apiCookie } })).json();
   expect(validateBackup(backup, userId).data.CycleProgramItem.length).toBe(64);

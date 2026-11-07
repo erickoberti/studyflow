@@ -12,11 +12,11 @@
 .page :global(.bg-slate-50),.page :global(.bg-slate-100) { background:var(--surface-elevated); }
 .more { max-width:1120px; }
 .more header p { max-width:640px; color:var(--text-secondary); font-size:14px; line-height:1.6; margin-top:8px; }
-.eyebrow { display:inline-flex; background:rgb(var(--primary-rgb)/.09); color:rgb(var(--primary-rgb)); padding:5px 10px; border-radius:20px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; }
+.eyebrow { display:inline-flex; background:rgb(var(--primary-rgb)/.09); color: var(--accent); padding:5px 10px; border-radius:20px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; }
 .resourceGrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
 .resourceLink { display:flex; align-items:center; gap:16px; min-height:90px; padding:20px; border:1px solid var(--border); border-radius:12px; background:var(--surface); transition:background .15s,border-color .15s; }
 .resourceLink:hover { border-color:rgb(var(--primary-rgb)/.4); background:color-mix(in srgb,var(--surface) 95%,rgb(var(--primary-rgb))); }
-.resourceIcon { width:40px; height:40px; display:grid; place-items:center; flex-shrink:0; background:rgb(var(--primary-rgb)/.09); color:rgb(var(--primary-rgb)); border-radius:10px; }
+.resourceIcon { width:40px; height:40px; display:grid; place-items:center; flex-shrink:0; background:rgb(var(--primary-rgb)/.09); color: var(--accent); border-radius:10px; }
 .resourceText { min-width:0; flex:1; }
 .resourceText strong { display:block; font-size:15px; font-weight:600; }
 .resourceText span { display:block; margin-top:4px; font-size:13px; line-height:1.5; color:var(--text-secondary); }

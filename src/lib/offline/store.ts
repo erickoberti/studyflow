@@ -669,6 +669,7 @@ export function createOfflineSubject(input: {
   weight: number;
   notes: string | null;
   tecReference: string | null;
+  groupName?: string | null;
   orderIndex: number | null;
 }) {
   const snapshot = getOfflineSnapshot();
@@ -682,6 +683,7 @@ export function createOfflineSubject(input: {
     weight: input.weight,
     notes: input.notes,
     tecReference: input.tecReference,
+    groupName: input.groupName ?? null,
     active: true,
     orderIndex: input.orderIndex,
   };
@@ -711,6 +713,7 @@ export function updateOfflineSubject(
     weight: number;
     notes: string | null;
     tecReference: string | null;
+    groupName?: string | null;
     active: boolean;
     orderIndex: number | null;
   },

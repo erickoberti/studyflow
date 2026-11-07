@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Clock3, FileText, ListChecks, RefreshCcw, Search, Scale, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -51,20 +51,23 @@ function formatPtBrDay(date: Date) {
 export function StudySessionForm({
   guides,
   initialGuideId,
+  initialSubjectId = "",
   recentSessions,
   dailyQuestionsGoal,
   toggleHref,
 }: {
   guides: StandaloneGuideOption[];
   initialGuideId: string;
+  initialSubjectId?: string;
   recentSessions?: RecentSession[];
   dailyQuestionsGoal: number;
   toggleHref: string;
 }) {
   const router = useRouter();
+  const initialDiscipline = guides.find(guide => guide.id === initialGuideId)?.disciplines.find(discipline => discipline.subjects.some(subject => subject.id === initialSubjectId));
   const [studyGuideId, setStudyGuideId] = useState(initialGuideId);
-  const [disciplineId, setDisciplineId] = useState("");
-  const [subjectId, setSubjectId] = useState("");
+  const [disciplineId, setDisciplineId] = useState(initialDiscipline?.id ?? "");
+  const [subjectId, setSubjectId] = useState(initialDiscipline ? initialSubjectId : "");
   const [disciplineSearch, setDisciplineSearch] = useState("");
   const [subjectSearch, setSubjectSearch] = useState("");
   const [disciplineSearchOpen, setDisciplineSearchOpen] = useState(false);
@@ -79,6 +82,7 @@ export function StudySessionForm({
   const [difficulty, setDifficulty] = useState<"Fácil" | "Média" | "Difícil">(DEFAULT_DIFFICULTY);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const submissionInFlight = useRef(false);
   const [subjectLoading, setSubjectLoading] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -153,6 +157,7 @@ export function StudySessionForm({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submissionInFlight.current) return;
     if (!studyGuideId || (!isGeneralReview && (!disciplineId || !subjectId))) {
       const message = isGeneralReview ? "Selecione um guia." : "Selecione guia, disciplina e assunto.";
       setStatus({ type: "error", message }); toast.error(message); return;
@@ -167,6 +172,7 @@ export function StudySessionForm({
     }
 
     try {
+      submissionInFlight.current = true;
       setLoading(true);
       setStatus(null);
       const response = await fetch("/api/study-sessions", {
@@ -189,6 +195,7 @@ export function StudySessionForm({
       setStatus({ type: "error", message });
       toast.error(message);
     } finally {
+      submissionInFlight.current = false;
       setLoading(false);
     }
   }
