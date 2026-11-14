@@ -3,6 +3,8 @@ import { PrismaClient } from "@prisma/client";
 import { encode } from "next-auth/jwt";
 import { validateBackup } from "../src/lib/backup";
 
+test.use({ serviceWorkers: "block" });
+
 const databaseUrl = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL) : null;
 test.skip(process.env.PROGRAM_CYCLE_INTEGRATION !== "true" || databaseUrl?.hostname !== "127.0.0.1" || databaseUrl.pathname !== "/studyflow_program_test", "Exige banco local fictício e PROGRAM_CYCLE_INTEGRATION=true.");
 

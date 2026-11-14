@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { assertFixedPositions, legacyCycleFingerprint, matchingMatter, nextProgramPosition, programInputSchema, type ProgramInput } from "@/lib/programmed-cycle";
+import { assertFixedPositions, legacyCycleFingerprint, matchingMatter, nextProgramPosition, programInputSchema, programPositionCount, type ProgramInput } from "@/lib/programmed-cycle";
 
 type Client = Prisma.TransactionClient | typeof prisma;
 export const programInclude = { items: { include: { entry: true, subject: true, discipline: true, completion: true }, orderBy: [{ roundNumber: "asc" as const }, { entry: { orderIndex: "asc" as const } }] } };
@@ -21,16 +21,18 @@ export function currentProgramItem(program: LoadedProgram, cursor: number) {
 }
 
 export function programSuggestion(item: LoadedProgram["items"][number], program: LoadedProgram) {
-  return { programItemId: item.id, entry: { id: item.entryId, orderIndex: item.entry.orderIndex, discipline: { id: item.disciplineId, name: item.discipline.name, questionGoal: item.questionGoal } }, subject: { id: item.subjectId, name: item.subject.name, weight: item.subject.weight, sortOrder: item.subject.sortOrder, tecReference: [item.tecDiscipline, item.tecTopic, item.tecUrl].filter(Boolean).join(" → ") || item.subject.tecReference }, roundNumber: item.roundNumber, totalRounds: program.totalRounds };
+  return { programItemId: item.id, plannedMinutes: item.plannedMinutes, minimumQuestions: item.minimumQuestions, entry: { id: item.entryId, orderIndex: item.entry.orderIndex, discipline: { id: item.disciplineId, name: item.discipline.name, questionGoal: item.questionGoal } }, subject: { id: item.subjectId, name: item.subject.name, weight: item.subject.weight, sortOrder: item.subject.sortOrder, tecReference: [item.tecDiscipline, item.tecTopic, item.tecUrl].filter(Boolean).join(" → ") || item.subject.tecReference }, roundNumber: item.roundNumber, totalRounds: program.totalRounds };
 }
 
 // Activation is explicit, versioned and atomic. No update/delete of historical records.
-export async function saveCycleProgram(userId: string, studyGuideId: string, raw: ProgramInput) {
+export async function saveCycleProgram(userId: string, studyGuideId: string, raw: ProgramInput, transaction?: Prisma.TransactionClient) {
   const input = programInputSchema.parse(raw);
-  return prisma.$transaction(async tx => {
+  const save = async (tx: Prisma.TransactionClient) => {
     await lockProgramGuide(tx, userId, studyGuideId);
     if (await tx.activeStudySession.count({ where: { userId, studyGuideId, status: { in: ["ACTIVE", "PAUSED", "FINISHING"] } } })) throw new Error("Finalize ou cancele a sessão aberta antes de editar a programação.");
     const existing = await getCycleProgram(userId, studyGuideId, tx);
+    const positionCount = existing ? programPositionCount(existing) : input.rows.length;
+    if (input.rows.length !== positionCount) throw new Error("A quantidade de posições deste guia é fixa. Nenhuma posição foi alterada.");
     if (existing && input.legacyCredits.length) throw new Error("O aproveitamento de sessões anteriores só é permitido na ativação inicial.");
     if ((existing?.version ?? 0) !== input.version) throw new Error("A programação mudou em outro dispositivo. Recarregue a matriz antes de salvar.");
     if (existing && input.rows.some(row => row.topics.length !== existing.totalRounds)) throw new Error("Use a opção de novas voltas para ampliar a programação.");
@@ -42,12 +44,12 @@ export async function saveCycleProgram(userId: string, studyGuideId: string, raw
     }
     // An empty guide can be initialized, but a populated guide is never rebuilt.
     if (!entries.length && !existing) {
-      await tx.cycleEntry.createMany({ data: Array.from({ length: 16 }, (_, index) => ({ userId, studyGuideId, orderIndex: index + 1 })) });
+      await tx.cycleEntry.createMany({ data: Array.from({ length: positionCount }, (_, index) => ({ userId, studyGuideId, orderIndex: index + 1 })) });
       entries.push(...await tx.cycleEntry.findMany({ where: { userId, studyGuideId }, orderBy: { orderIndex: "asc" } }));
     }
-    assertFixedPositions(entries);
+    assertFixedPositions(entries, positionCount);
     const state = await tx.studyGuideCycleState.upsert({ where: { studyGuideId }, create: { userId, studyGuideId }, update: {} });
-    if (state.currentOrderIndex < 1 || state.currentOrderIndex > 16) throw new Error("O cursor atual não pertence às 16 posições. Revise a migração antes de ativar.");
+    if (state.currentOrderIndex < 1 || state.currentOrderIndex > positionCount) throw new Error(`O cursor atual não pertence às ${positionCount} posições. Revise a migração antes de ativar.`);
     const program = existing ?? await tx.cycleProgram.create({ data: { userId, studyGuideId, initialRound: state.roundNumber, initialPosition: state.currentOrderIndex } });
     const disciplines = await tx.discipline.findMany({ where: { userId, studyGuideId } });
     const subjects = await tx.subject.findMany({ where: { userId, studyGuideId } });
@@ -61,7 +63,7 @@ export async function saveCycleProgram(userId: string, studyGuideId: string, raw
         if (!subject) { subject = await tx.subject.create({ data: { userId, studyGuideId, disciplineId: discipline.id, name: topic.name, sortOrder: subjects.length } }); subjects.push(subject); }
         if (!subject.active) throw new Error(`O assunto ${subject.name} está pausado.`);
         // Replacements bind another subject; renaming a used Subject is never required.
-        const data = { disciplineId: discipline.id, subjectId: subject.id, questionGoal: row.questionGoal, tecDiscipline: topic.tecDiscipline || null, tecTopic: topic.tecTopic || null, tecUrl: topic.tecUrl || null, tecStatus: topic.tecStatus };
+        const data = { disciplineId: discipline.id, subjectId: subject.id, questionGoal: row.questionGoal, plannedMinutes: topic.plannedMinutes, minimumQuestions: topic.minimumQuestions, tecDiscipline: topic.tecDiscipline || null, tecTopic: topic.tecTopic || null, tecUrl: topic.tecUrl || null, tecStatus: topic.tecStatus };
         await tx.cycleProgramItem.upsert({ where: { programId_entryId_roundNumber: { programId: program.id, entryId: byEntry.get(row.position)!.id, roundNumber: index + 1 } }, create: { programId: program.id, entryId: byEntry.get(row.position)!.id, roundNumber: index + 1, ...data }, update: data });
       }
     }
@@ -72,13 +74,14 @@ export async function saveCycleProgram(userId: string, studyGuideId: string, raw
       const item = await tx.cycleProgramItem.findUniqueOrThrow({ where: { programId_entryId_roundNumber: { programId: program.id, entryId, roundNumber: 1 } } });
       await tx.cycleProgramCompletion.create({ data: { itemId: item.id, sourceSessionId: source.id, completedAt: source.date } });
     }
-    if (input.legacyCredits.length === 16) {
+    if (input.legacyCredits.length === positionCount) {
       await tx.cycleProgram.update({ where: { id: program.id }, data: { currentRound: 2, version: { increment: 1 } } });
       await tx.studyGuideCycleState.update({ where: { studyGuideId }, data: { currentOrderIndex: 1, roundNumber: { increment: 1 }, version: { increment: 1 } } });
     }
     if (existing) await tx.cycleProgram.update({ where: { id: program.id }, data: { version: { increment: 1 } } });
     return program.id;
-  }, { timeout: 60_000 });
+  };
+  return transaction ? save(transaction) : prisma.$transaction(save, { timeout: 60_000 });
 }
 
 export async function completeProgramItem(tx: Prisma.TransactionClient, userId: string, studyGuideId: string, itemId: string, sourceSessionId: string) {
@@ -86,7 +89,8 @@ export async function completeProgramItem(tx: Prisma.TransactionClient, userId: 
   if (item.program.status !== "ACTIVE" || item.program.currentRound !== item.roundNumber) throw new Error("Esta sessão pertence a uma volta encerrada.");
   await tx.cycleProgramCompletion.upsert({ where: { itemId }, create: { itemId, sourceSessionId }, update: {} });
   const items = await tx.cycleProgramItem.findMany({ where: { programId: item.programId, roundNumber: item.roundNumber }, include: { completion: true, entry: true } });
-  assertFixedPositions(items.map(value => value.entry).sort((a, b) => a.orderIndex - b.orderIndex));
+  const positionCount = await tx.cycleEntry.count({ where: { userId, studyGuideId } });
+  assertFixedPositions(items.map(value => value.entry).sort((a, b) => a.orderIndex - b.orderIndex), positionCount);
   const completed = new Set(items.filter(value => value.completion).map(value => value.entryId));
   const pending = nextProgramPosition(items.map(value => value.entry).sort((a, b) => a.orderIndex - b.orderIndex), completed, item.entry.orderIndex);
   if (pending) {
@@ -94,7 +98,7 @@ export async function completeProgramItem(tx: Prisma.TransactionClient, userId: 
   } else {
     const finished = item.roundNumber === item.program.totalRounds;
     await tx.cycleProgram.update({ where: { id: item.programId }, data: { status: finished ? "COMPLETED" : "ACTIVE", currentRound: finished ? item.roundNumber : item.roundNumber + 1, version: { increment: 1 } } });
-    await tx.studyGuideCycleState.update({ where: { studyGuideId }, data: { currentOrderIndex: finished ? 16 : 1, ...(!finished ? { roundNumber: { increment: 1 } } : {}), version: { increment: 1 } } });
+    await tx.studyGuideCycleState.update({ where: { studyGuideId }, data: { currentOrderIndex: finished ? positionCount : 1, ...(!finished ? { roundNumber: { increment: 1 } } : {}), version: { increment: 1 } } });
   }
 }
 
@@ -104,7 +108,7 @@ export async function extendCycleProgram(userId: string, studyGuideId: string, v
     const program = await getCycleProgram(userId, studyGuideId, tx);
     if (!program || program.version !== version || program.status !== "COMPLETED" || program.totalRounds >= 40) throw new Error("Conclua a programação atual antes de acrescentar quatro voltas.");
     const previous = program.items.filter(item => item.roundNumber > program.totalRounds - 4);
-    await tx.cycleProgramItem.createMany({ data: previous.map(item => ({ programId: program.id, entryId: item.entryId, roundNumber: item.roundNumber + 4, disciplineId: item.disciplineId, subjectId: item.subjectId, questionGoal: item.questionGoal, tecDiscipline: item.tecDiscipline, tecTopic: item.tecTopic, tecUrl: item.tecUrl, tecStatus: item.tecStatus })) });
+    await tx.cycleProgramItem.createMany({ data: previous.map(item => ({ programId: program.id, entryId: item.entryId, roundNumber: item.roundNumber + 4, disciplineId: item.disciplineId, subjectId: item.subjectId, questionGoal: item.questionGoal, plannedMinutes: item.plannedMinutes, minimumQuestions: item.minimumQuestions, tecDiscipline: item.tecDiscipline, tecTopic: item.tecTopic, tecUrl: item.tecUrl, tecStatus: item.tecStatus })) });
     await tx.cycleProgram.update({ where: { id: program.id }, data: { totalRounds: program.totalRounds + 4, currentRound: program.totalRounds + 1, status: "ACTIVE", version: { increment: 1 } } });
     await tx.studyGuideCycleState.update({ where: { studyGuideId }, data: { currentOrderIndex: 1, roundNumber: { increment: 1 }, version: { increment: 1 } } });
   });

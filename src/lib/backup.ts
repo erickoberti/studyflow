@@ -93,6 +93,9 @@ export function validateBackup(raw: unknown, userId: string): { data: BackupData
         value = { ...value };
         for (const field of additions) if (!(field in value)) value[field] = null;
       }
+      if (isObject(value) && name === "CycleProgramItem") {
+        value = { plannedMinutes: null, minimumQuestions: null, ...value };
+      }
       if (!isObject(value) || Object.keys(value).length !== fields.length || Object.keys(value).some((key) => !allowed.has(key))) {
         throw new InvalidBackupError(`Registro inválido em ${name}.`);
       }
@@ -132,14 +135,16 @@ export function validateBackup(raw: unknown, userId: string): { data: BackupData
   for (const item of data.CycleProgramItem) {
     const guideId = programs.get(item.programId)?.studyGuideId;
     if (!guideId || subjectById.get(item.subjectId)?.studyGuideId !== guideId || matterById.get(item.disciplineId)?.studyGuideId !== guideId || entryById.get(item.entryId)?.studyGuideId !== guideId || subjectById.get(item.subjectId)?.disciplineId !== item.disciplineId) throw new InvalidBackupError("Programação vinculada a outro guia ou matéria.");
+    if (item.plannedMinutes !== null && (Number(item.plannedMinutes) < 1 || Number(item.plannedMinutes) > 1440) || item.minimumQuestions !== null && (Number(item.minimumQuestions) < 0 || Number(item.minimumQuestions) > Number(item.questionGoal))) throw new InvalidBackupError("Metas de estudo inválidas.");
   }
   for (const program of data.CycleProgram) {
     if (!Number.isInteger(program.totalRounds) || Number(program.totalRounds) < 4 || Number(program.totalRounds) > 40 || Number(program.totalRounds) % 4 !== 0 || Number(program.currentRound) < 1 || Number(program.currentRound) > Number(program.totalRounds)) throw new InvalidBackupError("Quantidade de voltas inválida.");
-    if (data.CycleProgramItem.filter(item => item.programId === program.id).length !== Number(program.totalRounds) * 16) throw new InvalidBackupError("Programação incompleta.");
+    const positionCount = data.CycleEntry.filter(entry => entry.studyGuideId === program.studyGuideId).length;
+    if (!positionCount || data.CycleProgramItem.filter(item => item.programId === program.id).length !== Number(program.totalRounds) * positionCount) throw new InvalidBackupError("Programação incompleta.");
     for (let round = 1; round <= Number(program.totalRounds); round++) {
       const roundItems = data.CycleProgramItem.filter(item => item.programId === program.id && item.roundNumber === round);
       const positions = roundItems.map(item => entryById.get(item.entryId)?.orderIndex).sort((a, b) => Number(a) - Number(b));
-      if (positions.length !== 16 || positions.some((position, index) => position !== index + 1)) throw new InvalidBackupError("A programação precisa das 16 posições em cada volta.");
+      if (positions.length !== positionCount || positions.some((position, index) => position !== index + 1)) throw new InvalidBackupError(`A programação precisa das ${positionCount} posições em cada volta.`);
     }
   }
   for (const completion of data.CycleProgramCompletion) {

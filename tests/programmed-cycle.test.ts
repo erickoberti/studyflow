@@ -34,3 +34,18 @@ test("revisões respeitam os limiares de 60 e 80 sem bloquear o avanço", () => 
   assert.deepEqual(programReviewIntervals(100, 80), [30]);
   assert.deepEqual(programReviewIntervals(0, 0), []);
 });
+
+test("19 posições preservam quatro voltas completas, sem lacunas ou metas inválidas", () => {
+  const rows = Array.from({ length: 19 }, (_, index) => ({ ...defaultProgramRows()[index % 16], position: index + 1 }));
+  rows[0].topics = rows[0].topics.map(topic => ({ ...topic, plannedMinutes: 40, minimumQuestions: 3 }));
+  assert.equal(programInputSchema.safeParse({ version: 0, rows }).success, true);
+  const entries = rows.map(row => ({ id: String(row.position), orderIndex: row.position, active: true }));
+  assertFixedPositions(entries, 19);
+  assert.equal(nextProgramPosition(entries, new Set(entries.slice(0, 18).map(entry => entry.id)), 18)?.orderIndex, 19);
+  assert.equal(nextProgramPosition(entries, new Set(["19"]), 19)?.orderIndex, 1);
+  assert.throws(() => assertFixedPositions(entries.slice(0, 18), 19), /19 posições/);
+  assert.equal(programInputSchema.safeParse({ version: 0, rows: rows.map(row => row.position === 19 ? { ...row, position: 20 } : row) }).success, false);
+  assert.equal(programInputSchema.safeParse({ version: 0, rows, legacyCredits: [{ position: 20, sessionId: "outside" }] }).success, false);
+  rows[0].topics[0].minimumQuestions = 501;
+  assert.equal(programInputSchema.safeParse({ version: 0, rows }).success, false);
+});

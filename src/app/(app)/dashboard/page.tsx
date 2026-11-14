@@ -65,7 +65,7 @@ export default async function DashboardPage() {
       {current || active ? <>
         <dl className={styles.facts}>
           <div><dt><Target size={16} aria-hidden /> Meta da sessão</dt><dd>{sessionGoal} <span>questões</span></dd></div>
-          <div><dt><Clock3 size={16} aria-hidden /> Tempo estimado</dt><dd>{settings.sessionMinutes} <span>minutos</span></dd></div>
+          <div><dt><Clock3 size={16} aria-hidden /> Tempo estimado</dt><dd>{programItem?.plannedMinutes ?? settings.sessionMinutes} <span>minutos</span></dd></div>
         </dl>
         <TecReference reference={{ topic: programItem?.tecTopic, discipline: programItem?.tecDiscipline, status: programItem?.tecStatus, url: programItem?.tecUrl, legacy: referenceSubject?.tecReference }} />
         <div className={styles.actions}><Link href="/registro?modo=timer" className="sf-primary"><Play size={17} aria-hidden />{active ? "Retomar sessão" : "Iniciar agora"}</Link><Link href="/registro" className="sf-secondary"><ListChecks size={17} aria-hidden />Registrar sem cronômetro</Link><Link href="/ciclo" className={styles.textLink}>Ver ciclo <ArrowRight size={16} aria-hidden /></Link></div>

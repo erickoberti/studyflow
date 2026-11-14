@@ -16,7 +16,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
-    "test:cycle-program": "tsx --test tests/programmed-cycle.integration.test.ts"
+    "test:cycle-program": "tsx --test tests/programmed-cycle.integration.test.ts tests/programmed-cycle-19.integration.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

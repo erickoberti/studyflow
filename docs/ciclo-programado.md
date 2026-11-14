@@ -1,5 +1,11 @@
 # Ciclo de 16 posições e quatro voltas
 
+## Guias novos com quantidade própria de posições
+
+Desde 14/11/2026, uma programação nova pode ter sua própria quantidade de posições consecutivas. O modelo padrão continua com 16. A quantidade de uma programação existente permanece fixa; cadastrar um novo guia não converte nem altera os guias anteriores. Cada volta exige a conclusão de todas as posições daquele guia antes da próxima volta. A programação termina após as quatro voltas, sem iniciar uma quinta automaticamente.
+
+A importação do plano TI Geral usa 19 posições e quatro voltas (76 etapas), com assunto exato por posição e volta. Tempo previsto e referência mínima de questões são opcionais por etapa; quando ausentes, os guias existentes mantêm os valores anteriores. As referências são planejamento, não requisitos que bloqueiam a conclusão. Backup e ampliação de voltas preservam esses dados. A migration `20261114120000_program_item_study_targets` apenas acrescenta duas colunas opcionais e suas validações; não ativa programas ou altera sessões.
+
 ## Compatibilidade e ativação
 
 A auditoria inicial foi somente de leitura. O modelo anterior já tem posições estáveis (`CycleEntry`), cursor e volta (`StudyGuideCycleState`), sessões (`StudySession`), progresso por assunto (`SubjectProgress`) e revisões (`ReviewSchedule`). A seleção anterior é por pesos; passar da última posição não comprova a conclusão de todas as posições. Há histórico legado com `cycleRound` nulo, portanto esse campo não pode ser inferido a partir do cursor.

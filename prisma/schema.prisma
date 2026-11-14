@@ -340,6 +340,8 @@ model CycleProgramItem {
   disciplineId     String
   subjectId        String
   questionGoal     Int
+  plannedMinutes   Int?
+  minimumQuestions Int?
   tecDiscipline    String?
   tecTopic         String?
   tecUrl           String?
