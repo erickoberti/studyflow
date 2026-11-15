@@ -69,6 +69,70 @@ test("PWA de produção mantém registro e fila após recarregar sem rede", asyn
   await expect(page.getByText(/pendente\(s\)/)).not.toContainText("0 pendente(s)");
 });
 
+for (const scenario of [
+  { scope: "CYCLE", activityType: "QUESTIONS" },
+  { scope: "CYCLE", activityType: "REVIEW" },
+  { scope: "GENERAL", activityType: "REVIEW" },
+]) {
+  test(`edição de acertos e erros preserva resultados e ciclo: ${scenario.scope}/${scenario.activityType}`, async ({ page }) => {
+    const snapshot = {
+      ...offlineSnapshot,
+      cycleCursor: { guideId: "guide-e2e", currentOrderIndex: 1 },
+      sessions: [{
+        id: "session-edit", serverId: "session-edit", ...scenario,
+        cycleEntryId: scenario.scope === "CYCLE" ? "entry-e2e" : null,
+        subjectId: scenario.scope === "CYCLE" ? "subject-e2e" : null,
+        date: "2026-07-27T12:00:00.000Z", questions: 20, correct: 17, wrong: 3,
+        percentage: 85, estimatedMinutes: 30, notes: "Registro para correção",
+        createdAt: "2026-07-27T12:00:00.000Z", updatedAt: "2026-07-27T12:00:00.000Z",
+        syncStatus: "synced", syncError: null,
+      }],
+    };
+    await page.addInitScript((initial) => {
+      const key = "studyflow-offline-snapshot:user-e2e";
+      if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(initial));
+      localStorage.setItem(`studyflow-offline-account:${encodeURIComponent("e2e@studyflow.local")}`, "user-e2e");
+      localStorage.setItem("studyflow-offline-access", JSON.stringify({
+        userId: "user-e2e", email: "e2e@studyflow.local", name: "Aluno E2E", unlockedAt: initial.lastSyncedAt,
+      }));
+    }, snapshot);
+    await page.goto("/offline/registros");
+    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    await expect(page.getByLabel("Acertos", { exact: true })).toHaveValue("17");
+    await expect(page.getByLabel("Erros", { exact: true })).toHaveValue("3");
+    const summary = page.locator('[aria-live="polite"]').filter({ hasText: "Total de questões:" });
+    await expect(summary).toContainText("20");
+    await expect(summary).toContainText("85.0%");
+
+    for (const [field, value] of [["Acertos", "-1"], ["Acertos", "1.5"], ["Erros", "-1"], ["Erros", "1.5"]]) {
+      await page.getByLabel(field, { exact: true }).fill(value);
+      await page.getByRole("button", { name: "Salvar", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Editar registro local" })).toBeVisible();
+      const unchanged = await page.evaluate(() => JSON.parse(localStorage.getItem("studyflow-offline-snapshot:user-e2e")!));
+      expect(unchanged.sessions[0]).toMatchObject({ correct: 17, wrong: 3, questions: 20 });
+      await page.getByLabel(field, { exact: true }).fill(field === "Acertos" ? "17" : "3");
+    }
+
+    await page.getByLabel("Erros", { exact: true }).fill("5");
+    await expect(summary).toContainText("22");
+    await expect(summary).toContainText("77.3%");
+    await page.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Editar registro local" })).toHaveCount(0);
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("studyflow-offline-snapshot:user-e2e")!));
+    expect(saved.sessions).toHaveLength(1);
+    expect(saved.sessions[0]).toMatchObject({ correct: 17, wrong: 5, questions: 22, syncStatus: "pending_update", ...scenario });
+    expect(saved.sessions[0].percentage).toBeCloseTo(17 / 22 * 100);
+    expect(saved.cycleCursor).toEqual(snapshot.cycleCursor);
+
+    await page.reload();
+    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    await expect(page.getByLabel("Acertos", { exact: true })).toHaveValue("17");
+    await expect(page.getByLabel("Erros", { exact: true })).toHaveValue("5");
+    await expect(summary).toContainText("77.3%");
+    await expectNoHorizontalOverflow(page);
+  });
+}
+
 test("tema escuro e foco por teclado permanecem funcionais", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("theme", "dark"));
   await page.goto("/auth/login");

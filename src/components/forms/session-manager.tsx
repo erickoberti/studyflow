@@ -87,12 +87,16 @@ export function SessionManager({ sessions, cycleEntries, subjects, initialSubjec
       month: "2-digit",
       day: "2-digit",
     }).format(new Date()),
-    questions: 0,
     correct: 0,
+    wrong: 0,
     estimatedMinutes: 60,
     activityType: "QUESTIONS" as SessionItem["activityType"],
     notes: "",
   });
+
+  const hasQuestionResults = form.activityType === "QUESTIONS" || form.activityType === "REVIEW" || form.scope === "GENERAL";
+  const questions = hasQuestionResults ? form.correct + form.wrong : 0;
+  const percentage = questions > 0 ? (form.correct / questions) * 100 : 0;
 
   useEffect(() => {
     setLocalSessions(sessions);
@@ -123,8 +127,8 @@ export function SessionManager({ sessions, cycleEntries, subjects, initialSubjec
       cycleEntryId: item.cycleEntryId ?? "",
       subjectId: item.subjectId,
       date: dayKeySaoPaulo(item.date),
-      questions: item.questions,
       correct: item.correct,
+      wrong: item.wrong,
       estimatedMinutes: item.estimatedMinutes,
       activityType: item.activityType,
       notes: item.notes,
@@ -174,17 +178,19 @@ export function SessionManager({ sessions, cycleEntries, subjects, initialSubjec
       return;
     }
 
-    const hasQuestionResults = form.activityType === "QUESTIONS" || form.scope === "GENERAL";
-    if ((form.scope === "CYCLE" && !form.cycleEntryId) || (form.scope === "SUBJECT" && !form.subjectId) || form.estimatedMinutes <= 0 || (hasQuestionResults && (form.questions <= 0 || form.correct > form.questions))) {
+    if (hasQuestionResults && (![form.correct, form.wrong, questions].every(Number.isSafeInteger) || form.correct < 0 || form.wrong < 0)) {
+      toast.error("Acertos e erros devem ser números inteiros e não negativos.");
+      return;
+    }
+    if ((form.scope === "CYCLE" && !form.cycleEntryId) || (form.scope === "SUBJECT" && !form.subjectId) || form.estimatedMinutes <= 0 || ((form.activityType === "QUESTIONS" || form.scope === "GENERAL") && questions <= 0)) {
       toast.error("Preencha os dados corretamente.");
       return;
     }
 
     try {
       setSaving(true);
-      const questions = hasQuestionResults ? form.questions : 0;
       const correct = hasQuestionResults ? form.correct : 0;
-      const wrong = Math.max(0, questions - correct);
+      const wrong = hasQuestionResults ? form.wrong : 0;
       const response = await fetch("/api/study-sessions", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -206,7 +212,6 @@ export function SessionManager({ sessions, cycleEntries, subjects, initialSubjec
       const selectedEntry = cycleEntries.find((entry) => entry.id === form.cycleEntryId);
       const selectedSubject = subjects.find((subject) => subject.id === form.subjectId);
       const updatedDate = new Date(`${form.date}T12:00:00-03:00`).toISOString();
-      const percentage = questions > 0 ? (correct / questions) * 100 : 0;
 
       setLocalSessions((current) =>
         [...current]
@@ -258,7 +263,7 @@ export function SessionManager({ sessions, cycleEntries, subjects, initialSubjec
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
             {form.scope === "GENERAL" ? <div className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-bold text-primary">Revisão geral</div> : <label className="text-xs font-semibold text-textSecondary">
               Atividade
-              <select value={form.activityType} onChange={(event) => setForm((value) => ({ ...value, activityType: event.target.value as SessionItem["activityType"], questions: event.target.value === "QUESTIONS" ? value.questions : 0, correct: event.target.value === "QUESTIONS" ? value.correct : 0 }))} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-surface px-3 text-sm dark:border-primary/30 dark:bg-elevated"><option value="QUESTIONS">Questões</option><option value="CLASS">Videoaula</option><option value="READING">Lei seca</option><option value="PDF_READING">PDF/material</option><option value="REVIEW">Revisão</option></select>
+              <select value={form.activityType} onChange={(event) => setForm((value) => ({ ...value, activityType: event.target.value as SessionItem["activityType"] }))} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-surface px-3 text-sm dark:border-primary/30 dark:bg-elevated"><option value="QUESTIONS">Questões</option><option value="CLASS">Videoaula</option><option value="READING">Lei seca</option><option value="PDF_READING">PDF/material</option><option value="REVIEW">Revisão</option></select>
             </label>}
             <label className="text-xs font-semibold text-textSecondary">
               Data
@@ -288,28 +293,33 @@ export function SessionManager({ sessions, cycleEntries, subjects, initialSubjec
                 {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.disciplineName} / {subject.name}</option>)}
               </select>
             </label> : <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-textSecondary dark:text-textSecondary xl:col-span-2">Sem vínculo com matéria ou ciclo.</div>}
-            {form.activityType === "QUESTIONS" || form.scope === "GENERAL" ? <label className="text-xs font-semibold text-textSecondary">
-              Questões
-              <input
-                type="number"
-                min={1}
-                value={form.questions}
-                onChange={(event) => setForm((value) => ({ ...value, questions: Number(event.target.value) || 0 }))}
-                className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-surface px-3 text-sm dark:border-primary/30 dark:bg-elevated"
-              />
-            </label> : null}
-            {form.activityType === "QUESTIONS" || form.scope === "GENERAL" ? <label className="text-xs font-semibold text-textSecondary">
+            {hasQuestionResults ? <label className="text-xs font-semibold text-textSecondary">
               Acertos
               <input
                 type="number"
                 min={0}
-                max={form.questions}
+                step={1}
                 value={form.correct}
                 onChange={(event) => setForm((value) => ({ ...value, correct: Number(event.target.value) || 0 }))}
                 className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-surface px-3 text-sm dark:border-primary/30 dark:bg-elevated"
               />
             </label> : null}
+            {hasQuestionResults ? <label className="text-xs font-semibold text-textSecondary">
+              Erros
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={form.wrong}
+                onChange={(event) => setForm((value) => ({ ...value, wrong: Number(event.target.value) || 0 }))}
+                className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-surface px-3 text-sm dark:border-primary/30 dark:bg-elevated"
+              />
+            </label> : null}
           </div>
+
+          {hasQuestionResults ? <div aria-live="polite" className="rounded-xl bg-slate-100 p-3 text-sm dark:bg-elevated">
+            Total de questões: <strong>{questions}</strong> · Percentual de acertos: <strong>{questions > 0 ? `${percentage.toFixed(1)}%` : "—"}</strong>
+          </div> : null}
 
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[180px_1fr]">
             <label className="text-xs font-semibold text-textSecondary">

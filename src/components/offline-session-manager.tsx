@@ -32,12 +32,16 @@ export function OfflineSessionManager() {
     cycleEntryId: "",
     subjectId: "",
     date: dayKeySaoPaulo(new Date().toISOString()),
-    questions: 0,
     correct: 0,
+    wrong: 0,
     estimatedMinutes: 60,
     activityType: "QUESTIONS" as "QUESTIONS" | "CLASS" | "READING" | "PDF_READING" | "REVIEW",
     notes: "",
   });
+
+  const hasQuestions = form.activityType === "QUESTIONS" || form.activityType === "REVIEW" || form.scope === "GENERAL";
+  const questions = hasQuestions ? form.correct + form.wrong : 0;
+  const percentage = questions > 0 ? (form.correct / questions) * 100 : 0;
 
   useEffect(() => subscribeOfflineStore(() => setSnapshot(getOfflineSnapshot())), []);
 
@@ -89,8 +93,8 @@ export function OfflineSessionManager() {
       cycleEntryId: session.cycleEntryId ?? "",
       subjectId: session.subjectId ?? availableEntries.find((entry) => entry.id === session.cycleEntryId)?.subject.id ?? "",
       date: dayKeySaoPaulo(session.date),
-      questions: session.questions,
       correct: session.correct,
+      wrong: session.wrong,
       estimatedMinutes: session.estimatedMinutes,
       activityType: session.activityType ?? "QUESTIONS",
       notes: session.notes ?? "",
@@ -99,8 +103,11 @@ export function OfflineSessionManager() {
 
   function save() {
     if (!editingId) return;
-    const hasQuestions = form.activityType === "QUESTIONS" || form.scope === "GENERAL";
-    if ((form.scope === "CYCLE" && !form.cycleEntryId) || (form.scope === "SUBJECT" && !form.subjectId) || form.estimatedMinutes <= 0 || (hasQuestions && (form.questions <= 0 || form.correct > form.questions))) {
+    if (hasQuestions && (![form.correct, form.wrong, questions].every(Number.isSafeInteger) || form.correct < 0 || form.wrong < 0)) {
+      toast.error("Acertos e erros devem ser números inteiros e não negativos.");
+      return;
+    }
+    if ((form.scope === "CYCLE" && !form.cycleEntryId) || (form.scope === "SUBJECT" && !form.subjectId) || form.estimatedMinutes <= 0 || ((form.activityType === "QUESTIONS" || form.scope === "GENERAL") && questions <= 0)) {
       toast.error("Preencha os dados corretamente.");
       return;
     }
@@ -110,9 +117,9 @@ export function OfflineSessionManager() {
       subjectId: form.scope === "GENERAL" ? null : form.subjectId,
       scope: form.scope,
       date: form.date,
-      questions: hasQuestions ? form.questions : 0,
+      questions,
       correct: hasQuestions ? form.correct : 0,
-      wrong: hasQuestions ? Math.max(0, form.questions - form.correct) : 0,
+      wrong: hasQuestions ? form.wrong : 0,
       estimatedMinutes: form.estimatedMinutes,
       activityType: form.scope === "GENERAL" ? "REVIEW" : form.activityType,
       notes: form.notes.trim() || null,
@@ -166,24 +173,28 @@ export function OfflineSessionManager() {
                 ))}
               </select>
             </label> : null}
-            <label className="text-sm font-semibold">
-              Questões
-              <input
-                type="number"
-                value={form.questions}
-                onChange={(event) => setForm((current) => ({ ...current, questions: Number(event.target.value) || 0 }))}
-                className="mt-1.5 h-11 w-full rounded-2xl border border-slate-300 bg-surface px-3 dark:border-white/10 dark:bg-elevated"
-              />
-            </label>
-            <label className="text-sm font-semibold">
+            {hasQuestions ? <label className="text-sm font-semibold">
               Acertos
               <input
                 type="number"
+                min={0}
+                step={1}
                 value={form.correct}
                 onChange={(event) => setForm((current) => ({ ...current, correct: Number(event.target.value) || 0 }))}
                 className="mt-1.5 h-11 w-full rounded-2xl border border-slate-300 bg-surface px-3 dark:border-white/10 dark:bg-elevated"
               />
-            </label>
+            </label> : null}
+            {hasQuestions ? <label className="text-sm font-semibold">
+              Erros
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={form.wrong}
+                onChange={(event) => setForm((current) => ({ ...current, wrong: Number(event.target.value) || 0 }))}
+                className="mt-1.5 h-11 w-full rounded-2xl border border-slate-300 bg-surface px-3 dark:border-white/10 dark:bg-elevated"
+              />
+            </label> : null}
             <label className="text-sm font-semibold">
               Tempo (min)
               <input
@@ -204,6 +215,9 @@ export function OfflineSessionManager() {
               />
             </label>
           </div>
+          {hasQuestions ? <div aria-live="polite" className="mt-4 rounded-xl bg-slate-100 p-3 text-sm dark:bg-elevated">
+            Total de questões: <strong>{questions}</strong> · Percentual de acertos: <strong>{questions > 0 ? `${percentage.toFixed(1)}%` : "—"}</strong>
+          </div> : null}
           <div className="mt-4 flex gap-2">
             <button type="button" onClick={save} className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white">
               Salvar
