@@ -100,16 +100,16 @@ export class CycleService {
   }
 
   async start(userId: string, studyGuideId: string, input: { mode: "CYCLE" | "AVULSO"; disciplineId?: string; subjectId?: string; operationId?: string; timerRunning?: boolean; expectedProgramItemId?: string }) {
-    return prisma.$transaction(async (tx) => {
+    const sessionId = await prisma.$transaction(async (tx) => {
       await lockProgramGuide(tx, userId, studyGuideId);
       if (input.operationId) {
         const processed = await tx.activeStudySession.findFirst({ where: { id: input.operationId, userId, studyGuideId }, select: { id: true } });
-        if (processed) return this.dto(tx, processed.id);
+        if (processed) return processed.id;
       }
       const existing = await tx.activeStudySession.findFirst({ where: { userId, studyGuideId, status: { in: openStates } }, select: { id: true, programItemId: true } });
       if (existing) {
         if (input.expectedProgramItemId && input.expectedProgramItemId !== existing.programItemId) throw new CycleConflictError("Já existe uma sessão de outra posição ou volta. Seu estudo offline foi preservado para conferência.", "PROGRAM_ITEM_CHANGED");
-        return this.dto(tx, existing.id);
+        return existing.id;
       }
       let cycleEntryId: string | undefined; let programItemId: string | undefined; let disciplineId = input.disciplineId; let subjectId = input.subjectId;
       if (input.mode === "CYCLE") { const current = await this.currentInTransaction(tx, userId, studyGuideId); if (!current?.subject || !current.entry.discipline) throw new Error("Não há item elegível no ciclo. Confira se a programação foi concluída."); cycleEntryId = current.entry.id; disciplineId = current.entry.discipline.id; subjectId = current.subject.id; programItemId = current.programItemId;
@@ -121,8 +121,11 @@ export class CycleService {
       if (input.mode === "CYCLE" && !cycleEntryId) throw new Error("Crie ao menos uma posição de ciclo antes de registrar estudo.");
       const timerRunning = input.timerRunning ?? true;
       const active = await tx.activeStudySession.create({ data: { ...(input.operationId ? { id: input.operationId } : {}), userId, studyGuideId, cycleEntryId, programItemId, disciplineId, subjectId, mode: input.mode === "CYCLE" ? StudySessionMode.CYCLE : StudySessionMode.AVULSO, status: timerRunning ? ActiveStudySessionStatus.ACTIVE : ActiveStudySessionStatus.PAUSED, pausedAt: timerRunning ? new Date() : null } });
-      return this.dto(tx, active.id);
-    });
+      return active.id;
+    }, { timeout: 20_000 });
+    // Load display relations after commit, without holding the guide lock or
+    // spending the transaction budget on queries that do not affect creation.
+    return this.dto(prisma, sessionId);
   }
 
   private async currentInTransaction(tx: Prisma.TransactionClient, userId: string, studyGuideId: string) {

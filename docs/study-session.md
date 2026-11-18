@@ -8,4 +8,6 @@ Cada histórico possui `activityType`: `QUESTIONS`, `CLASS`, `READING` ou `REVIE
 
 O endpoint legado `/api/study-sessions` é registro avulso de compatibilidade e não avança o ciclo. O fluxo de ciclo usa `/api/active-study-session`.
 
+O início da sessão, manual ou com cronômetro, usa uma transação com prazo de 20 segundos para acomodar a latência do banco remoto. A seleção do assunto, a validação da programação e a criação permanecem sob a mesma trava do guia. As relações usadas apenas para exibição são carregadas depois do commit, reduzindo o tempo da transação e da trava. Repetições por `operationId` e a retomada de sessões abertas preservam a mesma sessão, inclusive na sincronização offline.
+
 A finalização mantém histórico, progresso, revisões e cursor em uma única transação, com prazo de 20 segundos para acomodar latência do banco remoto. Os totais são recalculados uma única vez a partir do histórico. Após bloquear os assuntos, os pesos são atualizados em lotes por incremento, evitando uma escrita por assunto. Repetir uma finalização já concluída não duplica o registro nem avança novamente o ciclo.
