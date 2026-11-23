@@ -14,6 +14,8 @@ import {
   emptyDaySource,
   shiftDayKey,
   weekdayFromDayKey,
+  targetsForWeekday,
+  weeklyStudyTime,
 } from "@/lib/daily-goals";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
 
@@ -24,13 +26,6 @@ export async function ensureDailyGoalSettings(userId: string, studyGuideId: stri
   if (!guide) throw new Error("Guia de estudos não encontrado.");
   const targets = guide?.name.toUpperCase().includes("DATAPREV") ? DATAPREV_TARGETS : DEFAULT_TARGETS;
   return prisma.dailyGoalSettings.upsert({ where: { studyGuideId }, create: { userId, studyGuideId, weekdayTargets: targets as unknown as Prisma.InputJsonValue }, update: {} });
-}
-
-function targetsForWeekday(settings: Awaited<ReturnType<typeof ensureDailyGoalSettings>>, weekday: number) {
-  const fallback = parseTargets(settings.weekdayTargets, DEFAULT_TARGETS);
-  if (weekday === 6 && settings.saturdayTargets) return parseTargets(settings.saturdayTargets, fallback);
-  if (weekday === 7 && settings.sundayTargets) return parseTargets(settings.sundayTargets, fallback);
-  return fallback;
 }
 
 export async function getDailyGoalsData(userId: string, studyGuideId: string, now = new Date()) {
@@ -98,13 +93,12 @@ export async function getDailyGoalsData(userId: string, studyGuideId: string, no
     });
   });
   const today = days.at(-1)!;
-  const week = days.slice(-7);
+  const studyTime = weeklyStudyTime(todayKey, settings, new Map(days.slice(-35).map(day => [day.dayKey, day.minutes])));
   const streak = calculateStreak(days, todayKey);
   const rhythm = calculateRhythm(days, todayKey);
-  const weekTotals = { minimumDays: week.filter((day) => day.minimumMet).length, targetDays: week.filter((day) => day.targetMet).length, minutes: week.reduce((sum, day) => sum + day.minutes, 0), questions: week.reduce((sum, day) => sum + day.questions, 0), sessions: week.reduce((sum, day) => sum + day.sessions, 0), averageMinutes: Math.round(week.reduce((sum, day) => sum + day.minutes, 0) / 7) };
   const weekdayTargets = parseTargets(settings.weekdayTargets, DEFAULT_TARGETS);
   const todayTargets = targetsForWeekday(settings, today.weekday);
-  const weekStartKey = shiftDayKey(todayKey, -(today.weekday - 1));
+  const weekStartKey = studyTime.days[0].date;
   const calendarWeek = days.filter((day) => day.dayKey >= weekStartKey && day.dayKey <= todayKey);
   const questionsThisWeek = calendarWeek.reduce((sum, day) => sum + day.questions, 0);
   const questionsRemaining = Math.max(0, guideSettings.weeklyQuestionsGoal - questionsThisWeek);
@@ -118,7 +112,7 @@ export async function getDailyGoalsData(userId: string, studyGuideId: string, no
     reviewsDue: reviewsDue.length,
     examDate: guideSettings.examDate,
   };
-  return { settings, targets: targetsForWeekday(settings, today.weekday), weekdayTargets, saturdayTargets: parseTargets(settings.saturdayTargets, weekdayTargets), sundayTargets: parseTargets(settings.sundayTargets, weekdayTargets), today, week, days: days.slice(-28), streak, rhythm, weekTotals, plan, manualGoals: manualGoals.map((goal) => ({ ...goal, checkedToday: checkSet.has(`${goal.id}:${todayKey}`) })), reflection };
+  return { settings, targets: todayTargets, weekdayTargets, saturdayTargets: parseTargets(settings.saturdayTargets, weekdayTargets), sundayTargets: parseTargets(settings.sundayTargets, weekdayTargets), today, studyTime, days: days.slice(-28), streak, rhythm, plan, manualGoals: manualGoals.map((goal) => ({ ...goal, checkedToday: checkSet.has(`${goal.id}:${todayKey}`) })), reflection };
 }
 
 export type DailyGoalsData = Awaited<ReturnType<typeof getDailyGoalsData>>;

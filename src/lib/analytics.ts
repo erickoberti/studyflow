@@ -6,15 +6,6 @@ import { currentStudyStreak } from "@/lib/study-insights";
 export type PriorityLevel = "urgente" | "atencao" | "bom" | "forte";
 export type MetaSignal = "verde" | "amarelo" | "vermelho";
 
-function dayKey(date: Date) {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
 function parseDayKey(key: string) {
   const [year, month, day] = key.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day));
@@ -60,7 +51,7 @@ export async function getNextCycleSuggestion(userId: string, studyGuideId: strin
   return { last: null, next: null };
 }
 
-export async function getDashboardData(userId: string, studyGuideId: string) {
+export async function getDashboardData(userId: string, studyGuideId: string, timeZone = "America/Sao_Paulo", now = new Date()) {
   const [sessions, settings, activeEntries] = await Promise.all([
     prisma.studySession.findMany({
       where: { userId, studyGuideId },
@@ -99,7 +90,8 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
   const bySubject = new Map<string, { subject: string; discipline: string; questions: number; correct: number; weight: number; estimatedMinutes: number }>();
 
   const sessionsByActiveEntryRecent = new Map<string, number>();
-  const todayKey = dayKey(new Date());
+  const dayKey = new Intl.DateTimeFormat("sv-SE", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format;
+  const todayKey = dayKey(now);
 
   for (const session of sessions) {
     const sessionDayKey = dayKey(session.date);
@@ -183,7 +175,7 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
   const overallSignal = metaSignal(overallPercentage, targetPercentage);
   const byDayList = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
 
-  const streakDays = currentStudyStreak(byDayList.map(day => day.date));
+  const streakDays = currentStudyStreak(byDayList.map(day => day.date), todayKey);
 
   const activeDays = byDayList.length;
   const avgQuestionsPerDay = activeDays > 0 ? totalQuestions / activeDays : 0;
@@ -212,6 +204,7 @@ export async function getDashboardData(userId: string, studyGuideId: string) {
       cyclePasses,
     },
     byDay: byDayList,
+    todayKey,
     byWeek: Array.from(byWeek.values()).sort((a, b) => a.week.localeCompare(b.week)),
     disciplineStats,
     subjectStats,

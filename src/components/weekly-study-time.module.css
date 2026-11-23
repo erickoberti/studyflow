@@ -1,0 +1,40 @@
+.card {
+  min-width: 0;
+  padding: clamp(16px, 2.2vw, 28px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+.card h2 { font-size: clamp(18px, 2vw, 23px); font-weight: 700; letter-spacing: -.025em; }
+.header, .progressHeading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.header a { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-size: 14px; }
+.header a:hover { text-decoration: underline; }
+.averages { display: grid; grid-template-columns: 1fr 1fr; margin: 24px 0 16px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.averages > div + div { border-left: 1px solid var(--border); padding-left: clamp(12px, 3vw, 40px); }
+.averages > div:first-child { padding-right: 12px; }
+.averages dt { display: flex; align-items: center; gap: 6px; font-size: 15px; }
+.averages dt svg { color: var(--accent); flex-shrink: 0; }
+.averages strong, .progressHeading strong { font-size: clamp(28px, 3vw, 40px); line-height: 1.3; letter-spacing: -.035em; color: var(--foreground); }
+.averages strong, .averages dd span { display: block; }
+.averages dd, .planHeader p, .progressHeading { color: var(--text-secondary); font-size: 14px; }
+.averages dd:last-child { margin-top: 12px; }
+.period { font-weight: 600; font-size: 14px; }
+.progressHeading { margin-bottom: 8px; }
+.progressHeading strong { font-size: 24px; }
+.progressBar { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.progressBar > div { flex: 1; }
+.planHeader { margin-bottom: 18px; }
+.planHeader p { margin-top: 4px; }
+.planHeader + div strong { font-size: clamp(28px, 3vw, 40px); }
+.card table { width: 100%; margin-top: 24px; font-size: 14px; }
+.card :is(th, td) { padding: 10px 4px; border-block-start: 1px solid var(--border); text-align: center; }
+.card th:first-child { text-align: left; }
+.card [data-today=true] { background: rgb(var(--primary-rgb) / .12); }
+.card small { display: block; font-size: 11px; font-weight: 600; color: var(--accent); }
+.mobileTable { display: none; }
+@media (max-width: 740px) {
+  .desktopTable { display: none; }
+  .mobileTable { display: table; }
+  .card small { display: inline-block; margin-inline-start: 6px; }
+}

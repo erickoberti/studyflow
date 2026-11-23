@@ -5,7 +5,10 @@ import { requireActiveStudyGuide } from "@/lib/study-guide";
 import { cycleService } from "@/lib/cycle-service";
 import { getDashboardData } from "@/lib/analytics";
 import { getStudyGuideSettings } from "@/lib/study-guide-settings";
-import { studyDayKey, studyWeek } from "@/lib/study-insights";
+import { studyWeek } from "@/lib/study-insights";
+import { weeklyStudyTime } from "@/lib/daily-goals";
+import { ensureDailyGoalSettings } from "@/lib/daily-goals-service";
+import { StudyTimeCard } from "@/components/weekly-study-time";
 import { getCycleProgram } from "@/lib/programmed-cycle-service";
 import { prisma } from "@/lib/prisma";
 import { GuideSetupNotice } from "@/components/guide-setup-notice";
@@ -20,19 +23,21 @@ export default async function DashboardPage() {
   const guide = await requireActiveStudyGuide(user.id);
   const scope = { userId: user.id, studyGuideId: guide.id };
   const now = new Date();
+  const schedule = await ensureDailyGoalSettings(user.id, guide.id);
   const [current, active, preview, dashboard, settings, positionCount, recent, reviews, program] = await Promise.all([
     cycleService.getCurrent(user.id, guide.id), cycleService.getActive(user.id, guide.id), cycleService.preview(user.id, guide.id, 2),
-    getDashboardData(user.id, guide.id), getStudyGuideSettings(user.id, guide.id),
+    getDashboardData(user.id, guide.id, schedule.timeZone, now), getStudyGuideSettings(user.id, guide.id),
     prisma.cycleEntry.count({ where: { ...scope, active: true } }),
     prisma.studySession.findMany({ where: scope, orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 3, include: { subject: { include: { discipline: true } }, cycleEntry: { include: { discipline: true } } } }),
     prisma.reviewSchedule.findMany({ where: { ...scope, status: "PENDING" }, orderBy: { dueAt: "asc" }, distinct: ["subjectId"], select: { id: true, dueAt: true, subjectId: true, subject: { select: { name: true } } } }),
     getCycleProgram(user.id, guide.id),
   ]);
-  const today = dashboard.byDay.find(day => day.date === studyDayKey(now));
+  const today = dashboard.byDay.find(day => day.date === dashboard.todayKey);
+  const studyTime = weeklyStudyTime(dashboard.todayKey, schedule, new Map(dashboard.byDay.map(day => [day.date, day.estimatedMinutes])));
   const questions = today?.questions ?? 0;
   const minutes = today?.estimatedMinutes ?? 0;
   const goal = dashboard.totals.dailyQuestionsGoal;
-  const week = studyWeek(dashboard.byDay, now);
+  const week = studyWeek(dashboard.byDay, dashboard.todayKey);
   const weekQuestions = week.filter(day => !day.future).reduce((sum, day) => sum + day.questions, 0);
   const weekCorrect = week.filter(day => !day.future).reduce((sum, day) => sum + day.correct, 0);
   const weeklyGoal = dashboard.totals.weeklyQuestionsGoal;
@@ -53,7 +58,7 @@ export default async function DashboardPage() {
   return <div className={`${shell.screen} ${styles.screen}`}>
     <GuideSetupNotice name={guide.name} {...guide._count} />
     <header className={styles.header}>
-      <p className="sf-eyebrow">Seu espaço de estudo · {new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "numeric", month: "long" }).format(now)}</p>
+      <p className="sf-eyebrow">Seu espaço de estudo · {new Intl.DateTimeFormat("pt-BR", { timeZone: schedule.timeZone, weekday: "long", day: "numeric", month: "long" }).format(now)}</p>
       <h1>Olá, {user.name?.split(" ")[0] ?? "Aluno"}.</h1>
       <p>{active ? "Seu estudo está salvo. Retome de onde parou." : finished ? "Programação concluída. Reserve um tempo para consolidar o que aprendeu." : current ? "Um estudo de cada vez. Seu próximo passo está aqui." : "Organize suas matérias para preparar seu próximo estudo."}</p>
     </header>
@@ -72,6 +77,8 @@ export default async function DashboardPage() {
       </> : <div className={styles.actions}><Link href={finished ? "/registro?novo=1" : "/base?tab=disciplinas&novo=1"} className="sf-primary">{finished ? "Registrar revisão mista" : "Adicionar matérias"}<ArrowRight size={17} aria-hidden /></Link><Link href={finished ? "/ciclo/configuracao" : "/ciclo"} className="sf-secondary">{finished ? "Planejar novas voltas" : "Configurar ciclo"}</Link></div>}
       {next ? <div className={styles.next}><span>A seguir · #{next.orderIndex}{next.roundNumber !== round ? ` · volta ${next.roundNumber}` : ""}</span><p>{next.discipline.name} <span aria-hidden>→</span> {next.subject.name}</p></div> : null}
     </section>
+
+    <StudyTimeCard week={studyTime} />
 
     <section className={styles.today} aria-label="Plano de hoje">
       <div className={styles.todayGoal}><div><h2>Hoje</h2><span>{questions} / {goal} questões {goal > 0 && questions >= goal ? <Check size={16} aria-label="Meta atingida" /> : null}</span></div><StudyProgress label="Questões de hoje" value={questions} max={goal} /></div>

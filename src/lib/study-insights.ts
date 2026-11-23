@@ -8,8 +8,8 @@ function shiftDay(key: string, offset: number) {
   return date.toISOString().slice(0, 10);
 }
 
-export function studyWeek<T extends { date: string; questions: number; correct: number; estimatedMinutes: number }>(days: T[], now = new Date()) {
-  const today = studyDayKey(now);
+export function studyWeek<T extends { date: string; questions: number; correct: number; estimatedMinutes: number }>(days: T[], now: Date | string = new Date()) {
+  const today = typeof now === "string" ? now : studyDayKey(now);
   const monday = shiftDay(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
   const byDay = new Map(days.map(day => [day.date, day]));
   return Array.from({ length: 7 }, (_, index) => {
@@ -18,9 +18,9 @@ export function studyWeek<T extends { date: string; questions: number; correct: 
   });
 }
 
-export function currentStudyStreak(dayKeys: string[], now = new Date()) {
+export function currentStudyStreak(dayKeys: string[], now: Date | string = new Date()) {
   const dates = new Set(dayKeys);
-  let cursor = studyDayKey(now);
+  let cursor = typeof now === "string" ? now : studyDayKey(now);
   if (!dates.has(cursor)) cursor = shiftDay(cursor, -1);
   let streak = 0;
   while (dates.has(cursor)) { streak += 1; cursor = shiftDay(cursor, -1); }

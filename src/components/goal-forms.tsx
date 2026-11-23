@@ -10,7 +10,7 @@ const weekdays = [[1, "Seg"], [2, "Ter"], [3, "Qua"], [4, "Qui"], [5, "Sex"], [6
 function Submit({ children }: { children: React.ReactNode }) { const { pending } = useFormStatus(); return <button disabled={pending} className="min-h-11 rounded-control bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60">{pending ? "Salvando…" : children}</button>; }
 
 export function GoalSettingsForm({ data }: { data: DailyGoalsData }) {
-  const [dailyMinutes, setDailyMinutes] = useState(data.plan.dailyMinutes);
+  const [dailyMinutes, setDailyMinutes] = useState(data.weekdayTargets.target.minutes);
   const [weeklyQuestions, setWeeklyQuestions] = useState(data.plan.weeklyQuestions);
   const examDate = data.plan.examDate ? data.plan.examDate.toISOString().slice(0, 10) : "";
   const presets = [{ label: "Leve", detail: "Para criar constância", minutes: 45, questions: 100 }, { label: "Equilibrada", detail: "Boa evolução semanal", minutes: 90, questions: 200 }, { label: "Intensa", detail: "Para maior disponibilidade", minutes: 150, questions: 350 }];
@@ -22,7 +22,21 @@ export function GoalSettingsForm({ data }: { data: DailyGoalsData }) {
       <label className="rounded-2xl border border-slate-200 p-4 dark:border-white/10"><span className="text-sm font-semibold">Questões por semana</span><span className="mt-1 block text-xs text-textSecondary">O sistema distribui entre seus dias.</span><input name="weeklyQuestions" type="number" min={0} max={5000} step={10} value={weeklyQuestions} onChange={(event) => setWeeklyQuestions(Math.max(0, Number(event.target.value) || 0))} className="mt-3 h-12 w-full rounded-xl border border-slate-300 bg-transparent px-3 text-lg font-semibold dark:border-white/10" /></label>
       <label className="rounded-2xl border border-slate-200 p-4 dark:border-white/10"><span className="text-sm font-semibold">Data da prova</span><span className="mt-1 block text-xs text-textSecondary">Opcional; ajuda no planejamento.</span><input name="examDate" type="date" defaultValue={examDate} className="mt-3 h-12 w-full rounded-xl border border-slate-300 bg-transparent px-3 font-bold dark:border-white/10" /></label>
     </div>
-    <div className="rounded-2xl bg-primary/5 p-4 text-sm text-textSecondary dark:text-textSecondary"><strong className="text-primary">Como funciona:</strong> o tempo define sua meta diária. As questões são acompanhadas na semana. Videoaulas, lei seca e PDFs somam tempo normalmente.</div>
+    <fieldset>
+      <legend className="text-sm font-semibold">Tempo no fim de semana</legend>
+      <p className="mt-1 text-xs text-textSecondary">Deixe em branco para usar o tempo por dia. Só os dias selecionados entram na meta semanal.</p>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        {([
+          ["saturdayMinutes", "Sábado", data.saturdayTargets.target.minutes],
+          ["sundayMinutes", "Domingo", data.sundayTargets.target.minutes],
+        ] as const).map(([name, label, minutes]) => <label key={name} className="text-sm font-semibold">
+          {label} (min)
+          <input name={name} type="number" min={10} max={720} placeholder={String(dailyMinutes)}
+            defaultValue={minutes === data.weekdayTargets.target.minutes ? "" : minutes}
+            className="mt-1 block w-full rounded-xl border border-slate-300 bg-transparent px-3 dark:border-white/10" />
+        </label>)}
+      </div>
+    </fieldset>
     <Submit>Salvar minhas metas</Submit>
   </form>;
 }

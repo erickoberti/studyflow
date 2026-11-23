@@ -106,6 +106,46 @@ export function parseTargets(value: unknown, fallback: GoalTargets): GoalTargets
   return { minimum: tier("minimum"), target: tier("target"), excellent: tier("excellent") };
 }
 
+type GoalSchedule = {
+  activeWeekdays: number[];
+  weekdayTargets: unknown;
+  saturdayTargets: unknown;
+  sundayTargets: unknown;
+};
+
+export function targetsForWeekday(settings: GoalSchedule, weekday: number) {
+  const standard = parseTargets(settings.weekdayTargets, DEFAULT_TARGETS);
+  if (weekday === 6) return parseTargets(settings.saturdayTargets, standard);
+  if (weekday === 7) return parseTargets(settings.sundayTargets, standard);
+  return standard;
+}
+
+export function weeklyStudyTime(todayKey: string, settings: GoalSchedule, minutesByDay: ReadonlyMap<string, number>) {
+  const elapsedDays = weekdayFromDayKey(todayKey);
+  const monday = shiftDayKey(todayKey, 1 - elapsedDays);
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const weekday = index + 1;
+    const date = shiftDayKey(monday, index);
+    const plannedMinutes = settings.activeWeekdays.includes(weekday) ? targetsForWeekday(settings, weekday).target.minutes : null;
+    const studiedMinutes = date > todayKey ? null : minutesByDay.get(date) ?? 0;
+    return { date, today: date === todayKey, plannedMinutes, studiedMinutes };
+  });
+  const plannedMinutes = days.reduce((sum, day) => sum + (day.plannedMinutes ?? 0), 0);
+  const studiedMinutes = days.reduce((sum, day) => sum + (day.studiedMinutes ?? 0), 0);
+  let previousMinutes = 0;
+  for (let offset = 1; offset <= 28; offset++) {
+    previousMinutes += minutesByDay.get(shiftDayKey(monday, -offset)) ?? 0;
+  }
+  return {
+    days, plannedMinutes, studiedMinutes,
+    todayGoal: days[elapsedDays - 1].plannedMinutes,
+    dailyAverage: Math.round(studiedMinutes / elapsedDays),
+    weeklyAverage: Math.round(previousMinutes / 4),
+  };
+}
+
+export type WeeklyStudyTime = ReturnType<typeof weeklyStudyTime>;
+
 function reached(tier: GoalTier, enabled: DailyGoalMetric[], actual: GoalTier, firstStudyMet: boolean) {
   const applicable = enabled.filter((metric) => tier[metric] > 0);
   if (!applicable.length) return false;

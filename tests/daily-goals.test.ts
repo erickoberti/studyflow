@@ -12,10 +12,44 @@ import {
   dayKeyInTimeZone,
   emptyDaySource,
   shiftDayKey,
+  weeklyStudyTime,
   type GoalTargets,
 } from "../src/lib/daily-goals";
 
 const enabled = ["minutes", "questions", "sessions", "reviews", "cyclePosition"] as const;
+
+test("horas do painel reproduzem a semana da prévia e excluem o futuro das médias", () => {
+  const plan = { activeWeekdays: [1, 2, 3, 4, 5, 6], weekdayTargets: null, saturdayTargets: DATAPREV_TARGETS, sundayTargets: null };
+  const minutes = new Map<string, number>([
+    ["2026-10-18", 999], ["2026-10-19", 800], ["2026-11-15", 800],
+    ["2026-11-16", 90], ["2026-11-17", 120], ["2026-11-19", 105], ["2026-11-20", 75], ["2026-11-21", 999],
+  ]);
+  const week = weeklyStudyTime("2026-11-20", plan, minutes);
+  assert.equal(week.plannedMinutes, 420);
+  assert.equal(week.studiedMinutes, 390);
+  assert.equal(week.dailyAverage, 78);
+  assert.equal(week.weeklyAverage, 400);
+  assert.equal(week.todayGoal, 60);
+  assert.deepEqual(week.days.map(day => day.studiedMinutes), [90, 120, 0, 105, 75, null, null]);
+  assert.deepEqual(week.days.map(day => day.plannedMinutes), [60, 60, 60, 60, 60, 120, null]);
+});
+
+test("domingo de descanso soma estudo e segunda reinicia a semana mesmo na virada do ano", () => {
+  const plan = { activeWeekdays: [1], weekdayTargets: null, saturdayTargets: null, sundayTargets: null };
+  const minutes = new Map([["2027-01-03", 120]]);
+  const sunday = weeklyStudyTime("2027-01-03", plan, minutes);
+  assert.equal(sunday.days[0].date, "2026-12-28");
+  assert.equal(sunday.todayGoal, null);
+  assert.equal(sunday.dailyAverage, 17);
+  assert.equal(sunday.studiedMinutes, 120);
+  assert.equal(sunday.weeklyAverage, 0);
+  const monday = weeklyStudyTime("2027-01-04", plan, minutes);
+  assert.equal(monday.days[6].date, "2027-01-10");
+  assert.equal(monday.studiedMinutes, 0);
+  assert.equal(monday.dailyAverage, 0);
+  assert.equal(monday.weeklyAverage, 30);
+});
+
 function summary(dayKey: string, source = emptyDaySource(), targets = DATAPREV_TARGETS, extra: Partial<Parameters<typeof buildDaySummary>[0]> = {}) {
   return buildDaySummary({ dayKey, source, targets, enabledMetrics: [...enabled], activeWeekdays: [1, 2, 3, 4, 5, 6, 7], plannedRestWeekdays: [], firstStudyDeadline: null, timeZone: "America/Sao_Paulo", includeMockExams: false, ...extra });
 }

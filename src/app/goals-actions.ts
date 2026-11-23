@@ -15,8 +15,11 @@ function refreshGoals() {
   revalidatePath("/dashboard");
 }
 
+const minutesGoal = z.coerce.number().int().min(10).max(720);
 const configSchema = z.object({
-  dailyMinutes: z.coerce.number().int().min(10).max(720),
+  dailyMinutes: minutesGoal,
+  saturdayMinutes: minutesGoal.optional(),
+  sundayMinutes: minutesGoal.optional(),
   weeklyQuestions: z.coerce.number().int().min(0).max(5000),
   examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")),
   activeWeekdays: z.array(z.coerce.number().int().min(1).max(7)).min(1),
@@ -27,6 +30,8 @@ export async function updateDailyGoalSettings(formData: FormData) {
   const guide = await requireActiveStudyGuide(user.id);
   const parsed = configSchema.safeParse({
     dailyMinutes: formData.get("dailyMinutes"),
+    saturdayMinutes: formData.get("saturdayMinutes") || undefined,
+    sundayMinutes: formData.get("sundayMinutes") || undefined,
     weeklyQuestions: formData.get("weeklyQuestions"),
     examDate: String(formData.get("examDate") ?? ""),
     activeWeekdays: formData.getAll("activeWeekdays"),
@@ -34,11 +39,13 @@ export async function updateDailyGoalSettings(formData: FormData) {
   if (!parsed.success) throw new Error("Informe dias, minutos e questões válidos.");
   const dailyQuestions = parsed.data.weeklyQuestions ? Math.ceil(parsed.data.weeklyQuestions / parsed.data.activeWeekdays.length) : 0;
   const tier = (minutes: number, questions: number): GoalTargets["target"] => ({ ...EMPTY_TIER, minutes, questions });
-  const mainTargets: GoalTargets = {
-    minimum: tier(Math.max(10, Math.round(parsed.data.dailyMinutes * 0.5)), 0),
-    target: tier(parsed.data.dailyMinutes, dailyQuestions),
-    excellent: tier(Math.round(parsed.data.dailyMinutes * 1.25), Math.round(dailyQuestions * 1.25)),
-  };
+  function targets(minutes: number) {
+    return {
+      minimum: tier(Math.max(10, Math.round(minutes * 0.5)), 0),
+      target: tier(minutes, dailyQuestions),
+      excellent: tier(Math.round(minutes * 1.25), Math.round(dailyQuestions * 1.25)),
+    };
+  }
   const current = await ensureDailyGoalSettings(user.id, guide.id);
   await prisma.dailyGoalSettings.updateMany({
     where: { id: current.id, userId: user.id, studyGuideId: guide.id },
@@ -48,9 +55,9 @@ export async function updateDailyGoalSettings(formData: FormData) {
       activeWeekdays: parsed.data.activeWeekdays,
       plannedRestWeekdays: [],
       enabledMetrics: ["minutes"],
-      weekdayTargets: mainTargets as unknown as Prisma.InputJsonValue,
-      saturdayTargets: mainTargets as unknown as Prisma.InputJsonValue,
-      sundayTargets: mainTargets as unknown as Prisma.InputJsonValue,
+      weekdayTargets: targets(parsed.data.dailyMinutes),
+      saturdayTargets: parsed.data.saturdayMinutes ? targets(parsed.data.saturdayMinutes) : Prisma.DbNull,
+      sundayTargets: parsed.data.sundayMinutes ? targets(parsed.data.sundayMinutes) : Prisma.DbNull,
     },
   });
   const guideSettings = await ensureStudyGuideSettings(user.id, guide.id);
